@@ -1,0 +1,498 @@
+﻿<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+
+<head>
+    <th:block th:include="include :: header('维保任务列表')" />
+    <style>
+        .task-tabs {
+            margin-bottom: 20px;
+        }
+
+        .task-tabs .nav-tabs {
+            border-bottom: 2px solid #dc3545;
+        }
+
+        .task-tabs .nav-tabs li a {
+            border: none;
+            color: #666;
+            padding: 10px 30px;
+            font-weight: 500;
+        }
+
+        .task-tabs .nav-tabs li.active a {
+            color: #dc3545;
+            border-bottom: 3px solid #dc3545;
+            background: transparent;
+        }
+
+        .task-tabs .nav-tabs li a:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        /* 状态标签 */
+        .status-badge {
+            padding: 3px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            display: inline-block;
+        }
+
+        .status-pending {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .status-running {
+            background: #17a2b8;
+            color: #fff;
+        }
+
+        .status-completed {
+            background: #28a745;
+            color: #fff;
+        }
+
+        .status-cancelled {
+            background: #dc3545;
+            color: #fff;
+        }
+
+        /* 任务类型 - 普通文字显示 */
+        .type-period {
+            color: #0066cc;
+        }
+
+        .type-temp {
+            color: #cc6600;
+        }
+
+        /* 进度条 */
+        .progress {
+            margin: 0;
+            height: 18px;
+            background: #e9ecef;
+            border-radius: 3px;
+        }
+
+        .progress .progress-bar {
+            background: linear-gradient(90deg, #28a745, #20c997);
+            line-height: 18px;
+            font-size: 11px;
+            color: #fff;
+            min-width: 35px;
+            text-align: center;
+        }
+
+        .company-filter-tip {
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 4px;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+            color: #1890ff;
+        }
+
+        .company-filter-tip i {
+            margin-right: 5px;
+        }
+
+        .company-filter-tip a {
+            margin-left: 10px;
+            color: #1890ff;
+        }
+    </style>
+</head>
+
+<body class="gray-bg">
+    <div class="container-div">
+        <div class="row">
+            <!-- 公司过滤提示 -->
+            <div class="col-sm-12 company-filter-tip" id="companyFilterTip" style="display:none;">
+                <i class="fa fa-filter"></i>
+                <span>当前仅显示【<span id="filterCompanyName"></span>】的数据</span>
+                <a href="javascript:void(0)" onclick="clearCompanyFilter()"><i class="fa fa-times"></i> 清除筛选</a>
+            </div>
+
+            <!-- 标签页 -->
+            <div class="task-tabs">
+                <ul class="nav nav-tabs">
+                    <li class="active"><a href="javascript:void(0)" onclick="searchByType('')">全部任务</a></li>
+                    <li><a href="javascript:void(0)" onclick="searchByType('0')">周期任务</a></li>
+                    <li><a href="javascript:void(0)" onclick="searchByType('1')">临时任务</a></li>
+                </ul>
+            </div>
+
+            <div class="col-sm-12 search-collapse">
+                <form id="formId">
+                    <input type="hidden" name="taskType" id="taskType" />
+                    <div class="select-list">
+                        <ul>
+                            <li>
+                                <label>所属客户：</label>
+                                <select name="companyId" id="companyId">
+                                    <option value="">所有公司</option>
+                                </select>
+                            </li>
+                            <li>
+                                <label>任务名称：</label>
+                                <input type="text" name="taskName" />
+                            </li>
+                            <li>
+                                <label>任务状态：</label>
+                                <select name="taskStatus" th:with="type=${@dict.getType('fire_task_status')}">
+                                    <option value="">所有</option>
+                                    <option th:each="dict : ${type}" th:text="${dict.dictLabel}"
+                                        th:value="${dict.dictValue}"></option>
+                                </select>
+                            </li>
+                            <li>
+                                <label>周期类型：</label>
+                                <select name="periodType" th:with="type=${@dict.getType('fire_period_type')}">
+                                    <option value="">所有</option>
+                                    <option th:each="dict : ${type}" th:text="${dict.dictLabel}"
+                                        th:value="${dict.dictValue}"></option>
+                                </select>
+                            </li>
+                            <li>
+                                <label>年份：</label>
+                                <input type="text" name="periodYear" placeholder="如2025" />
+                            </li>
+                            <li>
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
+                                        class="fa fa-search"></i>&nbsp;搜索</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
+                                        class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+
+            <div class="btn-group-sm" id="toolbar" role="group">
+                <a class="btn btn-success" onclick="handleAdd()" shiro:hasPermission="fire:task:add">
+                    <i class="fa fa-plus"></i> 新增
+                </a>
+                <a class="btn btn-danger" onclick="$.operate.removeAll()" shiro:hasPermission="fire:task:remove">
+                    <i class="fa fa-remove"></i> 删除
+                </a>
+                <a class="btn btn-warning" onclick="$.table.exportExcel()" shiro:hasPermission="fire:task:export">
+                    <i class="fa fa-download"></i> 导出
+                </a>
+            </div>
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table"></table>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var editFlag = [[${@permission.hasPermi('fire:task:edit') }]];
+        var removeFlag = [[${@permission.hasPermi('fire:task:remove') }]];
+        var detailFlag = [[${@permission.hasPermi('fire:task:detail') }]];
+        var taskTypeDatas = [[${@dict.getType('fire_task_type') }]];
+        var taskStatusDatas = [[${@dict.getType('fire_task_status') }]];
+        var periodTypeDatas = [[${@dict.getType('fire_period_type') }]];
+        var prefix = ctx + "fire/task";
+
+        // 从URL获取公司参数
+        var urlParams = new URLSearchParams(window.location.search);
+        var filterCompanyId = urlParams.get('companyId');
+        var filterCompanyName = urlParams.get('companyName');
+
+        $(function () {
+            var options = {
+                url: prefix + "/list",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                removeUrl: prefix + "/remove",
+                exportUrl: prefix + "/export",
+                detailUrl: prefix + "/detail/{id}",
+                modalName: "维保任务",
+                columns: [{
+                    checkbox: true
+                },
+                {
+                    field: 'taskId',
+                    title: 'ID',
+                    visible: false
+                },
+                {
+                    field: 'companyName',
+                    title: '所属客户',
+                    formatter: function (value, row, index) {
+                        return $.table.tooltip(value, 15);
+                    }
+                },
+                {
+                    field: 'taskName',
+                    title: '任务名称',
+                    formatter: function (value, row, index) {
+                        return $.table.tooltip(value, 30);
+                    }
+                },
+                {
+                    field: 'taskType',
+                    title: '任务类型',
+                    formatter: function (value, row, index) {
+                        var label = $.table.selectDictLabel(taskTypeDatas, value);
+                        if (value == '0') {
+                            return '<span class="type-period">' + label + '</span>';
+                        }
+                        return '<span class="type-temp">' + label + '</span>';
+                    }
+                },
+                {
+                    field: 'periodType',
+                    title: '周期类型',
+                    formatter: function (value, row, index) {
+                        return $.table.selectDictLabel(periodTypeDatas, value);
+                    }
+                },
+                {
+                    field: 'periodYear',
+                    title: '年份'
+                },
+                {
+                    field: 'periodNum',
+                    title: '周期序号',
+                    formatter: function (value, row, index) {
+                        if (row.periodType == '2') return '第' + value + '季度';
+                        if (row.periodType == '3') return value == 1 ? '上半年' : '下半年';
+                        return value;
+                    }
+                },
+                {
+                    field: 'managerName',
+                    title: '项目负责人'
+                },
+                {
+                    field: 'operatorNames',
+                    title: '维保操作员',
+                    formatter: function (value, row, index) {
+                        return $.table.tooltip(value, 15);
+                    }
+                },
+                {
+                    field: 'taskStatus',
+                    title: '任务状态',
+                    formatter: function (value, row, index) {
+                        var statusMap = { '0': '待执行', '1': '进行中', '2': '已完成', '3': '已取消' };
+                        var label = statusMap[value] || value;
+                        var cls = 'status-pending';
+                        if (value == '1') cls = 'status-running';
+                        else if (value == '2') cls = 'status-completed';
+                        else if (value == '3') cls = 'status-cancelled';
+                        return '<span class="status-badge ' + cls + '">' + label + '</span>';
+                    }
+                },
+                {
+                    field: 'progress',
+                    title: '完成进度',
+                    formatter: function (value, row, index) {
+                        var total = row.totalItems || 0;
+                        var completed = row.completedItems || 0;
+                        var percent = total > 0 ? Math.round(completed * 100 / total) : 0;
+                        if (total == 0) {
+                            return '<span style="color:#999;">-</span>';
+                        }
+                        return '<div class="progress"><div class="progress-bar" style="width:' + Math.max(percent, 15) + '%">' + completed + '/' + total + '</div></div>';
+                    }
+                },
+                {
+                    title: '操作',
+                    align: 'center',
+                    width: '300px',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        // 待执行状态显示下发按钮
+                        if (row.taskStatus == '0') {
+                            actions.push('<a class="btn btn-warning btn-xs" href="javascript:void(0)" onclick="dispatchTask(\'' + row.taskId + '\')"><i class="fa fa-send"></i> 下发</a> ');
+                        }
+                        // 只有已下发的任务才能维护（进行中或已完成）
+                        if (row.taskStatus == '1' || row.taskStatus == '2') {
+                            actions.push('<a class="btn btn-info btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="openMaintenanceDetail(\'' + row.taskId + '\')"><i class="fa fa-wrench"></i> 维护</a> ');
+                            actions.push('<a class="btn btn-warning btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="openFireTestDetail(\'' + row.taskId + '\')"><i class="fa fa-fire-extinguisher"></i> 消防测试</a> ');
+                            // 签到详情按钮
+                            actions.push('<a class="btn btn-primary btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="openCheckInList(\'' + row.taskId + '\')"><i class="fa fa-map-marker"></i> 签到详情</a> ');
+                            // 维保简报按钮（进行中或已完成状态可编辑）
+                            actions.push('<a class="btn btn-primary btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="editBriefing(\'' + row.taskId + '\')"><i class="fa fa-file-text-o"></i> 维保简报</a> ');
+                        } else {
+                            actions.push('<a class="btn btn-default btn-xs disabled" style="margin-bottom: 5px;" href="javascript:void(0)" title="请先下发任务"><i class="fa fa-wrench"></i> 维护</a> ');
+                        }
+                        // 未完成的任务显示一键完成按钮
+                        if (row.taskStatus == '1') {
+                            actions.push('<a class="btn btn-success btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="completeAllTask(\'' + row.taskId + '\')"><i class="fa fa-check-circle"></i> 一键完成</a> ');
+                        }
+                        actions.push('<a class="btn btn-success btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.taskId + '\')"><i class="fa fa-edit"></i> 编辑</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.taskId + '\')"><i class="fa fa-remove"></i> 删除</a>');
+                        return actions.join('');
+                    }
+                }]
+            };
+            $.table.init(options);
+
+            // 加载公司下拉列表
+            loadCompanyList();
+
+            // 如果有URL参数，自动设置并显示提示
+            if (filterCompanyId) {
+                $('#companyFilterTip').show();
+                $('#filterCompanyName').text(decodeURIComponent(filterCompanyName || ''));
+            }
+        });
+
+        // 加载公司列表
+        function loadCompanyList() {
+            $.ajax({
+                url: ctx + 'fire/company/all',
+                type: 'POST',
+                success: function (res) {
+                    if (res.code == 0 && res.data) {
+                        var html = '<option value="">所有公司</option>';
+                        res.data.forEach(function (company) {
+                            var selected = filterCompanyId && company.companyId == filterCompanyId ? ' selected' : '';
+                            html += '<option value="' + company.companyId + '"' + selected + '>' + company.companyName + '</option>';
+                        });
+                        $('#companyId').html(html);
+
+                        // 如果有URL参数，自动搜索
+                        if (filterCompanyId) {
+                            $.table.search();
+                        }
+                    }
+                }
+            });
+        }
+
+        // 清除公司筛选
+        function clearCompanyFilter() {
+            filterCompanyId = null;
+            filterCompanyName = null;
+            $('#companyId').val('');
+            $('#companyFilterTip').hide();
+            var newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+            $.table.search();
+        }
+
+        // 新增时带上公司参数
+        function handleAdd() {
+            var url = prefix + "/add";
+            if (filterCompanyId) {
+                url += "?companyId=" + filterCompanyId + "&companyName=" + encodeURIComponent(filterCompanyName || '');
+            }
+            $.modal.open("新增任务", url);
+        }
+
+        function searchByType(type) {
+            $('#taskType').val(type);
+            $('.task-tabs .nav-tabs li').removeClass('active');
+            if (type == '') {
+                $('.task-tabs .nav-tabs li:eq(0)').addClass('active');
+            } else if (type == '0') {
+                $('.task-tabs .nav-tabs li:eq(1)').addClass('active');
+            } else {
+                $('.task-tabs .nav-tabs li:eq(2)').addClass('active');
+            }
+            $.table.search();
+        }
+
+        // 下发任务
+        function dispatchTask(taskId) {
+            $.modal.confirm("确认要下发该任务吗？下发后相关人员将可以进行维保操作。", function () {
+                $.ajax({
+                    url: prefix + "/dispatch/" + taskId,
+                    type: "post",
+                    success: function (result) {
+                        if (result.code == 0) {
+                            $.modal.msgSuccess("下发成功");
+                            $.table.refresh();
+                        } else {
+                            $.modal.alertError(result.msg);
+                        }
+                    }
+                });
+            });
+        }
+
+        // 一键完成任务
+        function completeAllTask(taskId) {
+            $.modal.confirm("确认要一键完成该任务吗？所有未完成的检查项将标记为【正常】。", function () {
+                $.ajax({
+                    url: prefix + "/completeAll/" + taskId,
+                    type: "post",
+                    success: function (result) {
+                        if (result.code == 0) {
+                            $.modal.msgSuccess("一键完成成功");
+                            $.table.refresh();
+                        } else {
+                            $.modal.alertError(result.msg);
+                        }
+                    }
+                });
+            });
+        }
+
+        // 编辑维保简报
+        function editBriefing(taskId) {
+            var url = prefix + '/briefing/' + taskId;
+            $.modal.open("维保简报", url, '800', '500');
+        }
+
+        // 打开维护页面（弹框模式，关闭刷新列表）
+        function openMaintenanceDetail(taskId) {
+            var url = prefix + '/detail/' + taskId;
+            top.layer.open({
+                type: 2,
+                title: '维保维护',
+                area: ['900px', '600px'],
+                fix: false,
+                maxmin: true,
+                shade: 0.3,
+                content: url,
+                btn: [],
+                shadeClose: true,
+                end: function () {
+                    $.table.refresh();
+                }
+            });
+        }
+
+        // 打开消防测试维护页面（弹框模式，关闭刷新列表）
+        function openFireTestDetail(taskId) {
+            var url = prefix + '/fireTestDetail/' + taskId;
+            top.layer.open({
+                type: 2,
+                title: '消防设施测试',
+                area: ['900px', '600px'],
+                fix: false,
+                maxmin: true,
+                shade: 0.3,
+                content: url,
+                btn: [],
+                shadeClose: true,
+                end: function () {
+                    $.table.refresh();
+                }
+            });
+        }
+
+        // 打开签到列表（弹框模式）
+        function openCheckInList(taskId) {
+            var url = prefix + '/checkInList/' + taskId;
+            top.layer.open({
+                type: 2,
+                title: '签到详情',
+                area: ['1000px', '650px'],
+                fix: false,
+                maxmin: true,
+                shade: 0.3,
+                content: url,
+                btn: [],
+                shadeClose: true
+            });
+        }
+    </script>
+</body>
+
+</html>

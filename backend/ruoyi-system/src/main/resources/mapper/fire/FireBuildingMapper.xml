@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireBuildingMapper">
+
+    <resultMap type="com.ruoyi.fire.domain.FireBuilding" id="FireBuildingResult">
+        <id     property="buildingId"         column="building_id"         />
+        <result property="companyId"          column="company_id"          />
+        <result property="companyName"        column="company_name"        />
+        <result property="buildingCode"       column="building_code"       />
+        <result property="buildingName"       column="building_name"       />
+        <result property="buildingType"       column="building_type"       />
+        <result property="autoFireSystem"     column="auto_fire_system"    />
+        <result property="address"            column="address"             />
+        <result property="landArea"           column="land_area"           />
+        <result property="area"               column="area"                />
+        <result property="floorCount"         column="floor_count"         />
+        <result property="buildingHeight"     column="building_height"     />
+        <result property="aboveGroundFloors"  column="above_ground_floors" />
+        <result property="undergroundFloors"  column="underground_floors"  />
+        <result property="emergencyExits"     column="emergency_exits"     />
+        <result property="evacuationStairs"   column="evacuation_stairs"   />
+        <result property="fireElevators"      column="fire_elevators"      />
+        <result property="refugeFloor"        column="refuge_floor"        />
+        <result property="fireLevel"          column="fire_level"          />
+        <result property="contactPerson"      column="contact_person"      />
+        <result property="contactPhone"       column="contact_phone"       />
+        <result property="status"             column="status"              />
+        <result property="delFlag"            column="del_flag"            />
+        <result property="createBy"           column="create_by"           />
+        <result property="createTime"         column="create_time"         />
+        <result property="updateBy"           column="update_by"           />
+        <result property="updateTime"         column="update_time"         />
+        <result property="remark"             column="remark"              />
+    </resultMap>
+    
+    <sql id="selectBuildingVo">
+        select building_id, company_id, company_name, building_code, building_name, building_type, auto_fire_system,
+               address, land_area, area, floor_count, building_height, 
+               above_ground_floors, underground_floors, emergency_exits, evacuation_stairs,
+               fire_elevators, refuge_floor, fire_level, contact_person, contact_phone, 
+               status, del_flag, create_by, create_time, update_by, update_time, remark 
+        from fire_building
+    </sql>
+    
+    <select id="selectBuildingList" parameterType="com.ruoyi.fire.domain.FireBuilding" resultMap="FireBuildingResult">
+        <include refid="selectBuildingVo"/>
+        <where>
+            del_flag = '0'
+            <if test="buildingCode != null and buildingCode != ''">
+                AND building_code like concat('%', #{buildingCode}, '%')
+            </if>
+            <if test="buildingName != null and buildingName != ''">
+                AND building_name like concat('%', #{buildingName}, '%')
+            </if>
+            <if test="buildingType != null and buildingType != ''">
+                AND building_type = #{buildingType}
+            </if>
+            <if test="fireLevel != null and fireLevel != ''">
+                AND fire_level = #{fireLevel}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="companyId != null">
+                AND company_id = #{companyId}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+    
+    <select id="selectBuildingAll" resultMap="FireBuildingResult">
+        <include refid="selectBuildingVo"/>
+        where del_flag = '0' and status = '0'
+        order by building_name
+    </select>
+    
+    <select id="selectBuildingById" parameterType="Long" resultMap="FireBuildingResult">
+        <include refid="selectBuildingVo"/>
+        where building_id = #{buildingId} and del_flag = '0'
+    </select>
+    
+    <select id="checkBuildingCodeUnique" parameterType="String" resultMap="FireBuildingResult">
+        <include refid="selectBuildingVo"/>
+        where building_code = #{buildingCode} and del_flag = '0' limit 1
+    </select>
+    
+    <select id="checkBuildingNameUnique" parameterType="String" resultMap="FireBuildingResult">
+        <include refid="selectBuildingVo"/>
+        where building_name = #{buildingName} and del_flag = '0' limit 1
+    </select>
+    
+    <select id="countBuilding" resultType="int">
+        select count(*) from fire_building where del_flag = '0' and status = '0'
+    </select>
+    
+    <select id="countBuildingByType" resultType="java.util.Map">
+        select building_type as name, count(*) as value 
+        from fire_building 
+        where del_flag = '0' and status = '0'
+        group by building_type
+    </select>
+    
+    <insert id="insertBuilding" parameterType="com.ruoyi.fire.domain.FireBuilding" useGeneratedKeys="true" keyProperty="buildingId">
+        insert into fire_building(
+            <if test="buildingId != null and buildingId != 0">building_id,</if>
+            <if test="companyId != null">company_id,</if>
+            <if test="companyName != null and companyName != ''">company_name,</if>
+            <if test="buildingCode != null and buildingCode != ''">building_code,</if>
+            <if test="buildingName != null and buildingName != ''">building_name,</if>
+            <if test="buildingType != null and buildingType != ''">building_type,</if>
+            <if test="autoFireSystem != null and autoFireSystem != ''">auto_fire_system,</if>
+            <if test="address != null and address != ''">address,</if>
+            <if test="landArea != null">land_area,</if>
+            <if test="area != null">area,</if>
+            <if test="floorCount != null">floor_count,</if>
+            <if test="buildingHeight != null">building_height,</if>
+            <if test="aboveGroundFloors != null">above_ground_floors,</if>
+            <if test="undergroundFloors != null">underground_floors,</if>
+            <if test="emergencyExits != null">emergency_exits,</if>
+            <if test="evacuationStairs != null">evacuation_stairs,</if>
+            <if test="fireElevators != null">fire_elevators,</if>
+            <if test="refugeFloor != null and refugeFloor != ''">refuge_floor,</if>
+            <if test="fireLevel != null and fireLevel != ''">fire_level,</if>
+            <if test="contactPerson != null and contactPerson != ''">contact_person,</if>
+            <if test="contactPhone != null and contactPhone != ''">contact_phone,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        )values(
+            <if test="buildingId != null and buildingId != 0">#{buildingId},</if>
+            <if test="companyId != null">#{companyId},</if>
+            <if test="companyName != null and companyName != ''">#{companyName},</if>
+            <if test="buildingCode != null and buildingCode != ''">#{buildingCode},</if>
+            <if test="buildingName != null and buildingName != ''">#{buildingName},</if>
+            <if test="buildingType != null and buildingType != ''">#{buildingType},</if>
+            <if test="autoFireSystem != null and autoFireSystem != ''">#{autoFireSystem},</if>
+            <if test="address != null and address != ''">#{address},</if>
+            <if test="landArea != null">#{landArea},</if>
+            <if test="area != null">#{area},</if>
+            <if test="floorCount != null">#{floorCount},</if>
+            <if test="buildingHeight != null">#{buildingHeight},</if>
+            <if test="aboveGroundFloors != null">#{aboveGroundFloors},</if>
+            <if test="undergroundFloors != null">#{undergroundFloors},</if>
+            <if test="emergencyExits != null">#{emergencyExits},</if>
+            <if test="evacuationStairs != null">#{evacuationStairs},</if>
+            <if test="fireElevators != null">#{fireElevators},</if>
+            <if test="refugeFloor != null and refugeFloor != ''">#{refugeFloor},</if>
+            <if test="fireLevel != null and fireLevel != ''">#{fireLevel},</if>
+            <if test="contactPerson != null and contactPerson != ''">#{contactPerson},</if>
+            <if test="contactPhone != null and contactPhone != ''">#{contactPhone},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+    
+    <update id="updateBuilding" parameterType="com.ruoyi.fire.domain.FireBuilding">
+        update fire_building
+        <set>
+            <if test="buildingCode != null and buildingCode != ''">building_code = #{buildingCode},</if>
+            <if test="buildingName != null and buildingName != ''">building_name = #{buildingName},</if>
+            <if test="buildingType != null">building_type = #{buildingType},</if>
+            <if test="autoFireSystem != null">auto_fire_system = #{autoFireSystem},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="landArea != null">land_area = #{landArea},</if>
+            <if test="area != null">area = #{area},</if>
+            <if test="floorCount != null">floor_count = #{floorCount},</if>
+            <if test="buildingHeight != null">building_height = #{buildingHeight},</if>
+            <if test="aboveGroundFloors != null">above_ground_floors = #{aboveGroundFloors},</if>
+            <if test="undergroundFloors != null">underground_floors = #{undergroundFloors},</if>
+            <if test="emergencyExits != null">emergency_exits = #{emergencyExits},</if>
+            <if test="evacuationStairs != null">evacuation_stairs = #{evacuationStairs},</if>
+            <if test="fireElevators != null">fire_elevators = #{fireElevators},</if>
+            <if test="refugeFloor != null">refuge_floor = #{refugeFloor},</if>
+            <if test="fireLevel != null">fire_level = #{fireLevel},</if>
+            <if test="contactPerson != null">contact_person = #{contactPerson},</if>
+            <if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where building_id = #{buildingId}
+    </update>
+    
+    <update id="deleteBuildingByIds" parameterType="Long">
+        update fire_building set del_flag = '2' where building_id in
+        <foreach collection="array" item="buildingId" open="(" separator="," close=")">
+            #{buildingId}
+        </foreach>
+    </update>
+
+    <update id="deleteBuildingByCompanyId" parameterType="Long">
+        update fire_building set del_flag = '2' where company_id = #{companyId}
+    </update>
+
+    <insert id="batchInsertBuildings" parameterType="java.util.List">
+        insert into fire_building(
+            company_id, company_name, building_code, building_name, building_type, auto_fire_system,
+            address, land_area, area, floor_count, building_height,
+            above_ground_floors, underground_floors, emergency_exits, evacuation_stairs,
+            fire_elevators, refuge_floor, fire_level, contact_person, contact_phone,
+            status, del_flag, create_by, remark, create_time
+        ) values
+        <foreach collection="list" item="b" separator=",">
+            (
+            #{b.companyId}, #{b.companyName}, #{b.buildingCode}, #{b.buildingName}, #{b.buildingType}, #{b.autoFireSystem},
+            #{b.address}, #{b.landArea}, #{b.area}, #{b.floorCount}, #{b.buildingHeight},
+            #{b.aboveGroundFloors}, #{b.undergroundFloors}, #{b.emergencyExits}, #{b.evacuationStairs},
+            #{b.fireElevators}, #{b.refugeFloor}, #{b.fireLevel}, #{b.contactPerson}, #{b.contactPhone},
+            #{b.status}, #{b.delFlag}, #{b.createBy}, #{b.remark}, sysdate()
+            )
+        </foreach>
+    </insert>
+
+</mapper>

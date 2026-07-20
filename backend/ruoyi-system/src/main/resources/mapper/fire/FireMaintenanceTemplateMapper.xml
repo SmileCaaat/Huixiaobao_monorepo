@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireMaintenanceTemplateMapper">
+    
+    <resultMap type="FireMaintenanceTemplate" id="FireMaintenanceTemplateResult">
+        <result property="id"    column="id"    />
+        <result property="level"    column="level"    />
+        <result property="parentId"    column="parent_id"    />
+        <result property="itemName"    column="item_name"    />
+        <result property="itemCode"    column="item_code"    />
+        <result property="sortOrder"    column="sort_order"    />
+        <result property="templateType"    column="template_type"    />
+        <result property="remark"    column="remark"    />
+        <result property="createTime"    column="create_time"    />
+    </resultMap>
+
+    <sql id="selectFireMaintenanceTemplateVo">
+        select id, level, parent_id, item_name, item_code, sort_order, template_type, remark, create_time from fire_maintenance_template
+    </sql>
+
+    <select id="selectFireMaintenanceTemplateList" parameterType="FireMaintenanceTemplate" resultMap="FireMaintenanceTemplateResult">
+        <include refid="selectFireMaintenanceTemplateVo"/>
+        <where>  
+            <if test="level != null "> and level = #{level}</if>
+            <if test="parentId != null "> and parent_id = #{parentId}</if>
+            <if test="itemName != null  and itemName != ''"> and item_name like concat('%', #{itemName}, '%')</if>
+            <if test="itemCode != null  and itemCode != ''"> and item_code = #{itemCode}</if>
+        </where>
+        order by level, sort_order
+    </select>
+    
+    <select id="selectFireMaintenanceTemplateById" parameterType="Long" resultMap="FireMaintenanceTemplateResult">
+        <include refid="selectFireMaintenanceTemplateVo"/>
+        where id = #{id}
+    </select>
+
+    <select id="selectAllTemplates" resultMap="FireMaintenanceTemplateResult">
+        <include refid="selectFireMaintenanceTemplateVo"/>
+        order by level, sort_order
+    </select>
+
+    <select id="selectTemplatesByLevel" parameterType="Integer" resultMap="FireMaintenanceTemplateResult">
+        <include refid="selectFireMaintenanceTemplateVo"/>
+        where level = #{level}
+        order by sort_order
+    </select>
+
+    <select id="selectTemplatesByParentId" parameterType="Long" resultMap="FireMaintenanceTemplateResult">
+        <include refid="selectFireMaintenanceTemplateVo"/>
+        where parent_id = #{parentId}
+        order by sort_order
+    </select>
+        
+    <insert id="insertFireMaintenanceTemplate" parameterType="FireMaintenanceTemplate" useGeneratedKeys="true" keyProperty="id">
+        insert into fire_maintenance_template
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="level != null">level,</if>
+            <if test="parentId != null">parent_id,</if>
+            <if test="itemName != null and itemName != ''">item_name,</if>
+            <if test="itemCode != null and itemCode != ''">item_code,</if>
+            <if test="sortOrder != null">sort_order,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createTime != null">create_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="level != null">#{level},</if>
+            <if test="parentId != null">#{parentId},</if>
+            <if test="itemName != null and itemName != ''">#{itemName},</if>
+            <if test="itemCode != null and itemCode != ''">#{itemCode},</if>
+            <if test="sortOrder != null">#{sortOrder},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createTime != null">#{createTime},</if>
+         </trim>
+    </insert>
+
+    <insert id="batchInsertFireMaintenanceTemplate" parameterType="java.util.List">
+        insert into fire_maintenance_template(level, parent_id, item_name, item_code, sort_order, remark, create_time)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.level}, #{item.parentId}, #{item.itemName}, #{item.itemCode}, #{item.sortOrder}, #{item.remark}, now())
+        </foreach>
+    </insert>
+
+    <update id="updateFireMaintenanceTemplate" parameterType="FireMaintenanceTemplate">
+        update fire_maintenance_template
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="level != null">level = #{level},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="itemName != null and itemName != ''">item_name = #{itemName},</if>
+            <if test="itemCode != null and itemCode != ''">item_code = #{itemCode},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where id = #{id}
+    </update>
+
+    <delete id="deleteFireMaintenanceTemplateById" parameterType="Long">
+        delete from fire_maintenance_template where id = #{id}
+    </delete>
+
+    <delete id="deleteFireMaintenanceTemplateByIds" parameterType="String">
+        delete from fire_maintenance_template where id in 
+        <foreach item="id" collection="array" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </delete>
+</mapper>

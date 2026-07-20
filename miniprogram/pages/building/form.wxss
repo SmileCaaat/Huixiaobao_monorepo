@@ -1,0 +1,209 @@
+
+.page.data-v-c7bcce41 {
+  width: 100vw;
+  min-height: 100vh;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 导航栏右侧按钮 */
+.nav-right-btn.data-v-c7bcce41 {
+  font-size: 28rpx;
+  color: #ffffff;
+  padding: 0 20rpx;
+}
+
+/* 覆盖 uni-nav-bar 标题样式 */
+.data-v-c7bcce41 .uni-nav-bar-text {
+  font-size: 36rpx !important;
+  font-weight: bold !important;
+}
+
+/* 让标题容器绝对定位实现真正居中 */
+.data-v-c7bcce41 .uni-navbar__header-container {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  pointer-events: none;
+}
+.data-v-c7bcce41 .uni-navbar__header-container-inner {
+  pointer-events: auto;
+}
+
+/* 确保左侧按钮在标题容器之上可点击 */
+.data-v-c7bcce41 .uni-navbar__header-btns-left {
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+/* 内容区域 */
+.content.data-v-c7bcce41 {
+  flex: 1;
+  padding-top: calc(6px + env(safe-area-inset-top));
+}
+.form-container.data-v-c7bcce41 {
+  background: #fff;
+  margin: 20rpx;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+}
+
+/* uni-forms 样式调整 */
+.data-v-c7bcce41 .uni-forms-item {
+  padding: 8rpx 0;
+  margin-bottom: 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.data-v-c7bcce41 .uni-forms-item__label {
+  font-size: 28rpx;
+  color: #333;
+}
+.data-v-c7bcce41 .uni-easyinput__content {
+  background: transparent !important;
+}
+.data-v-c7bcce41 .uni-easyinput__content-input {
+  font-size: 28rpx;
+  text-align: right;
+}
+
+/* 单选组 */
+.radio-group.data-v-c7bcce41 {
+  display: flex;
+  justify-content: flex-end;
+  gap: 40rpx;
+}
+.radio-item.data-v-c7bcce41 {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 28rpx;
+  color: #333;
+}
+
+/* 选择器 */
+.picker-wrapper.data-v-c7bcce41 {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  min-height: 70rpx;
+}
+.picker-wrapper .placeholder.data-v-c7bcce41 {
+  color: #999;
+  font-size: 28rpx;
+}
+.picker-wrapper .arrow.data-v-c7bcce41 {
+  color: #ccc;
+  font-size: 32rpx;
+  margin-left: 10rpx;
+}
+
+/* 图片上传 */
+.upload-section.data-v-c7bcce41 {
+  margin-top: 20rpx;
+  padding: 0 0 24rpx;
+}
+.upload-grid.data-v-c7bcce41 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+.upload-item.data-v-c7bcce41,
+.upload-btn.data-v-c7bcce41 {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 8rpx;
+  position: relative;
+}
+.upload-item image.data-v-c7bcce41 {
+  width: 100%;
+  height: 100%;
+  border-radius: 8rpx;
+}
+.delete-icon.data-v-c7bcce41 {
+  position: absolute;
+  top: -10rpx;
+  right: -10rpx;
+  width: 36rpx;
+  height: 36rpx;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+}
+.upload-btn.data-v-c7bcce41 {
+  border: 2rpx solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f9f9;
+}
+
+/* 保存按钮 */
+.save-btn.data-v-c7bcce41 {
+  margin: 30rpx 0;
+  height: 88rpx;
+  background: linear-gradient(135deg, #e53935 0%, #ef5350 100%);
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.save-btn text.data-v-c7bcce41 {
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+/* 选择器弹窗 */
+.picker-mask.data-v-c7bcce41 {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+}
+.picker-popup.data-v-c7bcce41 {
+  width: 100%;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+}
+.picker-header.data-v-c7bcce41 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx 30rpx;
+  border-bottom: 1rpx solid #eee;
+}
+.picker-header text.data-v-c7bcce41 {
+  font-size: 28rpx;
+  color: #666;
+}
+.picker-header text.data-v-c7bcce41:last-child {
+  color: #e53935;
+}
+.picker-title.data-v-c7bcce41 {
+  font-size: 30rpx;
+  color: #333;
+  font-weight: bold;
+}
+.picker-view.data-v-c7bcce41 {
+  height: 400rpx;
+}
+.picker-item.data-v-c7bcce41 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  color: #333;
+}

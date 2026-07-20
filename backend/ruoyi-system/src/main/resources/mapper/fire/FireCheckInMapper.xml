@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireCheckInMapper">
+    
+    <resultMap type="FireCheckIn" id="FireCheckInResult">
+        <result property="checkInId"    column="check_in_id"    />
+        <result property="companyId"    column="company_id"     />
+        <result property="companyName"  column="company_name"   />
+        <result property="taskId"       column="task_id"        />
+        <result property="taskName"     column="task_name"      />
+        <result property="userId"       column="user_id"        />
+        <result property="userName"     column="user_name"      />
+        <result property="checkInTime"  column="check_in_time"  />
+        <result property="longitude"    column="longitude"      />
+        <result property="latitude"     column="latitude"       />
+        <result property="address"      column="address"        />
+        <result property="checkInType"  column="check_in_type"  />
+        <result property="remark"       column="remark"         />
+        <result property="createBy"     column="create_by"      />
+        <result property="createTime"   column="create_time"    />
+        <result property="updateBy"     column="update_by"      />
+        <result property="updateTime"   column="update_time"    />
+        <result property="delFlag"      column="del_flag"       />
+        <!-- 关联查询签到图片列表 -->
+        <collection property="images" ofType="FireCheckInImage" 
+                    column="check_in_id" select="selectCheckInImages"/>
+    </resultMap>
+
+    <resultMap type="FireCheckInImage" id="FireCheckInImageResult">
+        <result property="imageId"      column="image_id"       />
+        <result property="checkInId"    column="check_in_id"    />
+        <result property="imageUrl"     column="image_url"      />
+        <result property="imageName"    column="image_name"     />
+        <result property="sortOrder"    column="sort_order"     />
+        <result property="createTime"   column="create_time"    />
+    </resultMap>
+
+    <sql id="selectFireCheckInVo">
+        select c.check_in_id, c.company_id, c.company_name, c.task_id, t.task_name, c.user_id,
+               IFNULL(c.user_name, u.user_name) as user_name, c.check_in_time,
+               c.longitude, c.latitude, c.address, c.check_in_type, c.remark,
+               c.create_by, c.create_time, c.update_by, c.update_time, c.del_flag
+        from fire_check_in c
+        left join fire_maintenance_task t on c.task_id = t.task_id
+        left join sys_user u on c.user_id = u.user_id
+    </sql>
+
+    <select id="selectFireCheckInById" parameterType="Long" resultMap="FireCheckInResult">
+        <include refid="selectFireCheckInVo"/>
+        where c.check_in_id = #{checkInId}
+    </select>
+
+    <select id="selectFireCheckInList" parameterType="FireCheckIn" resultMap="FireCheckInResult">
+        <include refid="selectFireCheckInVo"/>
+        where c.del_flag = '0'
+        <if test="taskId != null">
+            and c.task_id = #{taskId}
+        </if>
+        <if test="userId != null">
+            and c.user_id = #{userId}
+        </if>
+        <if test="userName != null and userName != ''">
+            and c.user_name like concat('%', #{userName}, '%')
+        </if>
+        <if test="checkInType != null and checkInType != ''">
+            and c.check_in_type = #{checkInType}
+        </if>
+        <if test="params.beginTime != null and params.beginTime != ''">
+            and date_format(c.check_in_time,'%y%m%d') &gt;= date_format(#{params.beginTime},'%y%m%d')
+        </if>
+        <if test="params.endTime != null and params.endTime != ''">
+            and date_format(c.check_in_time,'%y%m%d') &lt;= date_format(#{params.endTime},'%y%m%d')
+        </if>
+        <if test="companyId != null">
+            and c.company_id = #{companyId}
+        </if>
+        order by c.check_in_time desc
+    </select>
+
+    <insert id="insertFireCheckIn" parameterType="FireCheckIn" useGeneratedKeys="true" keyProperty="checkInId">
+        insert into fire_check_in (
+            company_id, company_name, task_id, user_id, user_name, check_in_time, longitude, latitude, address,
+            check_in_type, remark, create_by, create_time
+        ) values (
+            #{companyId}, #{companyName}, #{taskId}, #{userId}, #{userName}, #{checkInTime}, #{longitude}, #{latitude}, #{address},
+            #{checkInType}, #{remark}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <update id="updateFireCheckIn" parameterType="FireCheckIn">
+        update fire_check_in
+        <set>
+            <if test="taskId != null">task_id = #{taskId},</if>
+            <if test="userId != null">user_id = #{userId},</if>
+            <if test="userName != null">user_name = #{userName},</if>
+            <if test="checkInTime != null">check_in_time = #{checkInTime},</if>
+            <if test="longitude != null">longitude = #{longitude},</if>
+            <if test="latitude != null">latitude = #{latitude},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="checkInType != null">check_in_type = #{checkInType},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where check_in_id = #{checkInId}
+    </update>
+
+    <update id="deleteFireCheckInById" parameterType="Long">
+        update fire_check_in set del_flag = '2' where check_in_id = #{checkInId}
+    </update>
+
+    <update id="deleteFireCheckInByIds" parameterType="Long">
+        update fire_check_in set del_flag = '2' where check_in_id in 
+        <foreach item="checkInId" collection="array" open="(" separator="," close=")">
+            #{checkInId}
+        </foreach>
+    </update>
+
+    <select id="selectCheckInImages" parameterType="Long" resultMap="FireCheckInImageResult">
+        select image_id, check_in_id, image_url, image_name, sort_order, create_time
+        from fire_check_in_image
+        where check_in_id = #{checkInId}
+        order by sort_order
+    </select>
+
+    <insert id="insertCheckInImage" parameterType="FireCheckInImage" useGeneratedKeys="true" keyProperty="imageId">
+        insert into fire_check_in_image (check_in_id, image_url, image_name, sort_order, create_time)
+        values (#{checkInId}, #{imageUrl}, #{imageName}, #{sortOrder}, sysdate())
+    </insert>
+
+    <delete id="deleteCheckInImagesByCheckInId" parameterType="Long">
+        delete from fire_check_in_image where check_in_id = #{checkInId}
+    </delete>
+
+    <select id="selectPairCheckIns" resultMap="FireCheckInResult">
+        <include refid="selectFireCheckInVo"/>
+        where c.del_flag = '0'
+          and c.user_id = #{userId}
+          and DATE(c.check_in_time) = #{checkInDate}
+          and c.check_in_id != #{excludeId}
+        order by c.check_in_time asc
+    </select>
+</mapper>

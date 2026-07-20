@@ -1,0 +1,19 @@
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Backend (Java / Maven)
+backend/target/
+backend/**/target/
+backend/*.log
+backend/uploadPath/
+
+# Miniprogram (WeChat DevTools local settings)
+miniprogram/project.private.config.json

@@ -1,0 +1,95 @@
+package com.ruoyi.fire.service;
+
+import java.util.List;
+import com.ruoyi.fire.domain.FireFaultRepair;
+
+/**
+ * 故障报修Service接口
+ *
+ * @author ruoyi
+ */
+public interface IFireFaultRepairService {
+    /**
+     * 查询故障报修
+     *
+     * @param repairId 故障报修ID
+     * @return 故障报修
+     */
+    FireFaultRepair selectFireFaultRepairById(Long repairId);
+
+    /**
+     * 查询故障报修列表
+     *
+     * @param fireFaultRepair 故障报修
+     * @return 故障报修集合
+     */
+    List<FireFaultRepair> selectFireFaultRepairList(FireFaultRepair fireFaultRepair);
+
+    /**
+     * 新增故障报修
+     *
+     * @param fireFaultRepair 故障报修
+     * @return 结果
+     */
+    int insertFireFaultRepair(FireFaultRepair fireFaultRepair);
+
+    /**
+     * 修改故障报修
+     *
+     * @param fireFaultRepair 故障报修
+     * @return 结果
+     */
+    int updateFireFaultRepair(FireFaultRepair fireFaultRepair);
+
+    /**
+     * 批量删除故障报修
+     *
+     * @param ids 需要删除的数据ID
+     * @return 结果
+     */
+    int deleteFireFaultRepairByIds(String ids);
+
+    /**
+     * 删除故障报修信息
+     *
+     * @param repairId 故障报修ID
+     * @return 结果
+     */
+    int deleteFireFaultRepairById(Long repairId);
+
+    /**
+     * 派发报修单
+     *
+     * @param repairId 报修ID
+     * @param repairUserId 处理人用户ID
+     * @param dispatchBy 派发人
+     * @return 结果
+     */
+    int dispatchRepair(Long repairId, Long repairUserId, String dispatchBy);
+
+    /**
+     * 接受报修
+     *
+     * @param repairId 报修ID
+     * @param repairPerson 维修人员
+     * @param repairPhone 维修电话
+     * @return 结果
+     */
+    int acceptRepair(Long repairId, String repairPerson, String repairPhone);
+
+    /**
+     * 开始维修
+     *
+     * @param repairId 报修ID
+     * @return 结果
+     */
+    int startRepair(Long repairId);
+
+    /**
+     * 完成维修
+     *
+     * @param fireFaultRepair 故障报修（包含维修说明和图片）
+     * @return 结果
+     */
+    int completeRepair(FireFaultRepair fireFaultRepair);
+}

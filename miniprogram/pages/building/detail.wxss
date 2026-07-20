@@ -1,0 +1,121 @@
+
+.page.data-v-ff35c7d6 {
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* 覆盖 uni-nav-bar 标题样式 */
+.data-v-ff35c7d6 .uni-nav-bar-text {
+  font-size: 36rpx !important;
+  font-weight: bold !important;
+}
+
+/* 让标题容器绝对定位实现真正居中 */
+.data-v-ff35c7d6 .uni-navbar__header-container {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  pointer-events: none;
+}
+.data-v-ff35c7d6 .uni-navbar__header-container-inner {
+  pointer-events: auto;
+}
+
+/* 确保左侧按钮在标题容器之上可点击 */
+.data-v-ff35c7d6 .uni-navbar__header-btns-left {
+  z-index: 10 !important;
+  position: relative !important;
+}
+
+/* 内容区域 */
+.content.data-v-ff35c7d6 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  padding: 20rpx;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  background: #f5f5f5;
+  overflow: hidden;
+}
+
+/* 详情内容区域 */
+.content-item.data-v-ff35c7d6 {
+  flex: 1;
+  background: #fff;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+
+/* 白色卡片容器 */
+.card-wrapper.data-v-ff35c7d6 {
+  padding: 0;
+}
+.detail-item.data-v-ff35c7d6 {
+  display: flex;
+  align-items: flex-start;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.detail-item.last.data-v-ff35c7d6 {
+  border-bottom: none;
+}
+.detail-label.data-v-ff35c7d6 {
+  width: 200rpx;
+  font-size: 28rpx;
+  color: #666;
+  flex-shrink: 0;
+}
+.detail-value.data-v-ff35c7d6 {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  text-align: right;
+  line-height: 1.5;
+}
+.detail-input.data-v-ff35c7d6 {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+  text-align: right;
+  border-bottom: 1rpx solid #e53935;
+  padding-bottom: 8rpx;
+}
+.detail-picker.data-v-ff35c7d6 {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+.picker-text.data-v-ff35c7d6 {
+  border-bottom: 1rpx solid #e53935;
+  padding-bottom: 8rpx;
+}
+
+/* 底部按钮 */
+.footer.data-v-ff35c7d6 {
+  height: 10%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+.edit-btn.data-v-ff35c7d6 {
+  width: 80%;
+  height: 90rpx;
+  background: linear-gradient(135deg, #e53935 0%, #ef5350 100%);
+  border-radius: 45rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.edit-text.data-v-ff35c7d6 {
+  font-size: 32rpx;
+  color: #fff;
+  font-weight: bold;
+}

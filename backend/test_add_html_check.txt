@@ -1,0 +1,71 @@
+# add.html 文件检查结果
+
+## HTML部分检查
+✅ 消防设施测试UI已添加（第62-72行）
+- 按钮：<button type="button" class="btn btn-warning btn-sm" onclick="selectFireTests()">
+- 显示文本：<span id="selectedFireTestsText">
+- 隐藏字段：<input type="hidden" name="selectedFireTestIds" id="selectedFireTestIds" />
+
+## JavaScript部分检查
+✅ selectFireTests() 函数已添加（第368-432行）
+✅ toggleAllFireTests() 函数已添加（第434-436行）
+✅ updateFireTestSelectAllState() 函数已添加（第438-444行）
+✅ 事件监听已添加（第447-449行）
+
+## 可能的问题
+
+### 1. 浏览器缓存
+最常见的问题！解决方法：
+- 按 Ctrl + F5 强制刷新页面
+- 或者 Ctrl + Shift + Delete 清除浏览器缓存
+- 或者使用无痕模式打开
+
+### 2. 服务器缓存
+如果使用了模板缓存，需要：
+- 重启应用服务器
+- 清除Thymeleaf缓存
+
+### 3. 文件编码问题
+- 文件使用UTF-8编码
+- 中文字符可能显示异常
+
+### 4. JavaScript错误
+打开浏览器开发者工具（F12），检查：
+- Console标签页是否有JavaScript错误
+- Network标签页检查add.html是否正确加载
+
+## 验证步骤
+
+1. 打开浏览器开发者工具（F12）
+2. 进入Console标签
+3. 在页面上执行：typeof selectFireTests
+4. 如果返回 "function"，说明函数已加载
+5. 如果返回 "undefined"，说明文件没有正确加载
+
+## 调试命令
+
+在浏览器Console中执行：
+```javascript
+// 检查函数是否存在
+console.log('selectFireTests:', typeof selectFireTests);
+console.log('selectSystems:', typeof selectSystems);
+
+// 检查DOM元素是否存在
+console.log('Fire Test Button:', $('#selectedFireTestIds').length);
+console.log('System Button:', $('#selectedSystemIds').length);
+
+// 手动调用函数测试
+selectFireTests();
+```
+
+## 建议操作
+
+1. 重启应用服务器
+2. 清除浏览器缓存（Ctrl + F5）
+3. 检查浏览器Console是否有错误
+4. 如果还不行，检查application.yml中的Thymeleaf缓存配置：
+   ```yaml
+   spring:
+     thymeleaf:
+       cache: false  # 开发环境建议设置为false
+   ```

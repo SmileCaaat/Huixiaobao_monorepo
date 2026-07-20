@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireEquipmentMapper">
+
+    <resultMap type="com.ruoyi.fire.domain.FireEquipment" id="FireEquipmentResult">
+        <id     property="equipmentId"     column="equipment_id"      />
+        <result property="equipmentCode"   column="equipment_code"    />
+        <result property="equipmentName"   column="equipment_name"    />
+        <result property="equipmentType"   column="equipment_type"    />
+        <result property="buildingId"      column="building_id"       />
+        <result property="buildingName"    column="building_name"     />
+        <result property="companyId"       column="company_id"        />
+        <result property="companyName"     column="company_name"      />
+        <result property="floorNo"         column="floor_no"          />
+        <result property="systemName"      column="system_name"       />
+        <result property="projectCategory" column="project_category"  />
+        <result property="location"        column="location"          />
+        <result property="manufacturer"    column="manufacturer"      />
+        <result property="model"           column="model"             />
+        <result property="quantity"        column="quantity"          />
+        <result property="image"           column="image"             />
+        <result property="productionDate"  column="production_date"   />
+        <result property="installDate"     column="install_date"      />
+        <result property="expireDate"      column="expire_date"       />
+        <result property="lastCheckDate"   column="last_check_date"   />
+        <result property="nextCheckDate"   column="next_check_date"   />
+        <result property="equipmentStatus" column="equipment_status"  />
+        <result property="status"          column="status"            />
+        <result property="delFlag"         column="del_flag"          />
+        <result property="createBy"        column="create_by"         />
+        <result property="createTime"      column="create_time"       />
+        <result property="updateBy"        column="update_by"         />
+        <result property="updateTime"      column="update_time"       />
+        <result property="remark"          column="remark"            />
+    </resultMap>
+    
+    <sql id="selectEquipmentVo">
+        select e.equipment_id, e.equipment_code, e.equipment_name, e.equipment_type,
+               e.building_id, b.building_name,
+               e.company_id, fc.company_name,
+               e.floor_no, e.system_name, e.project_category, e.location, e.manufacturer, e.model,
+               e.quantity, e.image, e.production_date, e.install_date, e.expire_date, e.last_check_date, e.next_check_date,
+               e.equipment_status, e.status, e.del_flag, e.create_by, e.create_time,
+               e.update_by, e.update_time, e.remark
+        from fire_equipment e
+        left join fire_building b on e.building_id = b.building_id
+        left join fire_company fc on e.company_id = fc.company_id
+    </sql>
+    
+    <select id="selectEquipmentList" parameterType="com.ruoyi.fire.domain.FireEquipment" resultMap="FireEquipmentResult">
+        <include refid="selectEquipmentVo"/>
+        <where>
+            e.del_flag = '0'
+            <if test="equipmentCode != null and equipmentCode != ''">
+                AND e.equipment_code like concat('%', #{equipmentCode}, '%')
+            </if>
+            <if test="equipmentName != null and equipmentName != ''">
+                AND e.equipment_name like concat('%', #{equipmentName}, '%')
+            </if>
+            <if test="equipmentType != null and equipmentType != ''">
+                AND e.equipment_type = #{equipmentType}
+            </if>
+            <if test="buildingId != null">
+                AND e.building_id = #{buildingId}
+            </if>
+            <if test="equipmentStatus != null and equipmentStatus != ''">
+                AND e.equipment_status = #{equipmentStatus}
+            </if>
+            <if test="status != null and status != ''">
+                AND e.status = #{status}
+            </if>
+            <if test="companyId != null">
+                AND e.company_id = #{companyId}
+            </if>
+            <if test="systemTypeId != null">
+                AND e.system_type_id = #{systemTypeId}
+            </if>
+            <if test="systemName != null and systemName != ''">
+                AND e.system_name like concat('%', #{systemName}, '%')
+            </if>
+            <if test="projectCategory != null and projectCategory != ''">
+                AND e.project_category = #{projectCategory}
+            </if>
+        </where>
+        order by e.create_time desc
+    </select>
+    
+    <select id="selectEquipmentAll" resultMap="FireEquipmentResult">
+        <include refid="selectEquipmentVo"/>
+        where e.del_flag = '0' and e.status = '0'
+        order by e.equipment_name
+    </select>
+    
+    <select id="selectEquipmentById" parameterType="Long" resultMap="FireEquipmentResult">
+        <include refid="selectEquipmentVo"/>
+        where e.equipment_id = #{equipmentId} and e.del_flag = '0'
+    </select>
+    
+    <select id="selectEquipmentByCode" parameterType="String" resultMap="FireEquipmentResult">
+        <include refid="selectEquipmentVo"/>
+        where e.equipment_code = #{equipmentCode} and e.del_flag = '0'
+    </select>
+    
+    <select id="checkEquipmentCodeUnique" parameterType="String" resultMap="FireEquipmentResult">
+        select equipment_id, equipment_code, equipment_name from fire_equipment
+        where equipment_code = #{equipmentCode} and del_flag = '0' limit 1
+    </select>
+    
+    <select id="countEquipment" resultType="int">
+        select count(*) from fire_equipment where del_flag = '0' and status = '0'
+    </select>
+    
+    <select id="countEquipmentByType" resultType="java.util.Map">
+        select equipment_type as name, count(*) as value 
+        from fire_equipment 
+        where del_flag = '0' and status = '0'
+        group by equipment_type
+    </select>
+    
+    <select id="countEquipmentByStatus" resultType="java.util.Map">
+        select equipment_status as name, count(*) as value 
+        from fire_equipment 
+        where del_flag = '0' and status = '0'
+        group by equipment_status
+    </select>
+    
+    <select id="countNormalEquipment" resultType="int">
+        select count(*) from fire_equipment 
+        where del_flag = '0' and status = '0' and equipment_status = 'normal'
+    </select>
+    
+    <select id="countWarningEquipment" resultType="int">
+        select count(*) from fire_equipment 
+        where del_flag = '0' and status = '0' and equipment_status = 'warning'
+    </select>
+    
+    <select id="countFaultEquipment" resultType="int">
+        select count(*) from fire_equipment 
+        where del_flag = '0' and status = '0' and equipment_status = 'fault'
+    </select>
+    
+    <select id="countExpiredEquipment" resultType="int">
+        select count(*) from fire_equipment 
+        where del_flag = '0' and status = '0' and equipment_status = 'expired'
+    </select>
+    
+    <insert id="insertEquipment" parameterType="com.ruoyi.fire.domain.FireEquipment" useGeneratedKeys="true" keyProperty="equipmentId">
+        insert into fire_equipment(
+            <if test="equipmentId != null and equipmentId != 0">equipment_id,</if>
+            <if test="equipmentCode != null and equipmentCode != ''">equipment_code,</if>
+            <if test="equipmentName != null and equipmentName != ''">equipment_name,</if>
+            <if test="equipmentType != null and equipmentType != ''">equipment_type,</if>
+            <if test="buildingId != null">building_id,</if>
+            <if test="companyId != null">company_id,</if>
+            <if test="floorNo != null and floorNo != ''">floor_no,</if>
+            <if test="systemName != null and systemName != ''">system_name,</if>
+            <if test="projectCategory != null and projectCategory != ''">project_category,</if>
+            <if test="location != null and location != ''">location,</if>
+            <if test="manufacturer != null and manufacturer != ''">manufacturer,</if>
+            <if test="model != null and model != ''">model,</if>
+            <if test="quantity != null">quantity,</if>
+            <if test="image != null and image != ''">image,</if>
+            <if test="productionDate != null">production_date,</if>
+            <if test="installDate != null">install_date,</if>
+            <if test="expireDate != null">expire_date,</if>
+            <if test="lastCheckDate != null">last_check_date,</if>
+            <if test="nextCheckDate != null">next_check_date,</if>
+            <if test="equipmentStatus != null and equipmentStatus != ''">equipment_status,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        )values(
+            <if test="equipmentId != null and equipmentId != 0">#{equipmentId},</if>
+            <if test="equipmentCode != null and equipmentCode != ''">#{equipmentCode},</if>
+            <if test="equipmentName != null and equipmentName != ''">#{equipmentName},</if>
+            <if test="equipmentType != null and equipmentType != ''">#{equipmentType},</if>
+            <if test="buildingId != null">#{buildingId},</if>
+            <if test="companyId != null">#{companyId},</if>
+            <if test="floorNo != null and floorNo != ''">#{floorNo},</if>
+            <if test="systemName != null and systemName != ''">#{systemName},</if>
+            <if test="projectCategory != null and projectCategory != ''">#{projectCategory},</if>
+            <if test="location != null and location != ''">#{location},</if>
+            <if test="manufacturer != null and manufacturer != ''">#{manufacturer},</if>
+            <if test="model != null and model != ''">#{model},</if>
+            <if test="quantity != null">#{quantity},</if>
+            <if test="image != null and image != ''">#{image},</if>
+            <if test="productionDate != null">#{productionDate},</if>
+            <if test="installDate != null">#{installDate},</if>
+            <if test="expireDate != null">#{expireDate},</if>
+            <if test="lastCheckDate != null">#{lastCheckDate},</if>
+            <if test="nextCheckDate != null">#{nextCheckDate},</if>
+            <if test="equipmentStatus != null and equipmentStatus != ''">#{equipmentStatus},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+    
+    <update id="updateEquipment" parameterType="com.ruoyi.fire.domain.FireEquipment">
+        update fire_equipment
+        <set>
+            <if test="equipmentCode != null and equipmentCode != ''">equipment_code = #{equipmentCode},</if>
+            <if test="equipmentName != null and equipmentName != ''">equipment_name = #{equipmentName},</if>
+            <if test="equipmentType != null">equipment_type = #{equipmentType},</if>
+            <if test="buildingId != null">building_id = #{buildingId},</if>
+            <if test="companyId != null">company_id = #{companyId},</if>
+            <if test="floorNo != null">floor_no = #{floorNo},</if>
+            <if test="systemName != null">system_name = #{systemName},</if>
+            <if test="projectCategory != null">project_category = #{projectCategory},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="manufacturer != null">manufacturer = #{manufacturer},</if>
+            <if test="model != null">model = #{model},</if>
+            <if test="quantity != null">quantity = #{quantity},</if>
+            <if test="image != null">image = #{image},</if>
+            <if test="productionDate != null">production_date = #{productionDate},</if>
+            <if test="installDate != null">install_date = #{installDate},</if>
+            <if test="expireDate != null">expire_date = #{expireDate},</if>
+            <if test="lastCheckDate != null">last_check_date = #{lastCheckDate},</if>
+            <if test="nextCheckDate != null">next_check_date = #{nextCheckDate},</if>
+            <if test="equipmentStatus != null">equipment_status = #{equipmentStatus},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null and updateBy != ''">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where equipment_id = #{equipmentId}
+    </update>
+    
+    <update id="deleteEquipmentByIds" parameterType="Long">
+        update fire_equipment set del_flag = '2' where equipment_id in
+        <foreach collection="array" item="equipmentId" open="(" separator="," close=")">
+            #{equipmentId}
+        </foreach>
+    </update>
+
+    <!-- 统计即将过期设备数（30天内） -->
+    <select id="countExpiringSoon" resultType="int">
+        select count(*) from fire_equipment 
+        where del_flag = '0' 
+        and expire_date is not null 
+        and expire_date &gt;= CURDATE() 
+        and expire_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+    </select>
+    
+    <!-- 统计已过期设备数 -->
+    <select id="countExpired" resultType="int">
+        select count(*) from fire_equipment 
+        where del_flag = '0' 
+        and expire_date is not null 
+        and expire_date &lt; CURDATE()
+    </select>
+    
+    <!-- 统计有效期内设备数 -->
+    <select id="countInDate" resultType="int">
+        select count(*) from fire_equipment 
+        where del_flag = '0' 
+        and (expire_date is null or expire_date &gt; DATE_ADD(CURDATE(), INTERVAL 30 DAY))
+    </select>
+    
+    <!-- 查询即将过期设备列表（前5条） -->
+    <select id="selectExpiringSoonList" resultMap="FireEquipmentResult">
+        <include refid="selectEquipmentVo"/>
+        where e.del_flag = '0' 
+        and e.expire_date is not null 
+        and e.expire_date &gt;= CURDATE() 
+        and e.expire_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+        order by e.expire_date asc
+        limit 5
+    </select>
+    
+    <!-- 查询已过期设备列表（前5条） -->
+    <select id="selectExpiredList" resultMap="FireEquipmentResult">
+        <include refid="selectEquipmentVo"/>
+        where e.del_flag = '0' 
+        and e.expire_date is not null 
+        and e.expire_date &lt; CURDATE()
+        order by e.expire_date desc
+        limit 5
+    </select>
+    
+    <!-- 查询最近添加的设备列表（前5条） -->
+    <select id="selectRecentlyAdded" resultMap="FireEquipmentResult">
+        <include refid="selectEquipmentVo"/>
+        where e.del_flag = '0'
+        order by e.create_time desc
+        limit 5
+    </select>
+
+</mapper>

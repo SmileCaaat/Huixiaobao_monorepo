@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>标签系统 - 图数据库配置与BI应用</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-hover: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border: #334155;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 动态背景 */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            background: radial-gradient(ellipse at 20% 80%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(6, 182, 212, 0.08) 0%, transparent 50%);
+            animation: bgMove 20s ease-in-out infinite;
+        }
+
+        @keyframes bgMove {
+
+            0%,
+            100% {
+                transform: translate(0, 0) rotate(0deg);
+            }
+
+            50% {
+                transform: translate(-5%, -5%) rotate(5deg);
+            }
+        }
+
+        /* 导航栏 */
+        .navbar {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            font-weight: 500;
+            border: none;
+            background: transparent;
+        }
+
+        .nav-tab:hover {
+            background: var(--glass);
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        /* 主内容区 */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* 页面标题 */
+        .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        /* 卡片样式 */
+        .card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 8px 30px rgba(99, 102, 241, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .card-icon.primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+
+        .card-icon.accent {
+            background: linear-gradient(135deg, var(--accent), #0891b2);
+        }
+
+        .card-icon.success {
+            background: linear-gradient(135deg, var(--success), #059669);
+        }
+
+        .card-icon.warning {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+        }
+
+        /* 表单样式 */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .form-input,
+        .form-select {
+            padding: 0.875rem 1rem;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .form-input:focus,
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        /* 按钮样式 */
+        .btn {
+            padding: 0.875rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        /* 标签样式 */
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .tag {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tag-business {
+            background: rgba(99, 102, 241, 0.2);
+            color: #a5b4fc;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+
+        .tag-behavior {
+            background: rgba(6, 182, 212, 0.2);
+            color: #67e8f9;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .tag-attribute {
+            background: rgba(16, 185, 129, 0.2);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .tag-risk {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .tag:hover {
+            transform: scale(1.05);
+        }
+
+        .tag .remove {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+
+        /* 状态指示器 */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-connected {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .status-disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-connected .status-dot {
+            background: var(--success);
+        }
+
+        .status-disconnected .status-dot {
+            background: var(--danger);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* 统计卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* 表格样式 */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem 1.25rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table th {
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .data-table tr:hover td {
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .data-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* 图表占位区 */
+        .chart-area {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+            border-radius: 12px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed var(--border);
+        }
+
+        .chart-placeholder {
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        /* 流程步骤 */
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            margin: 2rem 0;
+            position: relative;
+        }
+
+        .steps::before {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 60px;
+            right: 60px;
+            height: 3px;
+            background: var(--border);
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .step-number {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+            transition: all 0.3s ease;
+        }
+
+        .step.completed .step-number {
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: white;
+        }
+
+        .step.active .step-number {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+        }
+
+        .step.pending .step-number {
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+        }
+
+        .step-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .step.active .step-label,
+        .step.completed .step-label {
+            color: var(--text-primary);
+        }
+
+        /* 实体选择器 */
+        .entity-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .entity-item {
+            background: var(--bg-dark);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .entity-item:hover {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .entity-item.selected {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.15);
+        }
+
+        .entity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--bg-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .entity-info h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .entity-info span {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* 按钮组 */
+        .btn-group {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        /* 消息提示 */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--success);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--success);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .navbar-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .nav-tabs {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .steps {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .steps::before {
+                display: none;
+            }
+
+            .page-title {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-animation"></div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="navbar-content">
+            <div class="logo">
+                <div class="logo-icon">🏷️</div>
+                <span>标签系统</span>
+            </div>
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('config')">📊 图数据库配置</button>
+                <button class="nav-tab" onclick="switchTab('tags')">🏷️ 标签管理</button>
+                <button class="nav-tab" onclick="switchTab('apply')">🎯 打标签</button>
+                <button class="nav-tab" onclick="switchTab('bi')">📈 BI应用</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+        <!-- 图数据库配置 -->
+        <div id="config" class="tab-content active">
+            <div class="page-header">
+                <h1 class="page-title">图数据库配置</h1>
+                <p class="page-subtitle">配置图数据库连接，定义节点和关系类型</p>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon primary">🔗</div>
+                        数据库连接
+                    </div>
+                    <div class="status-indicator status-connected" id="dbStatus">
+                        <span class="status-dot"></span>
+                        已连接
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">数据库类型</label>
+                        <select class="form-select" id="dbType">
+                            <option value="neo4j">Neo4j</option>
+                            <option value="arangodb">ArangoDB</option>
+                            <option value="janusgraph">JanusGraph</option>
+                            <option value="nebula">NebulaGraph</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">连接地址</label>
+                        <input type="text" class="form-input" placeholder="bolt://localhost:7687"
+                            value="bolt://localhost:7687">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="form-input" placeholder="neo4j" value="neo4j">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">密码</label>
+                        <input type="password" class="form-input" placeholder="••••••••" value="password123">
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="testConnection()">🔍 测试连接</button>
+                    <button class="btn btn-success" onclick="saveConfig()">💾 保存配置</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon accent">🔷</div>
+                        节点类型定义
+                    </div>
+                    <button class="btn btn-secondary" onclick="addNodeType()">+ 添加节点类型</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>节点类型</th>
+                                <th>中文名称</th>
+                                <th>属性</th>
+                                <th>描述</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>User</code></td>
+                                <td>用户</td>
+                                <td>id, name, age, gender</td>
+                                <td>系统用户实体</td>
+                                <td><button class="btn btn-secondary" style="padding: 0.5rem 1rem;">编辑</button></td>
+                            </tr>
+                            <tr>
+                                <td><code>Tag</code></td>
+                                <td>标签</td>
+                                <td>id, name, category, weight</td>
+                                <td>标签实体</td>
+                                <td><button class="btn btn-secondary" style="padding: 0.5rem 1rem;">编辑</button></td>
+                            </tr>
+                            <tr>
+                                <td><code>Product</code></td>
+                                <td>产品</td>
+                                <td>id, name, category, price</td>
+                                <td>产品实体</td>
+                                <td><button class="btn btn-secondary" style="padding: 0.5rem 1rem;">编辑</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon success">↔️</div>
+                        关系类型定义
+                    </div>
+                    <button class="btn btn-secondary" onclick="addRelationType()">+ 添加关系类型</button>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>关系类型</th>
+                                <th>起始节点</th>
+                                <th>目标节点</th>
+                                <th>属性</th>
+                                <th>描述</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>HAS_TAG</code></td>
+                                <td>User / Product</td>
+                                <td>Tag</td>
+                                <td>weight, createTime</td>
+                                <td>实体拥有标签</td>
+                            </tr>
+                            <tr>
+                                <td><code>BELONGS_TO</code></td>
+                                <td>Tag</td>
+                                <td>TagCategory</td>
+                                <td>—</td>
+                                <td>标签属于分类</td>
+                            </tr>
+                            <tr>
+                                <td><code>RELATED_TO</code></td>
+                                <td>Tag</td>
+                                <td>Tag</td>
+                                <td>similarity</td>
+                                <td>标签相关性</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 标签管理 -->
+        <div id="tags" class="tab-content">
+            <div class="page-header">
+                <h1 class="page-title">标签管理</h1>
+                <p class="page-subtitle">创建和管理各类业务标签</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">156</div>
+                    <div class="stat-label">标签总数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">8</div>
+                    <div class="stat-label">标签分类</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">12.5K</div>
+                    <div class="stat-label">打标记录</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">98%</div>
+                    <div class="stat-label">覆盖率</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon primary">📦</div>
+                        业务标签
+                    </div>
+                    <button class="btn btn-primary" onclick="showAddTagModal('business')">+ 新增标签</button>
+                </div>
+                <div class="tag-container">
+                    <span class="tag tag-business">💎 高价值客户 <span class="remove">×</span></span>
+                    <span class="tag tag-business">🔄 复购用户 <span class="remove">×</span></span>
+                    <span class="tag tag-business">🆕 新用户 <span class="remove">×</span></span>
+                    <span class="tag tag-business">😴 沉睡用户 <span class="remove">×</span></span>
+                    <span class="tag tag-business">👑 VIP会员 <span class="remove">×</span></span>
+                    <span class="tag tag-business">🎯 潜力用户 <span class="remove">×</span></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon accent">🎯</div>
+                        行为标签
+                    </div>
+                    <button class="btn btn-primary" onclick="showAddTagModal('behavior')">+ 新增标签</button>
+                </div>
+                <div class="tag-container">
+                    <span class="tag tag-behavior">🛒 购物达人 <span class="remove">×</span></span>
+                    <span class="tag tag-behavior">📱 App活跃 <span class="remove">×</span></span>
+                    <span class="tag tag-behavior">🌙 夜猫子 <span class="remove">×</span></span>
+                    <span class="tag tag-behavior">📺 视频偏好 <span class="remove">×</span></span>
+                    <span class="tag tag-behavior">💬 社交活跃 <span class="remove">×</span></span>
+                    <span class="tag tag-behavior">🔍 搜索达人 <span class="remove">×</span></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon success">📋</div>
+                        属性标签
+                    </div>
+                    <button class="btn btn-primary" onclick="showAddTagModal('attribute')">+ 新增标签</button>
+                </div>
+                <div class="tag-container">
+                    <span class="tag tag-attribute">👨 男性 <span class="remove">×</span></span>
+                    <span class="tag tag-attribute">👩 女性 <span class="remove">×</span></span>
+                    <span class="tag tag-attribute">🏙️ 一线城市 <span class="remove">×</span></span>
+                    <span class="tag tag-attribute">🎓 高学历 <span class="remove">×</span></span>
+                    <span class="tag tag-attribute">💰 高收入 <span class="remove">×</span></span>
+                    <span class="tag tag-attribute">👶 有孩家庭 <span class="remove">×</span></span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon warning">⚠️</div>
+                        风险标签
+                    </div>
+                    <button class="btn btn-primary" onclick="showAddTagModal('risk')">+ 新增标签</button>
+                </div>
+                <div class="tag-container">
+                    <span class="tag tag-risk">🚫 黑名单 <span class="remove">×</span></span>
+                    <span class="tag tag-risk">⚡ 异常行为 <span class="remove">×</span></span>
+                    <span class="tag tag-risk">🔒 风险账户 <span class="remove">×</span></span>
+                    <span class="tag tag-risk">💳 信用风险 <span class="remove">×</span></span>
+                    <span class="tag tag-risk">🤖 疑似机器人 <span class="remove">×</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 打标签 -->
+        <div id="apply" class="tab-content">
+            <div class="page-header">
+                <h1 class="page-title">打标签</h1>
+                <p class="page-subtitle">为实体分配标签，支持单个和批量操作</p>
+            </div>
+
+            <!-- 流程步骤 -->
+            <div class="steps">
+                <div class="step completed">
+                    <div class="step-number">✓</div>
+                    <span class="step-label">选择实体类型</span>
+                </div>
+                <div class="step active">
+                    <div class="step-number">2</div>
+                    <span class="step-label">选择实体</span>
+                </div>
+                <div class="step pending">
+                    <div class="step-number">3</div>
+                    <span class="step-label">分配标签</span>
+                </div>
+                <div class="step pending">
+                    <div class="step-number">4</div>
+                    <span class="step-label">确认提交</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon primary">🎯</div>
+                        选择实体
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">实体类型</label>
+                        <select class="form-select">
+                            <option value="user">用户 (User)</option>
+                            <option value="product">产品 (Product)</option>
+                            <option value="order">订单 (Order)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">搜索实体</label>
+                        <input type="text" class="form-input" placeholder="输入ID或名称搜索...">
+                    </div>
+                </div>
+
+                <div class="entity-selector">
+                    <div class="entity-item selected">
+                        <div class="entity-icon">👤</div>
+                        <div class="entity-info">
+                            <h4>张三</h4>
+                            <span>ID: U10001</span>
+                        </div>
+                    </div>
+                    <div class="entity-item">
+                        <div class="entity-icon">👤</div>
+                        <div class="entity-info">
+                            <h4>李四</h4>
+                            <span>ID: U10002</span>
+                        </div>
+                    </div>
+                    <div class="entity-item">
+                        <div class="entity-icon">👤</div>
+                        <div class="entity-info">
+                            <h4>王五</h4>
+                            <span>ID: U10003</span>
+                        </div>
+                    </div>
+                    <div class="entity-item selected">
+                        <div class="entity-icon">👤</div>
+                        <div class="entity-info">
+                            <h4>赵六</h4>
+                            <span>ID: U10004</span>
+                        </div>
+                    </div>
+                    <div class="entity-item">
+                        <div class="entity-icon">👤</div>
+                        <div class="entity-info">
+                            <h4>钱七</h4>
+                            <span>ID: U10005</span>
+                        </div>
+                    </div>
+                    <div class="entity-item">
+                        <div class="entity-icon">👤</div>
+                        <div class="entity-info">
+                            <h4>孙八</h4>
+                            <span>ID: U10006</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon accent">🏷️</div>
+                        分配标签
+                    </div>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">已选择 <strong
+                        style="color: var(--primary);">2</strong> 个实体，请选择要分配的标签：</p>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">业务标签</h4>
+                    <div class="tag-container" style="margin-top: 0;">
+                        <span class="tag tag-business" style="opacity: 0.6;">💎 高价值客户</span>
+                        <span class="tag tag-business" style="border-width: 2px; border-color: var(--primary);">🔄 复购用户
+                            ✓</span>
+                        <span class="tag tag-business" style="opacity: 0.6;">🆕 新用户</span>
+                        <span class="tag tag-business" style="border-width: 2px; border-color: var(--primary);">👑 VIP会员
+                            ✓</span>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <h4 style="margin-bottom: 0.75rem; color: var(--text-secondary); font-size: 0.9rem;">行为标签</h4>
+                    <div class="tag-container" style="margin-top: 0;">
+                        <span class="tag tag-behavior" style="border-width: 2px; border-color: var(--accent);">🛒 购物达人
+                            ✓</span>
+                        <span class="tag tag-behavior" style="opacity: 0.6;">📱 App活跃</span>
+                        <span class="tag tag-behavior" style="opacity: 0.6;">🌙 夜猫子</span>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="applyTags()">✓ 确认打标</button>
+                    <button class="btn btn-secondary">↺ 重置选择</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- BI应用 -->
+        <div id="bi" class="tab-content">
+            <div class="page-header">
+                <h1 class="page-title">BI应用</h1>
+                <p class="page-subtitle">在BI场景中使用标签进行数据分析和洞察</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value">5.2K</div>
+                    <div class="stat-label">高价值客户</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">23%</div>
+                    <div class="stat-label">复购率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">¥8,520</div>
+                    <div class="stat-label">客单价(VIP)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value">1.2%</div>
+                    <div class="stat-label">风险用户占比</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon primary">📊</div>
+                        标签分布分析
+                    </div>
+                    <div class="form-group" style="margin: 0; min-width: 200px;">
+                        <select class="form-select" style="padding: 0.5rem 1rem;">
+                            <option>按业务标签</option>
+                            <option>按行为标签</option>
+                            <option>按属性标签</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="chart-area">
+                    <div class="chart-placeholder">
+                        <div style="font-size: 3rem; margin-bottom: 1rem;">📊</div>
+                        <p>标签分布饼图</p>
+                        <p style="font-size: 0.8rem; margin-top: 0.5rem;">可接入 ECharts / Chart.js 等图表库</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon accent">🔍</div>
+                        标签筛选查询
+                    </div>
+                </div>
+
+                <div class="form-grid" style="margin-bottom: 1.5rem;">
+                    <div class="form-group">
+                        <label class="form-label">选择标签（多选）</label>
+                        <select class="form-select" multiple style="height: 100px;">
+                            <option selected>💎 高价值客户</option>
+                            <option selected>🔄 复购用户</option>
+                            <option>👑 VIP会员</option>
+                            <option>🛒 购物达人</option>
+                            <option>🏙️ 一线城市</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">筛选条件</label>
+                        <select class="form-select">
+                            <option>同时满足所有标签 (AND)</option>
+                            <option>满足任一标签 (OR)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">输出格式</label>
+                        <select class="form-select">
+                            <option>JSON</option>
+                            <option>CSV</option>
+                            <option>Excel</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn btn-primary" onclick="queryByTags()">🔍 查询</button>
+                    <button class="btn btn-success" onclick="exportData()">📥 导出数据</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon success">📋</div>
+                        查询结果
+                    </div>
+                    <span style="color: var(--text-secondary);">共 <strong style="color: var(--success);">1,256</strong>
+                        条记录</span>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>用户ID</th>
+                                <th>用户名</th>
+                                <th>标签</th>
+                                <th>累计消费</th>
+                                <th>最近活跃</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>U10001</td>
+                                <td>张三</td>
+                                <td>
+                                    <span class="tag tag-business"
+                                        style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">💎 高价值</span>
+                                    <span class="tag tag-business"
+                                        style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">🔄 复购</span>
+                                </td>
+                                <td>¥125,800</td>
+                                <td>2024-01-15</td>
+                            </tr>
+                            <tr>
+                                <td>U10025</td>
+                                <td>李四</td>
+                                <td>
+                                    <span class="tag tag-business"
+                                        style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">💎 高价值</span>
+                                    <span class="tag tag-behavior"
+                                        style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">🛒 购物达人</span>
+                                </td>
+                                <td>¥98,500</td>
+                                <td>2024-01-14</td>
+                            </tr>
+                            <tr>
+                                <td>U10089</td>
+                                <td>王五</td>
+                                <td>
+                                    <span class="tag tag-business"
+                                        style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">🔄 复购</span>
+                                    <span class="tag tag-attribute"
+                                        style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">🏙️ 一线城市</span>
+                                </td>
+                                <td>¥76,200</td>
+                                <td>2024-01-13</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <div class="card-icon warning">🔗</div>
+                        API集成
+                    </div>
+                </div>
+
+                <p style="color: var(--text-secondary); margin-bottom: 1rem;">使用以下API在BI工具中查询标签数据：</p>
+
+                <div
+                    style="background: var(--bg-dark); padding: 1rem; border-radius: 10px; font-family: monospace; overflow-x: auto;">
+                    <code style="color: var(--accent);">GET</code> <code
+                        style="color: var(--text-primary);">/api/v1/tags/query?tags=高价值客户,复购用户&condition=AND</code>
+                </div>
+
+                <div
+                    style="margin-top: 1rem; background: var(--bg-dark); padding: 1rem; border-radius: 10px; font-family: monospace; overflow-x: auto;">
+                    <pre style="color: var(--text-secondary); margin: 0;">{
+  "code": 200,
+  "data": {
+    "total": 1256,
+    "items": [
+      { "id": "U10001", "name": "张三", "tags": ["高价值客户", "复购用户"] },
+      ...
+    ]
+  }
+}</pre>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast消息 -->
+    <div class="toast" id="toast">
+        <div class="toast-icon">✓</div>
+        <span id="toastMessage">操作成功！</span>
+    </div>
+
+    <script>
+        // 切换标签页
+        function switchTab(tabId) {
+            // 移除所有活动状态
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // 激活选中的标签
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // 显示Toast消息
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // 测试数据库连接
+        function testConnection() {
+            showToast('数据库连接测试成功！');
+        }
+
+        // 保存配置
+        function saveConfig() {
+            showToast('配置已保存！');
+        }
+
+        // 添加节点类型
+        function addNodeType() {
+            showToast('请在弹窗中添加节点类型');
+        }
+
+        // 添加关系类型
+        function addRelationType() {
+            showToast('请在弹窗中添加关系类型');
+        }
+
+        // 添加标签
+        function showAddTagModal(category) {
+            showToast('请在弹窗中添加' + category + '标签');
+        }
+
+        // 应用标签
+        function applyTags() {
+            showToast('标签已成功应用到2个实体！');
+        }
+
+        // 按标签查询
+        function queryByTags() {
+            showToast('查询完成，找到1,256条记录');
+        }
+
+        // 导出数据
+        function exportData() {
+            showToast('数据导出成功！');
+        }
+
+        // 实体选择
+        document.querySelectorAll('.entity-item').forEach(item => {
+            item.addEventListener('click', function () {
+                this.classList.toggle('selected');
+            });
+        });
+
+        // 标签选择
+        document.querySelectorAll('.tag').forEach(tag => {
+            tag.addEventListener('click', function (e) {
+                if (e.target.classList.contains('remove')) {
+                    this.style.display = 'none';
+                    showToast('标签已删除');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

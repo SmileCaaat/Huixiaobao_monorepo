@@ -1,0 +1,481 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireCompanyMapper">
+
+    <resultMap type="com.ruoyi.fire.domain.FireCompany" id="FireCompanyResult">
+        <id     property="companyId"            column="company_id"              />
+        <result property="companyCode"          column="company_code"            />
+        <result property="companyName"          column="company_name"            />
+        <result property="isKeyUnit"            column="is_key_unit"             />
+        <result property="shortName"            column="short_name"              />
+        <result property="companyType"          column="company_type"            />
+        <result property="buildingType"         column="building_type"           />
+        <result property="totalLandArea"        column="total_land_area"         />
+        <result property="totalBuildingArea"    column="total_building_area"     />
+        <result property="address"              column="address"                 />
+        <result property="province"             column="province"                />
+        <result property="city"                 column="city"                    />
+        <result property="district"             column="district"                />
+        <result property="checkInLongitude"     column="check_in_longitude"      />
+        <result property="checkInLatitude"      column="check_in_latitude"       />
+        <result property="checkInRadius"        column="check_in_radius"         />
+        <result property="checkInAddress"       column="check_in_address"        />
+        <result property="contactPerson"        column="contact_person"          />
+        <result property="contactPhone"         column="contact_phone"           />
+        <result property="contactEmail"         column="contact_email"           />
+        <result property="contractStartDate"    column="contract_start_date"     />
+        <result property="contractEndDate"      column="contract_end_date"       />
+        <result property="contractStatus"       column="contract_status"         />
+        <result property="contractId"           column="contract_id"             />
+        <result property="projectName"          column="project_name"            />
+        <result property="contractName"         column="contract_name"           />
+        <result property="entryUnit"            column="entry_unit"              />
+        <result property="signRequirement"      column="sign_requirement"        />
+        <result property="creditCode"           column="credit_code"             />
+        <result property="autoFireSystem"       column="auto_fire_system"        />
+        <result property="buildingFloorCount"   column="building_floor_count"    />
+        <result property="buildingHeight"       column="building_height"         />
+        <result property="maintenanceStandard"  column="maintenance_standard"    />
+        <result property="maintenanceContent"   column="maintenance_content"     />
+        <result property="projectOverview"      column="project_overview"        />
+        <result property="reportMode"           column="report_mode"             />
+        <result property="projectLeaderName"    column="project_leader_name"     />
+        <result property="technicalLeaderName"  column="technical_leader_name"   />
+        <result property="propertyManageUnit"   column="property_manage_unit"    />
+        <result property="maintenanceSchemeName" column="maintenance_scheme_name" />
+        <result property="maintenanceSchemePath" column="maintenance_scheme_path" />
+        <result property="buildingCount"        column="building_count"          />
+        <result property="equipmentCount"       column="equipment_count"         />
+        <result property="status"               column="status"                  />
+        <result property="delFlag"              column="del_flag"                />
+        <result property="createBy"             column="create_by"               />
+        <result property="createTime"           column="create_time"             />
+        <result property="updateBy"             column="update_by"               />
+        <result property="updateTime"           column="update_time"             />
+        <result property="remark"               column="remark"                  />
+    </resultMap>
+
+    <resultMap type="com.ruoyi.fire.domain.FireUserCompany" id="FireUserCompanyResult">
+        <id     property="id"           column="id"           />
+        <result property="userId"       column="user_id"      />
+        <result property="companyId"    column="company_id"   />
+        <result property="roleType"     column="role_type"    />
+        <result property="createBy"     column="create_by"    />
+        <result property="createTime"   column="create_time"  />
+        <result property="userName"     column="user_name"    />
+        <result property="loginName"    column="login_name"   />
+        <result property="phonenumber"  column="phonenumber"  />
+        <result property="companyName"  column="company_name" />
+    </resultMap>
+
+    <sql id="selectCompanyVo">
+        select company_id, company_code, company_name, is_key_unit, short_name, company_type,
+               building_type, total_land_area, total_building_area, address,
+               province, city, district, check_in_longitude, check_in_latitude, check_in_radius,
+               check_in_address, contact_person, contact_phone, contact_email,
+               contract_start_date, contract_end_date, contract_status,
+               project_name, sign_requirement, credit_code, auto_fire_system,
+               building_floor_count, building_height, maintenance_standard, maintenance_content,
+               project_overview, report_mode, project_leader_name, technical_leader_name,
+               property_manage_unit, maintenance_scheme_name, maintenance_scheme_path,
+               building_count, equipment_count, status, del_flag,
+               create_by, create_time, update_by, update_time, remark
+        from fire_company
+    </sql>
+
+    <select id="selectFireCompanyList" parameterType="com.ruoyi.fire.domain.FireCompany" resultMap="FireCompanyResult">
+        <include refid="selectCompanyVo"/>
+        <where>
+            del_flag = '0'
+            <if test="companyCode != null and companyCode != ''">
+                and company_code like concat('%', #{companyCode}, '%')
+            </if>
+            <if test="companyName != null and companyName != ''">
+                and company_name like concat('%', #{companyName}, '%')
+            </if>
+            <if test="companyType != null and companyType != ''">
+                and company_type = #{companyType}
+            </if>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+            <if test="contractStatus != null and contractStatus != ''">
+                and contract_status = #{contractStatus}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <sql id="selectCustomerManageColumns">
+        c.company_id,
+        c.company_code,
+        c.company_name,
+        c.is_key_unit,
+        c.short_name,
+        c.company_type,
+        c.building_type,
+        c.total_land_area,
+        c.total_building_area,
+        c.address,
+        c.province,
+        c.city,
+        c.district,
+        c.check_in_longitude,
+        c.check_in_latitude,
+        c.check_in_radius,
+        c.check_in_address,
+        c.contact_person,
+        c.contact_phone,
+        c.contact_email,
+        coalesce(lc.start_date, c.contract_start_date) as contract_start_date,
+        coalesce(lc.end_date, c.contract_end_date) as contract_end_date,
+        case
+            when lc.contract_id is not null and lc.end_date is not null and lc.end_date &lt; curdate() then 'expired'
+            when lc.contract_id is not null and lc.end_date is not null and lc.end_date &gt;= curdate() then 'valid'
+            when lc.contract_id is not null then ''
+            when c.contract_end_date is not null and c.contract_end_date &lt; curdate() then 'expired'
+            when c.contract_end_date is not null and c.contract_end_date &gt;= curdate() then 'valid'
+            else ifnull(c.contract_status, '')
+        end as contract_status,
+        lc.contract_id,
+        coalesce(nullif(c.project_name, ''), lc.project_name) as project_name,
+        lc.contract_name,
+        'Admin' as entry_unit,
+        c.sign_requirement,
+        c.credit_code,
+        c.auto_fire_system,
+        c.building_floor_count,
+        c.building_height,
+        c.maintenance_standard,
+        c.maintenance_content,
+        c.project_overview,
+        c.report_mode,
+        c.project_leader_name,
+        c.technical_leader_name,
+        c.property_manage_unit,
+        c.maintenance_scheme_name,
+        c.maintenance_scheme_path,
+        ifnull(bc.building_count, 0) as building_count,
+        c.equipment_count,
+        c.status,
+        c.del_flag,
+        c.create_by,
+        c.create_time,
+        c.update_by,
+        c.update_time,
+        c.remark
+    </sql>
+
+    <sql id="selectCustomerManageFrom">
+        from fire_company c
+        left join fire_contract lc on lc.contract_id = (
+            select fc.contract_id
+            from fire_contract fc
+            where fc.company_id = c.company_id
+              and fc.del_flag = '0'
+              and fc.terminate_flag = '0'
+            order by fc.end_date desc, fc.contract_id desc
+            limit 1
+        )
+        left join (
+            select company_id, count(1) as building_count
+            from fire_building
+            where del_flag = '0'
+            group by company_id
+        ) bc on bc.company_id = c.company_id
+    </sql>
+
+    <select id="selectCustomerManageList" parameterType="com.ruoyi.fire.domain.FireCompany" resultMap="FireCompanyResult">
+        select
+        <include refid="selectCustomerManageColumns"/>
+        <include refid="selectCustomerManageFrom"/>
+        <where>
+            c.del_flag in ('0', '2')
+            <if test="companyName != null and companyName != ''">
+                and c.company_name like concat('%', #{companyName}, '%')
+            </if>
+            <if test="keyword != null and keyword != ''">
+                and (
+                    c.company_name like concat('%', #{keyword}, '%')
+                    or ifnull(c.project_name, '') like concat('%', #{keyword}, '%')
+                    or ifnull(lc.project_name, '') like concat('%', #{keyword}, '%')
+                    or ifnull(lc.contract_name, '') like concat('%', #{keyword}, '%')
+                    or ifnull(c.address, '') like concat('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="province != null and province != ''">
+                and c.province like concat('%', #{province}, '%')
+            </if>
+            <if test="city != null and city != ''">
+                and c.city like concat('%', #{city}, '%')
+            </if>
+            <if test="district != null and district != ''">
+                and c.district like concat('%', #{district}, '%')
+            </if>
+            <if test="isKeyUnit != null and isKeyUnit != ''">
+                and c.is_key_unit = #{isKeyUnit}
+            </if>
+            <if test="entryUnit != null and entryUnit != ''">
+                and #{entryUnit} = 'Admin'
+            </if>
+            <if test="contractStatus != null and contractStatus != ''">
+                <choose>
+                    <when test="contractStatus == 'expired' or contractStatus == '2'">
+                        and coalesce(lc.end_date, c.contract_end_date) &lt; curdate()
+                    </when>
+                    <when test="contractStatus == 'valid' or contractStatus == '0'">
+                        and (coalesce(lc.end_date, c.contract_end_date) &gt;= curdate() or coalesce(lc.end_date, c.contract_end_date) is null)
+                    </when>
+                </choose>
+            </if>
+            <if test="params != null and params.beginCreateTime != null and params.beginCreateTime != ''">
+                and date_format(c.create_time,'%Y-%m-%d') &gt;= date_format(#{params.beginCreateTime},'%Y-%m-%d')
+            </if>
+            <if test="params != null and params.endCreateTime != null and params.endCreateTime != ''">
+                and date_format(c.create_time,'%Y-%m-%d') &lt;= date_format(#{params.endCreateTime},'%Y-%m-%d')
+            </if>
+        </where>
+        order by case when c.del_flag = '2' then 1 else 0 end, c.create_time desc
+    </select>
+
+    <select id="selectCustomerManageByIds" resultMap="FireCompanyResult">
+        select
+        <include refid="selectCustomerManageColumns"/>
+        <include refid="selectCustomerManageFrom"/>
+        where c.del_flag in ('0', '2')
+          and c.company_id in
+          <foreach collection="array" item="companyId" open="(" separator="," close=")">
+              #{companyId}
+          </foreach>
+        order by case when c.del_flag = '2' then 1 else 0 end, c.create_time desc
+    </select>
+
+    <select id="selectCompanyAll" resultMap="FireCompanyResult">
+        <include refid="selectCompanyVo"/>
+        where del_flag = '0' and status = '0'
+        order by company_name
+    </select>
+
+    <select id="selectFireCompanyById" parameterType="Long" resultMap="FireCompanyResult">
+        <include refid="selectCompanyVo"/>
+        where company_id = #{companyId} and del_flag = '0'
+    </select>
+
+    <select id="selectFireCompanyByCode" parameterType="String" resultMap="FireCompanyResult">
+        <include refid="selectCompanyVo"/>
+        where company_code = #{companyCode} and del_flag = '0'
+    </select>
+
+    <select id="checkCompanyCodeUnique" parameterType="String" resultMap="FireCompanyResult">
+        <include refid="selectCompanyVo"/>
+        where company_code = #{companyCode} and del_flag = '0' limit 1
+    </select>
+
+    <select id="checkCompanyNameUnique" parameterType="String" resultMap="FireCompanyResult">
+        <include refid="selectCompanyVo"/>
+        where company_name = #{companyName} and del_flag = '0' limit 1
+    </select>
+
+    <select id="countCompany" resultType="int">
+        select count(*) from fire_company where del_flag = '0' and status = '0'
+    </select>
+
+    <insert id="insertFireCompany" parameterType="com.ruoyi.fire.domain.FireCompany" useGeneratedKeys="true" keyProperty="companyId">
+        insert into fire_company (
+            <if test="companyCode != null and companyCode != ''">company_code,</if>
+            <if test="companyName != null and companyName != ''">company_name,</if>
+            <if test="isKeyUnit != null and isKeyUnit != ''">is_key_unit,</if>
+            <if test="shortName != null and shortName != ''">short_name,</if>
+            <if test="companyType != null and companyType != ''">company_type,</if>
+            <if test="buildingType != null and buildingType != ''">building_type,</if>
+            <if test="totalLandArea != null">total_land_area,</if>
+            <if test="totalBuildingArea != null">total_building_area,</if>
+            <if test="address != null and address != ''">address,</if>
+            <if test="province != null and province != ''">province,</if>
+            <if test="city != null and city != ''">city,</if>
+            <if test="district != null and district != ''">district,</if>
+            <if test="checkInLongitude != null">check_in_longitude,</if>
+            <if test="checkInLatitude != null">check_in_latitude,</if>
+            <if test="checkInRadius != null">check_in_radius,</if>
+            <if test="checkInAddress != null and checkInAddress != ''">check_in_address,</if>
+            <if test="contactPerson != null and contactPerson != ''">contact_person,</if>
+            <if test="contactPhone != null and contactPhone != ''">contact_phone,</if>
+            <if test="contactEmail != null and contactEmail != ''">contact_email,</if>
+            <if test="contractStartDate != null">contract_start_date,</if>
+            <if test="contractEndDate != null">contract_end_date,</if>
+            <if test="contractStatus != null and contractStatus != ''">contract_status,</if>
+            <if test="projectName != null and projectName != ''">project_name,</if>
+            <if test="signRequirement != null and signRequirement != ''">sign_requirement,</if>
+            <if test="creditCode != null and creditCode != ''">credit_code,</if>
+            <if test="autoFireSystem != null and autoFireSystem != ''">auto_fire_system,</if>
+            <if test="buildingFloorCount != null">building_floor_count,</if>
+            <if test="buildingHeight != null">building_height,</if>
+            <if test="maintenanceStandard != null and maintenanceStandard != ''">maintenance_standard,</if>
+            <if test="maintenanceContent != null and maintenanceContent != ''">maintenance_content,</if>
+            <if test="projectOverview != null and projectOverview != ''">project_overview,</if>
+            <if test="reportMode != null and reportMode != ''">report_mode,</if>
+            <if test="projectLeaderName != null and projectLeaderName != ''">project_leader_name,</if>
+            <if test="technicalLeaderName != null and technicalLeaderName != ''">technical_leader_name,</if>
+            <if test="propertyManageUnit != null and propertyManageUnit != ''">property_manage_unit,</if>
+            <if test="maintenanceSchemeName != null and maintenanceSchemeName != ''">maintenance_scheme_name,</if>
+            <if test="maintenanceSchemePath != null and maintenanceSchemePath != ''">maintenance_scheme_path,</if>
+            <if test="buildingCount != null">building_count,</if>
+            <if test="equipmentCount != null">equipment_count,</if>
+            <if test="status != null and status != ''">status,</if>
+            <if test="remark != null and remark != ''">remark,</if>
+            <if test="createBy != null and createBy != ''">create_by,</if>
+            create_time
+        ) values (
+            <if test="companyCode != null and companyCode != ''">#{companyCode},</if>
+            <if test="companyName != null and companyName != ''">#{companyName},</if>
+            <if test="isKeyUnit != null and isKeyUnit != ''">#{isKeyUnit},</if>
+            <if test="shortName != null and shortName != ''">#{shortName},</if>
+            <if test="companyType != null and companyType != ''">#{companyType},</if>
+            <if test="buildingType != null and buildingType != ''">#{buildingType},</if>
+            <if test="totalLandArea != null">#{totalLandArea},</if>
+            <if test="totalBuildingArea != null">#{totalBuildingArea},</if>
+            <if test="address != null and address != ''">#{address},</if>
+            <if test="province != null and province != ''">#{province},</if>
+            <if test="city != null and city != ''">#{city},</if>
+            <if test="district != null and district != ''">#{district},</if>
+            <if test="checkInLongitude != null">#{checkInLongitude},</if>
+            <if test="checkInLatitude != null">#{checkInLatitude},</if>
+            <if test="checkInRadius != null">#{checkInRadius},</if>
+            <if test="checkInAddress != null and checkInAddress != ''">#{checkInAddress},</if>
+            <if test="contactPerson != null and contactPerson != ''">#{contactPerson},</if>
+            <if test="contactPhone != null and contactPhone != ''">#{contactPhone},</if>
+            <if test="contactEmail != null and contactEmail != ''">#{contactEmail},</if>
+            <if test="contractStartDate != null">#{contractStartDate},</if>
+            <if test="contractEndDate != null">#{contractEndDate},</if>
+            <if test="contractStatus != null and contractStatus != ''">#{contractStatus},</if>
+            <if test="projectName != null and projectName != ''">#{projectName},</if>
+            <if test="signRequirement != null and signRequirement != ''">#{signRequirement},</if>
+            <if test="creditCode != null and creditCode != ''">#{creditCode},</if>
+            <if test="autoFireSystem != null and autoFireSystem != ''">#{autoFireSystem},</if>
+            <if test="buildingFloorCount != null">#{buildingFloorCount},</if>
+            <if test="buildingHeight != null">#{buildingHeight},</if>
+            <if test="maintenanceStandard != null and maintenanceStandard != ''">#{maintenanceStandard},</if>
+            <if test="maintenanceContent != null and maintenanceContent != ''">#{maintenanceContent},</if>
+            <if test="projectOverview != null and projectOverview != ''">#{projectOverview},</if>
+            <if test="reportMode != null and reportMode != ''">#{reportMode},</if>
+            <if test="projectLeaderName != null and projectLeaderName != ''">#{projectLeaderName},</if>
+            <if test="technicalLeaderName != null and technicalLeaderName != ''">#{technicalLeaderName},</if>
+            <if test="propertyManageUnit != null and propertyManageUnit != ''">#{propertyManageUnit},</if>
+            <if test="maintenanceSchemeName != null and maintenanceSchemeName != ''">#{maintenanceSchemeName},</if>
+            <if test="maintenanceSchemePath != null and maintenanceSchemePath != ''">#{maintenanceSchemePath},</if>
+            <if test="buildingCount != null">#{buildingCount},</if>
+            <if test="equipmentCount != null">#{equipmentCount},</if>
+            <if test="status != null and status != ''">#{status},</if>
+            <if test="remark != null and remark != ''">#{remark},</if>
+            <if test="createBy != null and createBy != ''">#{createBy},</if>
+            sysdate()
+        )
+    </insert>
+
+    <update id="updateFireCompany" parameterType="com.ruoyi.fire.domain.FireCompany">
+        update fire_company
+        <set>
+            <if test="companyCode != null">company_code = #{companyCode},</if>
+            <if test="companyName != null">company_name = #{companyName},</if>
+            <if test="isKeyUnit != null">is_key_unit = #{isKeyUnit},</if>
+            <if test="shortName != null">short_name = #{shortName},</if>
+            <if test="companyType != null">company_type = #{companyType},</if>
+            <if test="buildingType != null">building_type = #{buildingType},</if>
+            <if test="totalLandArea != null">total_land_area = #{totalLandArea},</if>
+            <if test="totalBuildingArea != null">total_building_area = #{totalBuildingArea},</if>
+            <if test="address != null">address = #{address},</if>
+            <if test="province != null">province = #{province},</if>
+            <if test="city != null">city = #{city},</if>
+            <if test="district != null">district = #{district},</if>
+            <if test="checkInLongitude != null">check_in_longitude = #{checkInLongitude},</if>
+            <if test="checkInLatitude != null">check_in_latitude = #{checkInLatitude},</if>
+            <if test="checkInRadius != null">check_in_radius = #{checkInRadius},</if>
+            <if test="checkInAddress != null">check_in_address = #{checkInAddress},</if>
+            <if test="contactPerson != null">contact_person = #{contactPerson},</if>
+            <if test="contactPhone != null">contact_phone = #{contactPhone},</if>
+            <if test="contactEmail != null">contact_email = #{contactEmail},</if>
+            <if test="contractStartDate != null">contract_start_date = #{contractStartDate},</if>
+            <if test="contractEndDate != null">contract_end_date = #{contractEndDate},</if>
+            <if test="contractStatus != null">contract_status = #{contractStatus},</if>
+            <if test="projectName != null">project_name = #{projectName},</if>
+            <if test="signRequirement != null">sign_requirement = #{signRequirement},</if>
+            <if test="creditCode != null">credit_code = #{creditCode},</if>
+            <if test="autoFireSystem != null">auto_fire_system = #{autoFireSystem},</if>
+            <if test="buildingFloorCount != null">building_floor_count = #{buildingFloorCount},</if>
+            <if test="buildingHeight != null">building_height = #{buildingHeight},</if>
+            <if test="maintenanceStandard != null">maintenance_standard = #{maintenanceStandard},</if>
+            <if test="maintenanceContent != null">maintenance_content = #{maintenanceContent},</if>
+            <if test="projectOverview != null">project_overview = #{projectOverview},</if>
+            <if test="reportMode != null">report_mode = #{reportMode},</if>
+            <if test="projectLeaderName != null">project_leader_name = #{projectLeaderName},</if>
+            <if test="technicalLeaderName != null">technical_leader_name = #{technicalLeaderName},</if>
+            <if test="propertyManageUnit != null">property_manage_unit = #{propertyManageUnit},</if>
+            <if test="maintenanceSchemeName != null">maintenance_scheme_name = #{maintenanceSchemeName},</if>
+            <if test="maintenanceSchemePath != null">maintenance_scheme_path = #{maintenanceSchemePath},</if>
+            <if test="buildingCount != null">building_count = #{buildingCount},</if>
+            <if test="equipmentCount != null">equipment_count = #{equipmentCount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </set>
+        where company_id = #{companyId}
+    </update>
+
+    <update id="deleteFireCompanyById" parameterType="Long">
+        update fire_company set del_flag = '2' where company_id = #{companyId}
+    </update>
+
+    <update id="deleteFireCompanyByIds">
+        update fire_company set del_flag = '2' where company_id in
+        <foreach collection="array" item="companyId" open="(" separator="," close=")">
+            #{companyId}
+        </foreach>
+    </update>
+
+    <select id="selectCompanyListByUserId" parameterType="Long" resultMap="FireCompanyResult">
+        select c.company_id, c.company_code, c.company_name, c.project_name, c.short_name, c.company_type,
+               c.address, c.check_in_longitude, c.check_in_latitude, c.check_in_radius,
+               c.check_in_address, c.contact_person, c.contact_phone, c.status
+        from fire_company c
+        inner join fire_user_company uc on c.company_id = uc.company_id
+        where uc.user_id = #{userId} and c.del_flag = '0' and c.status = '0'
+        order by c.company_name
+    </select>
+
+    <select id="selectUserListByCompanyId" parameterType="Long" resultMap="FireUserCompanyResult">
+        select uc.id, uc.user_id, uc.company_id, uc.role_type, uc.create_time,
+               u.user_name, u.login_name, u.phonenumber
+        from fire_user_company uc
+        left join sys_user u on uc.user_id = u.user_id
+        where uc.company_id = #{companyId}
+        order by uc.create_time desc
+    </select>
+
+    <insert id="insertUserCompany" parameterType="com.ruoyi.fire.domain.FireUserCompany">
+        insert into fire_user_company (user_id, company_id, role_type, create_by, create_time)
+        values (#{userId}, #{companyId}, #{roleType}, #{createBy}, sysdate())
+    </insert>
+
+    <insert id="batchInsertUserCompany" parameterType="java.util.List">
+        insert into fire_user_company (user_id, company_id, role_type, create_by, create_time) values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.userId}, #{item.companyId}, #{item.roleType}, #{item.createBy}, sysdate())
+        </foreach>
+    </insert>
+
+    <delete id="deleteUserCompanyByCompanyId" parameterType="Long">
+        delete from fire_user_company where company_id = #{companyId}
+    </delete>
+
+    <delete id="deleteUserCompanyByUserId" parameterType="Long">
+        delete from fire_user_company where user_id = #{userId}
+    </delete>
+
+    <delete id="deleteUserCompany" parameterType="com.ruoyi.fire.domain.FireUserCompany">
+        delete from fire_user_company where user_id = #{userId} and company_id = #{companyId}
+    </delete>
+
+</mapper>

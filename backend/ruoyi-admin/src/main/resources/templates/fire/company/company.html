@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+
+<head>
+    <th:block th:include="include :: header('维保客户管理')" />
+    <th:block th:include="include :: datetimepicker-css" />
+    <style>
+        .toolbar-row {
+            margin-bottom: 10px;
+        }
+
+        .search-bottom {
+            margin-top: 12px;
+            padding: 12px;
+            border: 1px solid #e5e6e7;
+            background: #f8f8f8;
+        }
+
+        .search-bottom .search-inline {
+            display: inline-block;
+            margin: 6px 12px 6px 0;
+            vertical-align: middle;
+        }
+
+        .search-bottom .search-inline label {
+            margin-right: 6px;
+            font-weight: normal;
+        }
+
+        .search-bottom .form-control {
+            width: 170px;
+            display: inline-block;
+        }
+
+        .search-bottom .date-range {
+            width: 130px;
+        }
+
+        .expired-date {
+            color: #d9534f;
+            font-weight: 600;
+        }
+
+        .invalid-row > td {
+            color: #999 !important;
+            background: #f5f5f5 !important;
+        }
+
+        .invalid-row a {
+            color: #999 !important;
+        }
+
+        .invalid-row .expired-date {
+            color: #999 !important;
+            font-weight: normal;
+        }
+
+        .deleted-company-name {
+            text-decoration: line-through;
+        }
+
+        .action-col {
+            white-space: nowrap !important;
+            width: 120px;
+        }
+    </style>
+</head>
+
+<body class="gray-bg">
+    <div class="container-div">
+        <div class="row">
+            <div class="btn-group-sm toolbar-row" id="toolbar" role="group">
+                <a class="btn btn-success" onclick="openAddCustomer()" shiro:hasPermission="fire:company:add">
+                    <i class="fa fa-plus"></i> 添加
+                </a>
+                <a class="btn btn-primary" onclick="exportSelected()" shiro:hasPermission="fire:company:export">
+                    <i class="fa fa-download"></i> 导出数据
+                </a>
+                <a class="btn btn-danger" onclick="invalidateSelected()" shiro:hasPermission="fire:company:remove">
+                    <i class="fa fa-trash"></i> 作废
+                </a>
+            </div>
+
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table"></table>
+            </div>
+
+            <div class="col-sm-12 search-bottom">
+                <form id="searchForm">
+                    <div class="search-inline">
+                        <label>所属区域</label>
+                        <input type="text" class="form-control" name="province" placeholder="省">
+                        <input type="text" class="form-control" name="city" placeholder="市">
+                        <input type="text" class="form-control" name="district" placeholder="区县">
+                    </div>
+                    <div class="search-inline">
+                        <label>录入单位</label>
+                        <select name="entryUnit" class="form-control">
+                            <option value="">--请选择--</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="search-inline">
+                        <label>重点单位</label>
+                        <select name="isKeyUnit" class="form-control">
+                            <option value="">--请选择--</option>
+                            <option value="1">是</option>
+                            <option value="0">否</option>
+                        </select>
+                    </div>
+                    <div class="search-inline">
+                        <label>创建时间</label>
+                        <input type="text" class="form-control time-input date-range" name="params[beginCreateTime]" placeholder="开始日期" readonly>
+                        <span>~</span>
+                        <input type="text" class="form-control time-input date-range" name="params[endCreateTime]" placeholder="结束日期" readonly>
+                    </div>
+                    <div class="search-inline">
+                        <label>合同状态</label>
+                        <select name="contractStatus" class="form-control">
+                            <option value="">--请选择--</option>
+                            <option value="valid">有效</option>
+                            <option value="expired">到期</option>
+                        </select>
+                    </div>
+                    <div class="search-inline">
+                        <label>关键词</label>
+                        <input type="text" class="form-control" name="keyword" placeholder="客户/项目/地址/合同名称">
+                    </div>
+                    <div class="search-inline">
+                        <a class="btn btn-primary btn-sm" onclick="$.table.search('searchForm')"><i class="fa fa-search"></i> 查询</a>
+                        <a class="btn btn-default btn-sm" onclick="resetSearch()"><i class="fa fa-refresh"></i> 重置</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: datetimepicker-js" />
+    <script th:inline="javascript">
+        var editFlag = [[${@permission.hasPermi('fire:company:edit')}]];
+        var removeFlag = [[${@permission.hasPermi('fire:company:remove')}]];
+        var prefix = ctx + "fire/company";
+
+        $(function () {
+            $(".time-input").datetimepicker({
+                format: "yyyy-mm-dd",
+                minView: "month",
+                autoclose: true
+            });
+
+            var options = {
+                url: prefix + "/customerList",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                removeUrl: prefix + "/remove",
+                modalName: "维保客户",
+                formId: "searchForm",
+                queryParams: function (params) {
+                    return $.table.queryParams(params);
+                },
+                rowStyle: function (row) {
+                    if (row.delFlag === "2") {
+                        return {
+                            classes: "invalid-row"
+                        };
+                    }
+                    return {};
+                },
+                columns: [{
+                    checkbox: true
+                }, {
+                    field: "companyId",
+                    title: "客户ID",
+                    visible: false
+                }, {
+                    title: "序号",
+                    formatter: function (value, row, index) {
+                        return index + 1;
+                    }
+                }, {
+                    field: "companyName",
+                    title: "客户名称",
+                    formatter: function (value, row) {
+                        var text = $.common.nullToStr(value);
+                        if (row.delFlag === "2") {
+                            return '<span class="deleted-company-name">' + text + '</span>';
+                        }
+                        return '<a href="javascript:void(0)" onclick="openCustomerDetail(' + row.companyId + ')">' + text + '</a>';
+                    }
+                }, {
+                    field: "projectName",
+                    title: "项目名称",
+                    formatter: function (value) {
+                        return $.common.nullToStr(value);
+                    }
+                }, {
+                    field: "address",
+                    title: "项目地址",
+                    formatter: function (value) {
+                        return $.common.nullToStr(value);
+                    }
+                }, {
+                    field: "isKeyUnit",
+                    title: "重点单位",
+                    formatter: function (value) {
+                        return value === "1" ? "是" : "否";
+                    }
+                }, {
+                    field: "contractEndDate",
+                    title: "合同日期",
+                    formatter: function (value, row) {
+                        if ($.common.isEmpty(value)) {
+                            return "-";
+                        }
+                        var expired = isExpired(value);
+                        var text = value + (expired ? "（到期）" : "");
+                        var cls = expired ? "expired-date" : "";
+                        if (row.delFlag !== "2" && row.contractId) {
+                            return '<a class="' + cls + '" href="javascript:void(0)" onclick="openContractDetail(' + row.contractId + ')">' + text + '</a>';
+                        }
+                        return '<span class="' + cls + '">' + text + '</span>';
+                    }
+                }, {
+                    field: "buildingCount",
+                    title: "建筑",
+                    formatter: function (value, row) {
+                        if (row.delFlag === "2") {
+                            return $.common.nullToStr(value);
+                        }
+                        return '<a href="javascript:void(0)" onclick="openCustomerDetail(' + row.companyId + ')">' + $.common.nullToStr(value) + '</a>';
+                    }
+                }, {
+                    field: "entryUnit",
+                    title: "录入单位",
+                    formatter: function () {
+                        return "Admin";
+                    }
+                }, {
+                    field: "createTime",
+                    title: "创建时间"
+                }, {
+                    title: "操作",
+                    align: "center",
+                    class: "action-col",
+                    formatter: function (value, row) {
+                        if (row.delFlag === "2") {
+                            return '<span class="text-muted">已作废</span>';
+                        }
+                        var actions = [];
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="openEditCustomer(\'' + row.companyId + '\')">编辑</a> ');
+                        actions.push('<a class="btn btn-info btn-xs" href="javascript:void(0)" onclick="transferCustomer(\'' + row.companyId + '\')">转移</a>');
+                        return actions.join("");
+                    }
+                }]
+            };
+            $.table.init(options);
+        });
+
+        function resetSearch() {
+            $.form.reset("searchForm");
+            $.table.search("searchForm");
+        }
+
+        function isExpired(dateText) {
+            var today = new Date();
+            var date = new Date(dateText.replace(/-/g, "/") + " 23:59:59");
+            return !isNaN(date.getTime()) && date.getTime() < today.getTime();
+        }
+
+        function openCustomerDetail(companyId) {
+            var width = Math.min($(window).width() - 24, 1680);
+            var height = Math.max($(window).height() - 30, 820);
+            $.modal.open("客户信息", prefix + "/detail/" + companyId, width, height);
+        }
+
+        function openAddCustomer() {
+            openCompanyForm("添加维保客户", prefix + "/add");
+        }
+
+        function openEditCustomer(companyId) {
+            openCompanyForm("修改维保客户", prefix + "/edit/" + companyId);
+        }
+
+        function openCompanyForm(title, url) {
+            var width = $(window).width() - 12;
+            var height = $(window).height() - 16;
+            $.modal.openOptions({
+                title: title,
+                url: url,
+                width: width,
+                height: height,
+                callBack: function (index, layero) {
+                    var iframeWin = layero.find("iframe")[0];
+                    iframeWin.contentWindow.submitHandler(index, layero);
+                }
+            });
+        }
+
+        function openContractDetail(contractId) {
+            $.modal.open("合同详情", ctx + "fire/contract/detail/" + contractId, 980, 680);
+        }
+
+        function transferCustomer(companyId) {
+            $.modal.msgWarning("转移功能暂未开放，当前仅保留按钮");
+        }
+
+        function invalidateSelected() {
+            var ids = $.table.selectColumns("companyId");
+            if (ids.length === 0) {
+                $.modal.alertWarning("请先勾选需要作废的客户");
+                return;
+            }
+            $.modal.confirm("确认作废已勾选客户吗？", function () {
+                $.operate.post(prefix + "/remove", { ids: ids.join(",") });
+            });
+        }
+
+        function exportSelected() {
+            var ids = $.table.selectColumns("companyId");
+            if (ids.length === 0) {
+                $.modal.alertWarning("请先勾选需要导出的客户");
+                return;
+            }
+            $.modal.confirm("确认导出已勾选客户数据吗？", function () {
+                $.modal.loading("正在导出数据，请稍候...");
+                $.post(prefix + "/exportSelected", { ids: ids.join(",") }, function (result) {
+                    if (result.code === web_status.SUCCESS) {
+                        window.location.href = ctx + "common/download?fileName=" + encodeURI(result.msg) + "&delete=true";
+                    } else if (result.code === web_status.WARNING) {
+                        $.modal.alertWarning(result.msg);
+                    } else {
+                        $.modal.alertError(result.msg);
+                    }
+                    $.modal.closeLoading();
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>

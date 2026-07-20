@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('选择维保客户')" />
+</head>
+
+<body class="gray-bg">
+    <div class="container-div">
+        <div class="row">
+            <div class="col-sm-12 search-collapse">
+                <form id="companyForm">
+                    <div class="select-list">
+                        <ul>
+                            <li>
+                                <label>客户名称：</label>
+                                <input type="text" name="companyName" />
+                            </li>
+                            <li>
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search('companyForm')"><i class="fa fa-search"></i>&nbsp;查询</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset('companyForm')"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table"></table>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/contract";
+        var companyTypes = {
+            "00": "普通客户",
+            "01": "重点客户",
+            "02": "VIP客户"
+        };
+
+        $(function () {
+            var options = {
+                url: prefix + "/selectCompanyList",
+                showSearch: false,
+                showRefresh: false,
+                showToggle: false,
+                showColumns: false,
+                formId: "companyForm",
+                pageSize: 5,
+                pageList: [5, 10, 20],
+                columns: [{
+                    radio: true
+                },
+                {
+                    field: "companyId",
+                    title: "ID",
+                    visible: false
+                },
+                {
+                    field: "companyName",
+                    title: "公司名称"
+                },
+                {
+                    field: "shortName",
+                    title: "简称"
+                },
+                {
+                    field: "companyType",
+                    title: "客户类型",
+                    formatter: function (value) {
+                        return companyTypes[value] || value;
+                    }
+                },
+                {
+                    field: "contactPerson",
+                    title: "联系人"
+                },
+                {
+                    field: "contactPhone",
+                    title: "联系电话"
+                },
+                {
+                    field: "checkInRadius",
+                    title: "打卡范围(米)"
+                },
+                {
+                    field: "status",
+                    title: "状态",
+                    formatter: function (value) {
+                        return value === "0" ? '<span class="label label-success">正常</span>' : '<span class="label label-danger">停用</span>';
+                    }
+                },
+                {
+                    field: "createTime",
+                    title: "创建时间"
+                }]
+            };
+            $.table.init(options);
+        });
+
+        function getSelectedCompany() {
+            var rows = $("#bootstrap-table").bootstrapTable("getSelections");
+            if (!rows || rows.length === 0) {
+                return null;
+            }
+            return rows[0];
+        }
+    </script>
+</body>
+
+</html>

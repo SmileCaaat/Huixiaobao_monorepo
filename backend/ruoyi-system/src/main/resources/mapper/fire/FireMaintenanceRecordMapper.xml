@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireMaintenanceRecordMapper">
+    
+    <resultMap type="FireMaintenanceRecord" id="FireMaintenanceRecordResult">
+        <result property="recordId"    column="record_id"    />
+        <result property="taskId"    column="task_id"    />
+        <result property="templateId"    column="template_id"    />
+        <result property="level"    column="level"    />
+        <result property="parentRecordId"    column="parent_record_id"    />
+        <result property="itemName"    column="item_name"    />
+        <result property="itemCode"    column="item_code"    />
+        <result property="checkResult"    column="check_result"    />
+        <result property="faultDescription"    column="fault_description"    />
+        <result property="faultImages"    column="fault_images"    />
+        <result property="repairSuggestion"    column="repair_suggestion"    />
+        <result property="otherNotes"    column="other_notes"    />
+        <result property="checkTime"    column="check_time"    />
+        <result property="checkerId"    column="checker_id"    />
+        <result property="checkerName"    column="checker_name"    />
+        <result property="sortOrder"    column="sort_order"    />
+        <result property="recordType"    column="record_type"    />
+        <result property="deviceLocation"    column="device_location"    />
+        <result property="testSituation"    column="test_situation"    />
+        <result property="testTime"    column="test_time"    />
+        <result property="testResult"    column="test_result"    />
+        <result property="sitePhotos"    column="site_photos"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateTime"    column="update_time"    />
+    </resultMap>
+
+    <sql id="selectFireMaintenanceRecordVo">
+        select record_id, task_id, template_id, level, parent_record_id, item_name, item_code, check_result, fault_description, fault_images, repair_suggestion, other_notes, check_time, checker_id, checker_name, sort_order, record_type, device_location, test_situation, test_time, test_result, site_photos, create_time, update_time from fire_maintenance_record
+    </sql>
+
+    <select id="selectFireMaintenanceRecordList" parameterType="FireMaintenanceRecord" resultMap="FireMaintenanceRecordResult">
+        <include refid="selectFireMaintenanceRecordVo"/>
+        <where>  
+            <if test="taskId != null "> and task_id = #{taskId}</if>
+            <if test="templateId != null "> and template_id = #{templateId}</if>
+            <if test="level != null "> and level = #{level}</if>
+            <if test="parentRecordId != null "> and parent_record_id = #{parentRecordId}</if>
+            <if test="itemName != null  and itemName != ''"> and item_name like concat('%', #{itemName}, '%')</if>
+            <if test="itemCode != null  and itemCode != ''"> and item_code = #{itemCode}</if>
+            <if test="checkResult != null  and checkResult != ''"> and check_result = #{checkResult}</if>
+            <if test="recordType != null  and recordType != ''"> and record_type = #{recordType}</if>
+        </where>
+        order by level, sort_order
+    </select>
+    
+    <select id="selectFireMaintenanceRecordByRecordId" parameterType="Long" resultMap="FireMaintenanceRecordResult">
+        <include refid="selectFireMaintenanceRecordVo"/>
+        where record_id = #{recordId}
+    </select>
+
+    <select id="selectByTaskIdAndLevel" resultMap="FireMaintenanceRecordResult">
+        <include refid="selectFireMaintenanceRecordVo"/>
+        where task_id = #{taskId} and level = #{level}
+        order by sort_order
+    </select>
+
+    <select id="selectByTaskIdAndParentId" resultMap="FireMaintenanceRecordResult">
+        <include refid="selectFireMaintenanceRecordVo"/>
+        where task_id = #{taskId} and parent_record_id = #{parentRecordId} and level = #{level}
+        order by sort_order
+    </select>
+
+    <select id="selectLevel3ByTaskId" parameterType="Long" resultMap="FireMaintenanceRecordResult">
+        <include refid="selectFireMaintenanceRecordVo"/>
+        where task_id = #{taskId} and level = 3
+        order by sort_order
+    </select>
+
+    <select id="selectRecordsByTaskId" parameterType="Long" resultMap="FireMaintenanceRecordResult">
+        <include refid="selectFireMaintenanceRecordVo"/>
+        where task_id = #{taskId}
+        order by level, sort_order
+    </select>
+        
+    <insert id="insertFireMaintenanceRecord" parameterType="FireMaintenanceRecord" useGeneratedKeys="true" keyProperty="recordId">
+        insert into fire_maintenance_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="taskId != null">task_id,</if>
+            <if test="templateId != null">template_id,</if>
+            <if test="level != null">level,</if>
+            <if test="parentRecordId != null">parent_record_id,</if>
+            <if test="itemName != null and itemName != ''">item_name,</if>
+            <if test="itemCode != null and itemCode != ''">item_code,</if>
+            <if test="checkResult != null">check_result,</if>
+            <if test="faultDescription != null">fault_description,</if>
+            <if test="faultImages != null">fault_images,</if>
+            <if test="repairSuggestion != null">repair_suggestion,</if>
+            <if test="otherNotes != null">other_notes,</if>
+            <if test="checkTime != null">check_time,</if>
+            <if test="checkerId != null">checker_id,</if>
+            <if test="checkerName != null">checker_name,</if>
+            <if test="sortOrder != null">sort_order,</if>
+            <if test="deviceLocation != null">device_location,</if>
+            <if test="testSituation != null">test_situation,</if>
+            <if test="testTime != null">test_time,</if>
+            <if test="testResult != null">test_result,</if>
+            <if test="sitePhotos != null">site_photos,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="taskId != null">#{taskId},</if>
+            <if test="templateId != null">#{templateId},</if>
+            <if test="level != null">#{level},</if>
+            <if test="parentRecordId != null">#{parentRecordId},</if>
+            <if test="itemName != null and itemName != ''">#{itemName},</if>
+            <if test="itemCode != null and itemCode != ''">#{itemCode},</if>
+            <if test="checkResult != null">#{checkResult},</if>
+            <if test="faultDescription != null">#{faultDescription},</if>
+            <if test="faultImages != null">#{faultImages},</if>
+            <if test="repairSuggestion != null">#{repairSuggestion},</if>
+            <if test="otherNotes != null">#{otherNotes},</if>
+            <if test="checkTime != null">#{checkTime},</if>
+            <if test="checkerId != null">#{checkerId},</if>
+            <if test="checkerName != null">#{checkerName},</if>
+            <if test="sortOrder != null">#{sortOrder},</if>
+            <if test="deviceLocation != null">#{deviceLocation},</if>
+            <if test="testSituation != null">#{testSituation},</if>
+            <if test="testTime != null">#{testTime},</if>
+            <if test="testResult != null">#{testResult},</if>
+            <if test="sitePhotos != null">#{sitePhotos},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+         </trim>
+    </insert>
+
+    <insert id="batchInsertFireMaintenanceRecord" parameterType="java.util.List" useGeneratedKeys="true" keyProperty="recordId">
+        insert into fire_maintenance_record(task_id, template_id, level, parent_record_id, item_name, item_code, check_result, sort_order, record_type, create_time)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.taskId}, #{item.templateId}, #{item.level}, #{item.parentRecordId}, #{item.itemName}, #{item.itemCode}, #{item.checkResult}, #{item.sortOrder}, #{item.recordType}, now())
+        </foreach>
+    </insert>
+
+    <update id="updateFireMaintenanceRecord" parameterType="FireMaintenanceRecord">
+        update fire_maintenance_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="taskId != null">task_id = #{taskId},</if>
+            <if test="templateId != null">template_id = #{templateId},</if>
+            <if test="level != null">level = #{level},</if>
+            <if test="parentRecordId != null">parent_record_id = #{parentRecordId},</if>
+            <if test="itemName != null and itemName != ''">item_name = #{itemName},</if>
+            <if test="itemCode != null and itemCode != ''">item_code = #{itemCode},</if>
+            <if test="checkResult != null">check_result = #{checkResult},</if>
+            <if test="faultDescription != null">fault_description = #{faultDescription},</if>
+            <if test="faultImages != null">fault_images = #{faultImages},</if>
+            <if test="repairSuggestion != null">repair_suggestion = #{repairSuggestion},</if>
+            <if test="otherNotes != null">other_notes = #{otherNotes},</if>
+            <if test="checkTime != null">check_time = #{checkTime},</if>
+            <if test="checkerId != null">checker_id = #{checkerId},</if>
+            <if test="checkerName != null">checker_name = #{checkerName},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="deviceLocation != null">device_location = #{deviceLocation},</if>
+            <if test="testSituation != null">test_situation = #{testSituation},</if>
+            <if test="testTime != null">test_time = #{testTime},</if>
+            <if test="testResult != null">test_result = #{testResult},</if>
+            <if test="sitePhotos != null">site_photos = #{sitePhotos},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </trim>
+        where record_id = #{recordId}
+    </update>
+
+    <delete id="deleteFireMaintenanceRecordByRecordId" parameterType="Long">
+        delete from fire_maintenance_record where record_id = #{recordId}
+    </delete>
+
+    <delete id="deleteFireMaintenanceRecordByRecordIds" parameterType="String">
+        delete from fire_maintenance_record where record_id in 
+        <foreach item="recordId" collection="array" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteFireMaintenanceRecordByTaskId" parameterType="Long">
+        delete from fire_maintenance_record where task_id = #{taskId}
+    </delete>
+
+    <update id="completeAllByTaskId" parameterType="Long">
+        update fire_maintenance_record
+        set check_result = '1', check_time = sysdate()
+        where task_id = #{taskId} and level = 3 and (check_result = '0' or check_result is null)
+    </update>
+</mapper>

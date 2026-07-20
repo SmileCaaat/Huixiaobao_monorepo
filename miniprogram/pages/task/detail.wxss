@@ -1,0 +1,158 @@
+
+.page.data-v-2eddac49 {
+  width: 100vw;
+  min-height: 100vh;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 导航栏右侧 */
+.nav-right.data-v-2eddac49 {
+  padding: 0 20rpx;
+}
+.nav-right-text.data-v-2eddac49 {
+  font-size: 28rpx;
+  color: #ffffff;
+}
+
+/* 内容区域 */
+.content.data-v-2eddac49 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  overflow: hidden;
+}
+
+/* 任务标题头部 */
+.task-header.data-v-2eddac49 {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  padding: 30rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+.task-icon.data-v-2eddac49 {
+  font-size: 36rpx;
+}
+.task-title.data-v-2eddac49 {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+  flex: 1;
+}
+
+/* 系统列表 */
+.system-list.data-v-2eddac49 {
+  flex: 1;
+  padding: 20rpx;
+}
+
+/* 系统卡片 */
+.system-card.data-v-2eddac49 {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  position: relative;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+.system-name.data-v-2eddac49 {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 16rpx;
+  padding-right: 150rpx;
+}
+.system-stats.data-v-2eddac49 {
+  display: flex;
+  gap: 30rpx;
+}
+.stat-item.data-v-2eddac49 {
+  font-size: 26rpx;
+  color: #1976d2;
+}
+.firetest .stat-item.data-v-2eddac49 {
+  color: #f57c00;
+}
+
+/* 右侧状态和箭头 */
+.system-right.data-v-2eddac49 {
+  position: absolute;
+  top: 50%;
+  right: 30rpx;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+.status-text.data-v-2eddac49 {
+  font-size: 26rpx;
+  padding: 6rpx 16rpx;
+  border-radius: 20rpx;
+}
+.status-text.pending.data-v-2eddac49 {
+  color: #1976d2;
+  background: rgba(25, 118, 210, 0.1);
+}
+.firetest .status-text.pending.data-v-2eddac49 {
+  color: #f57c00;
+  background: rgba(245, 124, 0, 0.1);
+}
+.status-text.completed.data-v-2eddac49 {
+  color: #4caf50;
+  background: rgba(76, 175, 80, 0.1);
+}
+.arrow.data-v-2eddac49 {
+  font-size: 36rpx;
+  color: #ccc;
+}
+
+/* 加载状态 */
+.loading-state.data-v-2eddac49 {
+  text-align: center;
+  padding: 40rpx;
+}
+.loading-state text.data-v-2eddac49 {
+  font-size: 26rpx;
+  color: #999;
+}
+
+/* 空状态 */
+.empty-state.data-v-2eddac49 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 100rpx 0;
+}
+.empty-text.data-v-2eddac49 {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 覆盖 uni-nav-bar 样式 */
+.data-v-2eddac49 .uni-nav-bar-text {
+  font-size: 36rpx !important;
+  font-weight: bold !important;
+}
+.data-v-2eddac49 .uni-navbar__header-container {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  pointer-events: none;
+}
+.data-v-2eddac49 .uni-navbar__header-container-inner {
+  pointer-events: auto;
+}
+.data-v-2eddac49 .uni-navbar__header-btns-left {
+  z-index: 10 !important;
+  position: relative !important;
+}
+.data-v-2eddac49 .uni-navbar__header-btns-right {
+  z-index: 10 !important;
+  position: relative !important;
+}

@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('故障报修详情')" />
+    <style>
+        .timeline {
+            position: relative;
+            padding: 20px 0;
+        }
+        .timeline:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50px;
+            height: 100%;
+            width: 2px;
+            background: #e7eaec;
+        }
+        .timeline-item {
+            position: relative;
+            padding-left: 90px;
+            margin-bottom: 30px;
+        }
+        .timeline-item i {
+            position: absolute;
+            left: 38px;
+            top: 0;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 26px;
+            color: #fff;
+            z-index: 1;
+        }
+        .timeline-item:not(.active) i {
+            background: #e7eaec !important;
+            color: #999;
+        }
+        .timeline-content h3 {
+            margin: 0 0 5px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .timeline-content p {
+            margin: 0;
+            color: #676a6c;
+        }
+        .img-preview img {
+            max-width: 200px;
+            max-height: 200px;
+            margin: 5px;
+            cursor: pointer;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .img-preview img:hover {
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight">
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>流程状态</h5>
+                    </div>
+                    <div class="ibox-content">
+                        <div class="timeline">
+                            <div class="timeline-item active">
+                                <i class="fa fa-file-text-o bg-info"></i>
+                                <div class="timeline-content">
+                                    <h3>已上报</h3>
+                                    <p th:if="${repair.createTime != null}">
+                                        创建时间：<span th:text="${#dates.format(repair.createTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="timeline-item" th:classappend="${repair.dispatchTime != null ? 'active' : ''}">
+                                <i class="fa fa-share bg-primary"></i>
+                                <div class="timeline-content">
+                                    <h3>已派发</h3>
+                                    <p th:if="${repair.dispatchTime != null}">
+                                        派发时间：<span th:text="${#dates.format(repair.dispatchTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
+                                    </p>
+                                    <p th:if="${repair.dispatchBy != null}">
+                                        派发人：<span th:text="${repair.dispatchBy}"></span>
+                                    </p>
+                                    <p th:if="${repair.repairPerson != null}">
+                                        处理人：<span th:text="${repair.repairPerson}"></span>
+                                        <span th:if="${repair.repairPhone != null}" th:text="' (' + ${repair.repairPhone} + ')'"></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="timeline-item" th:classappend="${repair.startTime != null ? 'active' : ''}">
+                                <i class="fa fa-wrench bg-warning"></i>
+                                <div class="timeline-content">
+                                    <h3>开始处理</h3>
+                                    <p th:if="${repair.startTime != null}">
+                                        开始时间：<span th:text="${#dates.format(repair.startTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="timeline-item" th:classappend="${repair.repairStatus == '2' ? 'active' : ''}">
+                                <i class="fa fa-check-circle bg-success"></i>
+                                <div class="timeline-content">
+                                    <h3>已完成</h3>
+                                    <p th:if="${repair.completeTime != null}">
+                                        完成时间：<span th:text="${#dates.format(repair.completeTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-sm-6">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>报修信息</h5>
+                    </div>
+                    <div class="ibox-content">
+                        <div class="form-horizontal">
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">报修单号：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.repairNo}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">单位名称：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.companyName}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">系统名称：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.systemTypeName}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">设备名称：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.equipmentName}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">客户地址：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.customerAddress}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">发现时间：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${#dates.format(repair.foundTime, 'yyyy-MM-dd HH:mm:ss')}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">是否上报：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static">
+                                        <span th:if="${repair.isReported == '1'}" class="badge badge-success">是</span>
+                                        <span th:if="${repair.isReported == '0'}" class="badge badge-secondary">否</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">紧急程度：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static">
+                                        <span th:if="${repair.urgencyLevel == '0'}" class="badge badge-secondary">一般</span>
+                                        <span th:if="${repair.urgencyLevel == '1'}" class="badge badge-warning">紧急</span>
+                                        <span th:if="${repair.urgencyLevel == '2'}" class="badge badge-danger">特急</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">报修人：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static">
+                                        <span th:text="${repair.reporterName}"></span>
+                                        <span th:if="${repair.reporterPhone != null}" th:text="' (' + ${repair.reporterPhone} + ')'"></span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">故障说明：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.faultDescription}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.faultImages != null and repair.faultImages != ''}">
+                                <label class="col-sm-4 control-label">故障图片：</label>
+                                <div class="col-sm-8">
+                                    <div class="img-preview">
+                                        <img th:each="img : ${#strings.arraySplit(repair.faultImages, ',')}"
+                                             th:src="@{${img}}"
+                                             onclick="$.modal.image(this.src)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-sm-6">
+                <div class="ibox">
+                    <div class="ibox-title">
+                        <h5>处理信息</h5>
+                    </div>
+                    <div class="ibox-content">
+                        <div class="form-horizontal">
+                            <div class="form-group">
+                                <label class="col-sm-4 control-label">维修状态：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static">
+                                        <span th:if="${repair.repairStatus == '0'}" class="badge badge-info">待处理</span>
+                                        <span th:if="${repair.repairStatus == '1'}" class="badge badge-warning">处理中</span>
+                                        <span th:if="${repair.repairStatus == '2'}" class="badge badge-success">已完成</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.dispatchBy != null}">
+                                <label class="col-sm-4 control-label">派发人：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.dispatchBy}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.dispatchTime != null}">
+                                <label class="col-sm-4 control-label">派发时间：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${#dates.format(repair.dispatchTime, 'yyyy-MM-dd HH:mm:ss')}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.repairPerson != null}">
+                                <label class="col-sm-4 control-label">处理人：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.repairPerson}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.repairPhone != null}">
+                                <label class="col-sm-4 control-label">处理电话：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.repairPhone}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.startTime != null}">
+                                <label class="col-sm-4 control-label">开始时间：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${#dates.format(repair.startTime, 'yyyy-MM-dd HH:mm:ss')}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.completeTime != null}">
+                                <label class="col-sm-4 control-label">完成时间：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${#dates.format(repair.completeTime, 'yyyy-MM-dd HH:mm:ss')}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.repairDescription != null and repair.repairDescription != ''}">
+                                <label class="col-sm-4 control-label">维修说明：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.repairDescription}"></p>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.repairImages != null and repair.repairImages != ''}">
+                                <label class="col-sm-4 control-label">维修图片：</label>
+                                <div class="col-sm-8">
+                                    <div class="img-preview">
+                                        <img th:each="img : ${#strings.arraySplit(repair.repairImages, ',')}"
+                                             th:src="@{${img}}"
+                                             onclick="$.modal.image(this.src)">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group" th:if="${repair.remark != null and repair.remark != ''}">
+                                <label class="col-sm-4 control-label">备注：</label>
+                                <div class="col-sm-8">
+                                    <p class="form-control-static" th:text="${repair.remark}"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+</body>
+</html>

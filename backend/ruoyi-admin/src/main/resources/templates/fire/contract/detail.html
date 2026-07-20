@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('查看合同')" />
+    <style>
+        .contract-box {
+            padding: 10px 15px;
+        }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            border-left: 3px solid #1c84c6;
+            padding-left: 8px;
+            margin: 12px 0;
+        }
+    </style>
+</head>
+
+<body class="white-bg">
+    <div class="contract-box">
+        <div class="section-title">合同信息</div>
+        <table class="table table-bordered">
+            <tbody>
+                <tr>
+                    <th style="width: 140px;">客户名称</th>
+                    <td th:text="${contract.companyName}">-</td>
+                    <th style="width: 140px;">合同编号</th>
+                    <td th:text="${contract.contractNo}">-</td>
+                </tr>
+                <tr>
+                    <th>项目名称</th>
+                    <td th:text="${contract.projectName}">-</td>
+                    <th>合同金额</th>
+                    <td th:text="${contract.contractAmount}">-</td>
+                </tr>
+                <tr>
+                    <th>合同名称</th>
+                    <td th:text="${contract.contractName}">-</td>
+                    <th>录入单位</th>
+                    <td th:text="${contract.entryUnit}">-</td>
+                </tr>
+                <tr>
+                    <th>合同有效期</th>
+                    <td th:text="${#dates.format(contract.startDate, 'yyyy-MM-dd') + ' 至 ' + #dates.format(contract.endDate, 'yyyy-MM-dd')}">-</td>
+                    <th>创建时间</th>
+                    <td th:text="${contract.createTime != null ? #dates.format(contract.createTime, 'yyyy-MM-dd HH:mm:ss') : '-'}">-</td>
+                </tr>
+                <tr>
+                    <th>备注</th>
+                    <td colspan="3" th:text="${contract.remark} ?: '-'">-</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="section-title">合同附件列表</div>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th style="width: 60px;">序号</th>
+                    <th>合同附件</th>
+                    <th style="width: 220px;">有效期</th>
+                    <th style="width: 120px;">合同金额</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:if="${contract.attachmentPath != null and contract.attachmentPath != ''}">
+                    <td>1</td>
+                    <td>
+                        <a th:href="@{/common/download/resource(resource=${contract.attachmentPath})}" th:text="${contract.attachmentName}">合同附件</a>
+                    </td>
+                    <td th:text="${#dates.format(contract.startDate, 'yyyy-MM-dd') + ' 至 ' + #dates.format(contract.endDate, 'yyyy-MM-dd')}">-</td>
+                    <td th:text="${contract.contractAmount}">-</td>
+                </tr>
+                <tr th:if="${contract.attachmentPath == null or contract.attachmentPath == ''}">
+                    <td colspan="4" class="text-center">暂无附件</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <th:block th:include="include :: footer" />
+</body>
+
+</html>

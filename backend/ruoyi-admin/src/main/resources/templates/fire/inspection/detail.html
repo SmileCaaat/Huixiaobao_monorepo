@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('巡检详情')" />
+    <style>
+        .detail-item {
+            margin-bottom: 15px;
+            padding: 10px 0;
+            border-bottom: 1px dashed #e5e5e5;
+        }
+
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+            min-width: 100px;
+            display: inline-block;
+        }
+
+        .detail-value {
+            color: #333;
+        }
+
+        .status-normal {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .status-abnormal {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .image-preview {
+            margin-top: 10px;
+        }
+
+        .image-preview img {
+            max-width: 150px;
+            max-height: 150px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <strong>巡检登记详情</strong>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">单位名称：</span>
+                            <span class="detail-value" th:text="${inspection.companyName}"></span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">维保类型：</span>
+                            <span class="detail-value"
+                                th:text="${inspection.inspectionType == '0'} ? '测试' : (${inspection.inspectionType == '1'} ? '巡查' : '保养')"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">建筑名称：</span>
+                            <span class="detail-value" th:text="${inspection.buildingName}"></span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">所在楼层：</span>
+                            <span class="detail-value" th:text="${inspection.floor}"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">系统名称：</span>
+                            <span class="detail-value" th:text="${inspection.systemName}"></span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">设备名称：</span>
+                            <span class="detail-value" th:text="${inspection.equipmentName}"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">设备数量：</span>
+                            <span class="detail-value" th:text="${inspection.equipmentCount}"></span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">具体位置：</span>
+                            <span class="detail-value" th:text="${inspection.location}"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">巡检时间：</span>
+                            <span class="detail-value"
+                                th:text="${#dates.format(inspection.inspectionTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">设备状态：</span>
+                            <span th:if="${inspection.equipmentStatus == '0'}" class="status-normal">正常</span>
+                            <span th:if="${inspection.equipmentStatus == '1'}" class="status-abnormal">异常</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">巡查人员：</span>
+                            <span class="detail-value" th:text="${inspection.inspectorName}"></span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="detail-item">
+                            <span class="detail-label">创建时间：</span>
+                            <span class="detail-value"
+                                th:text="${#dates.format(inspection.createTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-12">
+                        <div class="detail-item">
+                            <span class="detail-label">详细备注：</span>
+                            <span class="detail-value" th:text="${inspection.remark} ?: '无'"></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="row" th:if="${inspection.imageUrls != null and inspection.imageUrls != ''}">
+                    <div class="col-sm-12">
+                        <div class="detail-item">
+                            <span class="detail-label">现场图片：</span>
+                            <div class="image-preview">
+                                <img th:each="img : ${inspection.images}" th:src="${img}"
+                                    onclick="previewImage(this.src)" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+    <script>
+        function previewImage(src) {
+            var content = '<img src="' + src + '" style="max-width:100%;max-height:80vh;" />';
+            layer.open({
+                type: 1,
+                title: '图片预览',
+                area: ['auto', 'auto'],
+                content: content
+            });
+        }
+
+        $(function () {
+            // 自动修复旧数据的协议问题 (Auto-fix protocol for legacy data)
+            $(".image-preview img").each(function () {
+                var src = $(this).attr("src");
+                if (src && src.indexOf("https://") === 0 && (src.indexOf("localhost") > -1 || src.indexOf("127.0.0.1") > -1)) {
+                    $(this).attr("src", src.replace("https://", "http://"));
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

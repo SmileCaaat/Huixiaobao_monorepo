@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('派发报修')" />
+</head>
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-repair-dispatch">
+            <input name="repairId" th:value="${repair.repairId}" type="hidden">
+            <div class="form-group">
+                <label class="col-sm-4 control-label">报修单号：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static" th:text="${repair.repairNo}"></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">单位名称：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static" th:text="${repair.companyName}"></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">报修人：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static">
+                        <span th:text="${repair.reporterName}"></span>
+                        <span th:if="${repair.reporterPhone != null}" th:text="' (' + ${repair.reporterPhone} + ')'"></span>
+                    </p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">故障说明：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static" th:text="${repair.faultDescription}"></p>
+                </div>
+            </div>
+            <hr>
+            <div class="form-group">
+                <label class="col-sm-4 control-label is-required">派发给：</label>
+                <div class="col-sm-7">
+                    <select name="repairUserId" id="repairUserId" class="form-control" required>
+                        <option value="">请选择处理人</option>
+                        <option th:each="user : ${dispatchUsers}"
+                                th:value="${user.userId}"
+                                th:text="${user.userName}"
+                                th:attr="data-phone=${user.phonenumber},data-login=${user.loginName}"></option>
+                    </select>
+                    <span class="help-block m-b-none">
+                        <i class="fa fa-info-circle"></i> 仅能派发给该单位已分配的用户
+                    </span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">联系电话：</label>
+                <div class="col-sm-7">
+                    <input id="dispatchUserPhone" class="form-control" type="text" readonly placeholder="选择处理人后自动带出">
+                </div>
+            </div>
+        </form>
+    </div>
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/repair";
+
+        $("#form-repair-dispatch").validate({
+            focusCleanup: true
+        });
+
+        $("#repairUserId").on("change", function() {
+            var selected = $(this).find("option:selected");
+            $("#dispatchUserPhone").val(selected.attr("data-phone") || "");
+        });
+
+        function submitHandler() {
+            if ($.validate.form()) {
+                $.operate.save(prefix + "/dispatch", $('#form-repair-dispatch').serialize());
+            }
+        }
+    </script>
+</body>
+</html>

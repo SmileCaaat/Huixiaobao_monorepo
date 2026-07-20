@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('接受报修')" />
+</head>
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-repair-accept">
+            <input name="repairId" th:value="${repair.repairId}" type="hidden">
+            <div class="form-group">
+                <label class="col-sm-4 control-label">报修单号：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static" th:text="${repair.repairNo}"></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">单位名称：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static" th:text="${repair.companyName}"></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">系统名称：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static" th:text="${repair.systemTypeName}"></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">设备名称：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static" th:text="${repair.equipmentName}"></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">故障说明：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static" th:text="${repair.faultDescription}"></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label">紧急程度：</label>
+                <div class="col-sm-7">
+                    <p class="form-control-static">
+                        <span th:if="${repair.urgencyLevel == '0'}" class="badge badge-secondary">一般</span>
+                        <span th:if="${repair.urgencyLevel == '1'}" class="badge badge-warning">紧急</span>
+                        <span th:if="${repair.urgencyLevel == '2'}" class="badge badge-danger">特急</span>
+                    </p>
+                </div>
+            </div>
+            <hr>
+            <div class="form-group">
+                <label class="col-sm-4 control-label is-required">维修人员：</label>
+                <div class="col-sm-7">
+                    <input name="repairPerson" class="form-control" type="text" maxlength="50" required placeholder="请输入维修人员姓名">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-4 control-label is-required">维修电话：</label>
+                <div class="col-sm-7">
+                    <input name="repairPhone" class="form-control" type="text" maxlength="20" required placeholder="请输入维修人员电话">
+                </div>
+            </div>
+        </form>
+    </div>
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/repair";
+        
+        $("#form-repair-accept").validate({
+            focusCleanup: true
+        });
+
+        function submitHandler() {
+            if ($.validate.form()) {
+                $.operate.save(prefix + "/accept", $('#form-repair-accept').serialize());
+            }
+        }
+    </script>
+</body>
+</html>

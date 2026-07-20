@@ -1,0 +1,16 @@
+ALTER TABLE `fire_company`
+    ADD COLUMN `project_name` varchar(200) DEFAULT NULL COMMENT '项目名称' AFTER `company_name`,
+    ADD COLUMN `sign_requirement` char(1) DEFAULT '0' COMMENT '签到要求(0GPS签到 1GPS+人脸识别签到)' AFTER `district`,
+    ADD COLUMN `credit_code` varchar(50) DEFAULT NULL COMMENT '统一社会信用代码' AFTER `address`,
+    ADD COLUMN `auto_fire_system` char(1) DEFAULT '1' COMMENT '自动消防设施(0无 1有)' AFTER `building_type`,
+    ADD COLUMN `building_floor_count` int DEFAULT NULL COMMENT '建筑层数' AFTER `total_building_area`,
+    ADD COLUMN `building_height` decimal(10,2) DEFAULT NULL COMMENT '建筑高度(m)' AFTER `building_floor_count`,
+    ADD COLUMN `maintenance_standard` varchar(255) DEFAULT NULL COMMENT '维保标准' AFTER `building_height`,
+    ADD COLUMN `maintenance_content` varchar(1000) DEFAULT NULL COMMENT '维保内容' AFTER `maintenance_standard`,
+    ADD COLUMN `project_overview` varchar(1000) DEFAULT NULL COMMENT '项目概况' AFTER `maintenance_content`,
+    ADD COLUMN `report_mode` char(1) DEFAULT '0' COMMENT '报告模式(0线上 1线下)' AFTER `project_overview`,
+    ADD COLUMN `project_leader_name` varchar(50) DEFAULT NULL COMMENT '项目负责人' AFTER `report_mode`,
+    ADD COLUMN `technical_leader_name` varchar(50) DEFAULT NULL COMMENT '技术负责人' AFTER `project_leader_name`,
+    ADD COLUMN `property_manage_unit` varchar(200) DEFAULT NULL COMMENT '物业管理单位' AFTER `technical_leader_name`,
+    ADD COLUMN `maintenance_scheme_name` varchar(255) DEFAULT NULL COMMENT '维保方案文件名' AFTER `property_manage_unit`,
+    ADD COLUMN `maintenance_scheme_path` varchar(500) DEFAULT NULL COMMENT '维保方案文件路径' AFTER `maintenance_scheme_name`;

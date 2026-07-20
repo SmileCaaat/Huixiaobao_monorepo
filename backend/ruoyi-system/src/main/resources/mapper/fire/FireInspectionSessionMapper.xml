@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireInspectionSessionMapper">
+    
+    <resultMap type="com.ruoyi.fire.domain.FireInspectionSession" id="FireInspectionSessionResult">
+        <id     property="sessionId"          column="session_id"          />
+        <result property="userId"             column="user_id"             />
+        <result property="userName"           column="user_name"           />
+        <result property="companyId"          column="company_id"          />
+        <result property="companyName"        column="company_name"        />
+        <result property="checkInTime"        column="check_in_time"       />
+        <result property="checkInLongitude"   column="check_in_longitude"  />
+        <result property="checkInLatitude"    column="check_in_latitude"   />
+        <result property="checkInAddress"     column="check_in_address"    />
+        <result property="checkInRemark"      column="check_in_remark"     />
+        <result property="checkOutTime"       column="check_out_time"      />
+        <result property="checkOutLongitude"  column="check_out_longitude" />
+        <result property="checkOutLatitude"   column="check_out_latitude"  />
+        <result property="checkOutAddress"    column="check_out_address"   />
+        <result property="checkOutRemark"     column="check_out_remark"    />
+        <result property="status"             column="status"              />
+        <result property="sessionDate"        column="session_date"        />
+        <result property="createTime"         column="create_time"         />
+    </resultMap>
+
+    <sql id="selectSessionVo">
+        select session_id, user_id, user_name, company_id, company_name,
+               check_in_time, check_in_longitude, check_in_latitude, check_in_address, check_in_remark,
+               check_out_time, check_out_longitude, check_out_latitude, check_out_address, check_out_remark,
+               status, session_date, create_time
+        from fire_inspection_session
+    </sql>
+
+    <select id="selectSessionList" parameterType="com.ruoyi.fire.domain.FireInspectionSession" resultMap="FireInspectionSessionResult">
+        <include refid="selectSessionVo"/>
+        <where>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            <if test="companyId != null">
+                AND company_id = #{companyId}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="sessionDate != null">
+                AND session_date = #{sessionDate}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="selectSessionById" parameterType="Long" resultMap="FireInspectionSessionResult">
+        <include refid="selectSessionVo"/>
+        where session_id = #{sessionId}
+    </select>
+
+    <select id="selectCurrentSession" parameterType="Long" resultMap="FireInspectionSessionResult">
+        <include refid="selectSessionVo"/>
+        where user_id = #{userId} and status = '0'
+        order by create_time desc
+        limit 1
+    </select>
+
+    <select id="selectTodaySession" resultMap="FireInspectionSessionResult">
+        <include refid="selectSessionVo"/>
+        where user_id = #{userId} and company_id = #{companyId} and session_date = CURDATE()
+        order by create_time desc
+        limit 1
+    </select>
+
+    <select id="selectSessionHistory" resultMap="FireInspectionSessionResult">
+        <include refid="selectSessionVo"/>
+        where user_id = #{userId}
+        order by create_time desc
+        <if test="limit != null">
+            limit #{limit}
+        </if>
+    </select>
+
+    <select id="countTodayCheckIn" parameterType="Long" resultType="int">
+        select count(distinct user_id) from fire_inspection_session
+        where company_id = #{companyId} and session_date = CURDATE()
+    </select>
+
+    <insert id="insertSession" parameterType="com.ruoyi.fire.domain.FireInspectionSession" useGeneratedKeys="true" keyProperty="sessionId">
+        insert into fire_inspection_session (
+            user_id, user_name, company_id, company_name,
+            check_in_time, check_in_longitude, check_in_latitude, check_in_address, check_in_remark,
+            status, session_date, create_time
+        ) values (
+            #{userId}, #{userName}, #{companyId}, #{companyName},
+            #{checkInTime}, #{checkInLongitude}, #{checkInLatitude}, #{checkInAddress}, #{checkInRemark},
+            #{status}, #{sessionDate}, sysdate()
+        )
+    </insert>
+
+    <update id="updateSession" parameterType="com.ruoyi.fire.domain.FireInspectionSession">
+        update fire_inspection_session
+        <set>
+            <if test="checkOutTime != null">check_out_time = #{checkOutTime},</if>
+            <if test="checkOutLongitude != null">check_out_longitude = #{checkOutLongitude},</if>
+            <if test="checkOutLatitude != null">check_out_latitude = #{checkOutLatitude},</if>
+            <if test="checkOutAddress != null">check_out_address = #{checkOutAddress},</if>
+            <if test="checkOutRemark != null">check_out_remark = #{checkOutRemark},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        where session_id = #{sessionId}
+    </update>
+
+    <delete id="deleteSessionById" parameterType="Long">
+        delete from fire_inspection_session where session_id = #{sessionId}
+    </delete>
+
+</mapper>

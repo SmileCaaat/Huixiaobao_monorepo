@@ -1,0 +1,444 @@
+﻿<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title th:text="${equipment.equipmentName} + ' - 设备信息'">设备信息</title>
+    <link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        /* 头部卡片 */
+        .header-card {
+            background: white;
+            border-radius: 24px;
+            padding: 30px 25px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .equipment-icon {
+            width: 90px;
+            height: 90px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .equipment-icon i {
+            font-size: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .equipment-name {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .equipment-code {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        /* 状态徽章 */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .status-normal {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+        }
+
+        .status-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            color: white;
+        }
+
+        .status-fault {
+            background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+            color: white;
+        }
+
+        .status-expired {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            color: white;
+        }
+
+        .status-badge i {
+            font-size: 16px;
+        }
+
+        /* 信息卡片 */
+        .info-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-title i {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #888;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-label i {
+            color: #667eea;
+            width: 18px;
+            text-align: center;
+        }
+
+        .info-value {
+            color: #1a1a2e;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: right;
+            max-width: 60%;
+        }
+
+        /* 时间线卡片 */
+        .timeline-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px 0;
+            border-bottom: 1px dashed #eee;
+        }
+
+        .timeline-item:last-child {
+            border-bottom: none;
+        }
+
+        .timeline-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin-top: 4px;
+            flex-shrink: 0;
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-title {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .timeline-date {
+            font-size: 15px;
+            color: #1a1a2e;
+            font-weight: 500;
+        }
+
+        /* 底部信息 */
+        .footer-info {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+        }
+
+        .footer-info p {
+            margin: 5px 0;
+        }
+
+        .company-logo {
+            font-size: 14px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 5px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 380px) {
+            body {
+                padding: 15px;
+            }
+
+            .header-card {
+                padding: 25px 20px;
+            }
+
+            .equipment-name {
+                font-size: 20px;
+            }
+
+            .info-card {
+                padding: 20px;
+            }
+        }
+
+        /* 动画 */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header-card,
+        .info-card,
+        .timeline-card {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+
+        .info-card {
+            animation-delay: 0.2s;
+        }
+
+        .timeline-card {
+            animation-delay: 0.4s;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" xmlns:th="http://www.thymeleaf.org">
+        <!-- 头部卡片 -->
+        <div class="header-card">
+            <div class="equipment-icon">
+                <i class="fas fa-fire-extinguisher"></i>
+            </div>
+            <h1 class="equipment-name" th:text="${equipment.equipmentName}">消火栓</h1>
+            <span class="equipment-code" th:text="${equipment.equipmentCode}">EQ001</span>
+
+            <!-- 状态徽章 -->
+            <div>
+                <span class="status-badge status-normal" th:if="${equipment.equipmentStatus == 'normal'}">
+                    <i class="fas fa-check-circle"></i> 运行正常
+                </span>
+                <span class="status-badge status-warning" th:if="${equipment.equipmentStatus == 'warning'}">
+                    <i class="fas fa-exclamation-triangle"></i> 需要检修
+                </span>
+                <span class="status-badge status-fault" th:if="${equipment.equipmentStatus == 'fault'}">
+                    <i class="fas fa-times-circle"></i> 设备故障
+                </span>
+                <span class="status-badge status-expired" th:if="${equipment.equipmentStatus == 'expired'}">
+                    <i class="fas fa-clock"></i> 已过期
+                </span>
+            </div>
+        </div>
+
+        <!-- 基本信息卡片 -->
+        <div class="info-card">
+            <div class="card-title">
+                <i class="fas fa-info-circle"></i>
+                <span>基本信息</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-tag"></i> 设备类型</span>
+                <span class="info-value" th:text="${equipment.equipmentType}">灭火器</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-industry"></i> 生产厂家</span>
+                <span class="info-value" th:text="${equipment.manufacturer ?: '-'}">海湾消防</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-cube"></i> 设备型号</span>
+                <span class="info-value" th:text="${equipment.model ?: '-'}">SN65</span>
+            </div>
+        </div>
+
+        <!-- 位置信息卡片 -->
+        <div class="info-card">
+            <div class="card-title">
+                <i class="fas fa-map-marker-alt"></i>
+                <span>位置信息</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-building"></i> 所属建筑</span>
+                <span class="info-value" th:text="${equipment.buildingName ?: '-'}">1号厂房</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-layer-group"></i> 所在楼层</span>
+                <span class="info-value" th:text="${equipment.floorNo ?: '-'}">1F</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-crosshairs"></i> 具体位置</span>
+                <span class="info-value" th:text="${equipment.location ?: '-'}">大厅右侧</span>
+            </div>
+            <div class="info-row" th:if="${equipment.companyName != null}">
+                <span class="info-label"><i class="fas fa-landmark"></i> 所属客户</span>
+                <span class="info-value" th:text="${equipment.companyName}">某某公司</span>
+            </div>
+        </div>
+
+        <!-- 时间信息卡片 -->
+        <div class="timeline-card">
+            <div class="card-title">
+                <i class="fas fa-calendar-alt"></i>
+                <span>时间信息</span>
+            </div>
+            <div class="timeline-item" th:if="${equipment.productionDate != null}">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">生产日期</div>
+                    <div class="timeline-date" th:text="${#dates.format(equipment.productionDate, 'yyyy-MM-dd')}">
+                        2020-01-01</div>
+                </div>
+            </div>
+            <div class="timeline-item" th:if="${equipment.installDate != null}">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">安装日期</div>
+                    <div class="timeline-date" th:text="${#dates.format(equipment.installDate, 'yyyy-MM-dd')}">
+                        2020-06-15</div>
+                </div>
+            </div>
+            <div class="timeline-item" th:if="${equipment.expireDate != null}">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">到期日期</div>
+                    <div class="timeline-date" th:text="${#dates.format(equipment.expireDate, 'yyyy-MM-dd')}">2025-06-15
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-item" th:if="${equipment.lastCheckDate != null}">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">上次检查</div>
+                    <div class="timeline-date" th:text="${#dates.format(equipment.lastCheckDate, 'yyyy-MM-dd')}">
+                        2024-12-01</div>
+                </div>
+            </div>
+            <div class="timeline-item" th:if="${equipment.nextCheckDate != null}">
+                <div class="timeline-dot"></div>
+                <div class="timeline-content">
+                    <div class="timeline-title">下次检查</div>
+                    <div class="timeline-date" th:text="${#dates.format(equipment.nextCheckDate, 'yyyy-MM-dd')}">
+                        2025-06-01</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 备注信息 -->
+        <div class="info-card" th:if="${equipment.remark != null and equipment.remark != ''}">
+            <div class="card-title">
+                <i class="fas fa-sticky-note"></i>
+                <span>备注信息</span>
+            </div>
+            <p style="color: #666; font-size: 14px; line-height: 1.8;" th:text="${equipment.remark}">
+                无备注信息
+            </p>
+        </div>
+
+        <!-- 底部信息 -->
+        <div class="footer-info">
+            <p class="company-logo"><i class="fas fa-shield-alt"></i> 消防设备管理系统</p>
+            <p>扫码时间：<span id="scanTime"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // 显示扫码时间
+        document.getElementById('scanTime').innerText = new Date().toLocaleString('zh-CN');
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,52 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/login/phone",
+    "pages/login/password",
+    "pages/login/register",
+    "pages/index/index",
+    "pages/message/index",
+    "pages/scan/index",
+    "pages/mine/index",
+    "pages/building/index",
+    "pages/building/form",
+    "pages/building/detail",
+    "pages/checkin/index",
+    "pages/checkin/history",
+    "pages/equipment/index",
+    "pages/equipment/form",
+    "pages/equipment/detail",
+    "pages/equipment/list",
+    "pages/equipment/edit",
+    "pages/inspection/index",
+    "pages/inspection/form",
+    "pages/inspection/detail",
+    "pages/task/index",
+    "pages/task/action",
+    "pages/task/detail",
+    "pages/task/system",
+    "pages/task/device",
+    "pages/report/index",
+    "pages/repair/index",
+    "pages/repair/form",
+    "pages/repair/detail",
+    "pages/customer/index"
+  ],
+  "window": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "智慧消防设备管家",
+    "navigationBarBackgroundColor": "#E53935",
+    "backgroundColor": "#F5F5F5"
+  },
+  "lazyCodeLoading": "requiredComponents",
+  "permission": {
+    "scope.userLocation": {
+      "desc": "您的位置信息将用于维保签到"
+    }
+  },
+  "requiredPrivateInfos": [
+    "getLocation",
+    "chooseLocation"
+  ],
+  "usingComponents": {}
+}

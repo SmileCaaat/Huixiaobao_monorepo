@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+
+<head>
+    <th:block th:include="include :: header('维保合同管理')" />
+    <style>
+        .pool-row {
+            margin-bottom: 12px;
+        }
+
+        .pool-card {
+            border-radius: 2px;
+            color: #fff;
+            padding: 12px 18px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .pool-card .title {
+            font-size: 22px;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        .pool-card .name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .pool-card .count {
+            font-size: 34px;
+            font-weight: 700;
+            margin: 4px 0 0 30px;
+            line-height: 1;
+        }
+
+        .pool-valid {
+            background: #2da7df;
+        }
+
+        .pool-expiring {
+            background: #e0b55f;
+        }
+
+        .pool-expired {
+            background: #ea6257;
+        }
+
+        .pool-inactive {
+            background: #909090;
+        }
+
+        .pool-card.active {
+            border-color: #1269a2;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08) inset;
+        }
+
+        .search-top {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body class="gray-bg">
+    <div class="container-div">
+        <div class="row">
+            <div class="col-sm-12">
+                <form id="formId">
+                    <input type="hidden" id="poolType" name="poolType" value="0" />
+
+                    <div class="row search-top">
+                        <div class="col-sm-12 search-collapse">
+                            <div class="select-list">
+                                <ul>
+                                    <li>
+                                        <label>关键字：</label>
+                                        <input type="text" name="keyword" placeholder="客户名称/合同名称/合同编号" />
+                                    </li>
+                                    <li>
+                                        <a class="btn btn-primary btn-sm" onclick="$.table.search('formId')"><i class="fa fa-search"></i> 查询</a>
+                                        <a class="btn btn-default btn-sm" onclick="resetQuery()"><i class="fa fa-refresh"></i> 重置</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row pool-row">
+                        <div class="col-sm-3">
+                            <div class="pool-card pool-valid active" data-type="0" onclick="switchPool('0')">
+                                <div>
+                                    <i class="fa fa-file-text-o title"></i>
+                                    <span class="name">有效合同</span>
+                                </div>
+                                <div class="count"><span id="validCount">0</span> <small>份</small></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="pool-card pool-expiring" data-type="1" onclick="switchPool('1')">
+                                <div>
+                                    <i class="fa fa-file-text-o title"></i>
+                                    <span class="name">即将过期合同</span>
+                                </div>
+                                <div class="count"><span id="expiringCount">0</span> <small>份</small></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="pool-card pool-expired" data-type="2" onclick="switchPool('2')">
+                                <div>
+                                    <i class="fa fa-file-text-o title"></i>
+                                    <span class="name">过期合同</span>
+                                </div>
+                                <div class="count"><span id="expiredCount">0</span> <small>份</small></div>
+                            </div>
+                        </div>
+                        <div class="col-sm-3">
+                            <div class="pool-card pool-inactive" data-type="3" onclick="switchPool('3')">
+                                <div>
+                                    <i class="fa fa-file-text-o title"></i>
+                                    <span class="name">未生效合同</span>
+                                </div>
+                                <div class="count"><span id="inactiveCount">0</span> <small>份</small></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group-sm" id="toolbar" role="group">
+                        <a class="btn btn-primary" onclick="openAdd()" shiro:hasPermission="fire:contract:add">
+                            <i class="fa fa-plus"></i> 添加
+                        </a>
+                        <a class="btn btn-danger" onclick="removeSelected()" shiro:hasPermission="fire:contract:remove">
+                            <i class="fa fa-remove"></i> 删除
+                        </a>
+                        <a class="btn btn-primary" onclick="downloadTemplate()">
+                            <i class="fa fa-file-word-o"></i> 合同模板
+                        </a>
+                        <a class="btn btn-primary" onclick="exportSelected()" shiro:hasPermission="fire:contract:export">
+                            <i class="fa fa-download"></i> 导出数据
+                        </a>
+                    </div>
+
+                    <div class="col-sm-12 select-table table-striped">
+                        <table id="bootstrap-table"></table>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var editFlag = [[${@permission.hasPermi('fire:contract:edit')}]];
+        var renewFlag = [[${@permission.hasPermi('fire:contract:renew')}]];
+        var terminateFlag = [[${@permission.hasPermi('fire:contract:terminate')}]];
+        var prefix = ctx + "fire/contract";
+        var statusMap = {
+            "valid": "有效",
+            "expiring": "即将过期",
+            "expired": "过期",
+            "inactive": "未生效"
+        };
+
+        $(function () {
+            var options = {
+                url: prefix + "/list",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                removeUrl: prefix + "/remove",
+                uniqueId: "contractId",
+                modalName: "维保合同",
+                onLoadSuccess: function () {
+                    loadPoolStats();
+                },
+                columns: [{
+                    checkbox: true
+                },
+                {
+                    field: "contractId",
+                    title: "ID",
+                    visible: false
+                },
+                {
+                    title: "序号",
+                    formatter: function (value, row, index) {
+                        return index + 1;
+                    }
+                },
+                {
+                    field: "companyName",
+                    title: "客户名称",
+                    formatter: function (value, row) {
+                        return '<a href="javascript:void(0)" onclick="showDetail(' + row.contractId + ')">' + $.common.nullToStr(value) + '</a>';
+                    }
+                },
+                {
+                    field: "contractName",
+                    title: "合同名称",
+                    formatter: function (value, row) {
+                        var name = $.common.nullToStr(value);
+                        if (row.poolType === "3" && name.indexOf("（已终止）") === -1) {
+                            return name + "（已终止）";
+                        }
+                        return name;
+                    }
+                },
+                {
+                    title: "有效期",
+                    formatter: function (value, row) {
+                        return $.common.nullToStr(row.startDate) + " 至 " + $.common.nullToStr(row.endDate);
+                    }
+                },
+                {
+                    field: "contractStatus",
+                    title: "合同状态",
+                    formatter: function (value, row) {
+                        var text = statusMap[value] || value;
+                        if (row.poolType === "1") {
+                            return '<span class="label label-warning">' + text + '</span>';
+                        }
+                        if (row.poolType === "2") {
+                            return '<span class="label label-danger">' + text + '</span>';
+                        }
+                        if (row.poolType === "3") {
+                            return '<span class="label label-default">' + text + '</span>';
+                        }
+                        return '<span class="label label-success">' + text + '</span>';
+                    }
+                },
+                {
+                    field: "entryUnit",
+                    title: "录入单位"
+                },
+                {
+                    field: "createTime",
+                    title: "创建时间"
+                },
+                {
+                    title: "操作",
+                    align: "center",
+                    formatter: function (value, row) {
+                        var actions = [];
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.contractId + '\')">编辑</a> ');
+                        actions.push('<a class="btn btn-info btn-xs ' + renewFlag + '" href="javascript:void(0)" onclick="openRenew(\'' + row.contractId + '\')">续签</a> ');
+                        if (row.poolType !== "3") {
+                            actions.push('<a class="btn btn-danger btn-xs ' + terminateFlag + '" href="javascript:void(0)" onclick="terminateContract(\'' + row.contractId + '\')">终止</a>');
+                        }
+                        return actions.join("");
+                    }
+                }]
+            };
+            $.table.init(options);
+            loadPoolStats();
+        });
+
+        function loadPoolStats() {
+            $.get(prefix + "/poolStats", function (res) {
+                if (res.code === 0 && res.data) {
+                    $("#validCount").text(res.data.validCount || 0);
+                    $("#expiringCount").text(res.data.expiringCount || 0);
+                    $("#expiredCount").text(res.data.expiredCount || 0);
+                    $("#inactiveCount").text(res.data.inactiveCount || 0);
+                }
+            });
+        }
+
+        function switchPool(type) {
+            $("#poolType").val(type);
+            $(".pool-card").removeClass("active");
+            $('.pool-card[data-type="' + type + '"]').addClass("active");
+            $.table.search("formId");
+        }
+
+        function resetQuery() {
+            $.form.reset("formId");
+            switchPool("0");
+        }
+
+        function openAdd() {
+            $.modal.open("添加维保合同", prefix + "/add", 920, 680);
+        }
+
+        function openRenew(contractId) {
+            $.modal.open("合同续签", prefix + "/renew/" + contractId, 920, 680);
+        }
+
+        function showDetail(contractId) {
+            $.modal.openOptions({
+                title: "查看合同",
+                url: prefix + "/detail/" + contractId,
+                width: 920,
+                height: 640,
+                btn: ["关闭"],
+                yes: function (index) {
+                    top.layer.close(index);
+                }
+            });
+        }
+
+        function removeSelected() {
+            var ids = $.table.selectColumns("contractId");
+            if (ids.length === 0) {
+                $.modal.alertWarning("请先勾选需要删除的合同");
+                return;
+            }
+            $.modal.confirm("删除后数据不可恢复，确定删除选中的合同吗？", function () {
+                $.operate.post(prefix + "/remove", { ids: ids.join(",") }, function () {
+                    loadPoolStats();
+                });
+            });
+        }
+
+        function terminateContract(contractId) {
+            $.modal.confirm("确认终止当前合同吗？终止后将移入未生效合同对象池。", function () {
+                $.post(prefix + "/terminate", { contractId: contractId }, function (result) {
+                    if (result.code === 0) {
+                        $.modal.msgSuccess("合同已终止");
+                        $.table.refresh();
+                        loadPoolStats();
+                    } else {
+                        $.modal.alertError(result.msg);
+                    }
+                });
+            });
+        }
+
+        function exportSelected() {
+            var ids = $.table.selectColumns("contractId");
+            if (ids.length === 0) {
+                $.modal.alertWarning("请先勾选需要导出的合同");
+                return;
+            }
+            $.modal.confirm("确定导出勾选的合同数据吗？", function () {
+                $.modal.loading("正在导出数据，请稍候...");
+                $.post(prefix + "/exportSelected", { ids: ids.join(",") }, function (result) {
+                    if (result.code === web_status.SUCCESS) {
+                        window.location.href = ctx + "common/download?fileName=" + encodeURI(result.msg) + "&delete=" + true;
+                    } else if (result.code === web_status.WARNING) {
+                        $.modal.alertWarning(result.msg);
+                    } else {
+                        $.modal.alertError(result.msg);
+                    }
+                    $.modal.closeLoading();
+                });
+            });
+        }
+
+        function downloadTemplate() {
+            window.open(prefix + "/template/preview", "_blank");
+        }
+    </script>
+</body>
+
+</html>

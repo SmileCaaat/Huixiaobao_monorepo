@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('消防测试设备列表')" />
+    <style>
+        .detail-container {
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .system-header {
+            background: linear-gradient(135deg, #e65100, #ff9800);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .system-header h3 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .system-header h3 i {
+            margin-right: 10px;
+        }
+
+        .equipment-list {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .equipment-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .equipment-item:hover {
+            background: #fff8e1;
+        }
+
+        .equipment-item:last-child {
+            border-bottom: none;
+        }
+
+        .equipment-info {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .equipment-name {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .equipment-stats {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .equipment-stats span {
+            margin-right: 15px;
+        }
+
+        .equipment-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .status-incomplete {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-complete {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .arrow-icon {
+            color: #999;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .btn-toolbar {
+            margin-bottom: 15px;
+        }
+
+        .btn-toolbar .btn {
+            margin-right: 10px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+        }
+
+        .no-data i {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body class="gray-bg">
+    <div class="detail-container">
+        <div class="system-header">
+            <h3><i class="fa fa-fire-extinguisher"></i> <span th:text="${system.itemName}">系统名称</span></h3>
+        </div>
+
+        <div class="btn-toolbar">
+            <a class="btn btn-default" onclick="goBack()"><i class="fa fa-arrow-left"></i> 返回</a>
+        </div>
+
+        <div class="equipment-list" id="equipmentList">
+            <div th:each="equipment : ${equipments}" class="equipment-item" th:data-id="${equipment.recordId}">
+                <div class="equipment-info" th:onclick="'openEquipment(' + ${equipment.recordId} + ')'">
+                    <div class="equipment-name" th:text="${equipment.itemName}">设备名称</div>
+                    <div class="equipment-stats">
+                        <span>总项 <strong th:text="${equipment.totalItems}">10</strong></span>
+                        <span>已完成 <strong th:text="${equipment.completedItems}">0</strong></span>
+                        <span>未完成 <strong th:text="${equipment.uncompletedItems}">10</strong></span>
+                    </div>
+                </div>
+                <div class="equipment-actions">
+                    <button type="button" class="btn btn-sm btn-warning"
+                        th:onclick="'openMaintenance(' + ${equipment.recordId} + ')'" style="margin-right: 10px;">
+                        <i class="fa fa-wrench"></i> 维护
+                    </button>
+                    <span class="status-badge"
+                        th:classappend="${equipment.systemStatus == '1' ? 'status-complete' : 'status-incomplete'}"
+                        th:text="${equipment.systemStatus == '1' ? '已完成' : '未完成'}">未完成</span>
+                    <i class="fa fa-angle-right arrow-icon"
+                        th:onclick="'openEquipment(' + ${equipment.recordId} + ')'"></i>
+                </div>
+            </div>
+            <div class="no-data" th:if="${equipments == null or #lists.isEmpty(equipments)}">
+                <i class="fa fa-inbox"></i>
+                <p>暂无测试内容数据</p>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: bootstrap-fileinput-css" />
+    <th:block th:include="include :: bootstrap-fileinput-js" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/task";
+        var systemRecordId = [[${ system.recordId }]];
+        var taskId = [[${ system.taskId }]];
+        var equipmentsData = [[${ equipments }]];
+
+        function goBack() {
+            // 返回到消防测试详情页（在弹框iframe内导航）
+            window.location.href = prefix + "/fireTestDetail/" + taskId;
+        }
+
+        function openEquipment(equipmentId) {
+            window.location.href = prefix + "/fireTestEquipment/" + equipmentId;
+        }
+
+        function openMaintenance(equipmentId) {
+            // 获取当前设备的数据
+            var currentEquipment = null;
+            for (var i = 0; i < equipmentsData.length; i++) {
+                if (equipmentsData[i].recordId == equipmentId) {
+                    currentEquipment = equipmentsData[i];
+                    break;
+                }
+            }
+
+            var deviceLocation = currentEquipment ? (currentEquipment.deviceLocation || '') : '';
+            var testSituation = currentEquipment ? (currentEquipment.testSituation || '') : '';
+            var testTime = currentEquipment ? (currentEquipment.testTime || '') : '';
+            var testResult = currentEquipment ? (currentEquipment.testResult || '') : '';
+            var sitePhotos = currentEquipment ? (currentEquipment.sitePhotos || '') : '';
+            var equipmentName = currentEquipment ? currentEquipment.itemName : '设备';
+
+            var html = '<div style="max-height: calc(85vh - 120px); overflow-y: auto; padding-right: 10px;">' +
+                '<form id="maintenanceForm" style="padding: 20px;">' +
+                '<div class="form-group">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">设备位置：</label>' +
+                '<input type="text" id="deviceLocation" class="form-control" placeholder="请输入设备位置..." value="' + deviceLocation + '">' +
+                '</div>' +
+                '<div class="form-group">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">测试情况：</label>' +
+                '<textarea id="testSituation" class="form-control" rows="3" placeholder="请输入测试情况...">' + testSituation + '</textarea>' +
+                '</div>' +
+                '<div class="form-group">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">测试时间：</label>' +
+                '<input type="text" id="testTime" class="form-control" placeholder="请选择测试时间..." value="' + testTime + '">' +
+                '</div>' +
+                '<div class="form-group">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">测试结果：</label>' +
+                '<textarea id="testResult" class="form-control" rows="3" placeholder="请输入测试结果...">' + testResult + '</textarea>' +
+                '</div>' +
+                '<div class="form-group">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">现场照片：</label>' +
+                '<div class="file-loading">' +
+                '<input id="sitePhotosUpload" name="file" type="file" multiple>' +
+                '</div>' +
+                '<input type="hidden" id="sitePhotos" value="' + sitePhotos + '">' +
+                '</div>' +
+                '</form>' +
+                '</div>';
+
+            layer.open({
+                type: 1,
+                title: equipmentName + ' - 维护信息',
+                area: ['650px', '85%'],
+                maxmin: true,
+                scrollbar: true,
+                content: html,
+                btn: ['保存', '取消'],
+                yes: function (index, layero) {
+                    saveMaintenance(equipmentId, index);
+                },
+                btn2: function (index, layero) {
+                    return true;
+                },
+                success: function (layero, index) {
+                    // 初始化日期时间选择器
+                    layui.use('laydate', function () {
+                        var laydate = layui.laydate;
+                        laydate.render({
+                            elem: '#testTime',
+                            type: 'datetime',
+                            format: 'yyyy-MM-dd HH:mm:ss'
+                        });
+                    });
+
+                    // 初始化图片上传组件
+                    setTimeout(function () {
+                        var existingPhotos = sitePhotos ? sitePhotos.split(',') : [];
+                        var initialPreview = [];
+                        var initialPreviewConfig = [];
+
+                        for (var i = 0; i < existingPhotos.length; i++) {
+                            if (existingPhotos[i] && existingPhotos[i].trim()) {
+                                var photoPath = existingPhotos[i].trim();
+                                var previewUrl = photoPath;
+                                if (!photoPath.startsWith('http')) {
+                                    previewUrl = (photoPath.startsWith('/') ? '' : '/') + photoPath;
+                                }
+                                initialPreview.push(previewUrl);
+                                initialPreviewConfig.push({
+                                    caption: photoPath.split('/').pop(),
+                                    url: prefix + '/deletePhoto',
+                                    key: photoPath,
+                                    downloadUrl: previewUrl,
+                                    type: 'image'
+                                });
+                            }
+                        }
+
+                        $('#sitePhotosUpload').fileinput({
+                            uploadUrl: ctx + 'common/upload',
+                            uploadAsync: true,
+                            showUpload: false,
+                            showRemove: true,
+                            showCancel: false,
+                            maxFileCount: 10,
+                            allowedFileExtensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp'],
+                            maxFileSize: 5120,
+                            initialPreview: initialPreview,
+                            initialPreviewAsData: true,
+                            initialPreviewConfig: initialPreviewConfig,
+                            initialPreviewShowDelete: true,
+                            overwriteInitial: false,
+                            previewFileType: 'image',
+                            layoutTemplates: {
+                                actionUpload: ''
+                            },
+                            msgFilesTooMany: '选择上传的文件数量({n}) 超过允许的最大数量{m}！',
+                            msgSizeTooLarge: '文件 "{name}" ({size} KB) 超过允许大小 {maxSize} KB！',
+                            msgInvalidFileExtension: '文件 "{name}" 扩展名不允许，只支持 "{extensions}" 的文件！',
+                            browseLabel: '选择图片',
+                            removeLabel: '移除',
+                            cancelLabel: '取消',
+                            uploadLabel: '上传',
+                            msgLoading: '加载第 {index} 个文件，共 {files} 个...',
+                            msgProgress: '加载第 {index} 个文件，共 {files} 个 - {name} - {percent}% 完成.',
+                            msgSelected: '{n} 个文件被选择'
+                        }).on('filebatchselected', function (event, files) {
+                            $(this).fileinput('upload');
+                        }).on('fileuploaded', function (event, data, previewId, index) {
+                            var response = data.response;
+                            if (response.code == 0 || response.code == 200) {
+                                var currentPhotos = $('#sitePhotos').val();
+                                var newPhoto = response.fileName;
+                                if (currentPhotos) {
+                                    $('#sitePhotos').val(currentPhotos + ',' + newPhoto);
+                                } else {
+                                    $('#sitePhotos').val(newPhoto);
+                                }
+                            } else {
+                                $.modal.alertError(response.msg || '上传失败');
+                            }
+                        }).on('filedeleted', function (event, key, jqXHR, data) {
+                            var currentPhotos = $('#sitePhotos').val();
+                            if (currentPhotos) {
+                                var photosArray = currentPhotos.split(',');
+                                photosArray = photosArray.filter(function (photo) {
+                                    return photo.trim() !== key;
+                                });
+                                $('#sitePhotos').val(photosArray.join(','));
+                            }
+                        });
+                    }, 100);
+                }
+            });
+        }
+
+        function saveMaintenance(equipmentId, layerIndex) {
+            var deviceLocation = $('#deviceLocation').val();
+            var testSituation = $('#testSituation').val();
+            var testTime = $('#testTime').val();
+            var testResult = $('#testResult').val();
+            var sitePhotos = $('#sitePhotos').val();
+
+            $.ajax({
+                url: prefix + "/updateMaintenance",
+                type: "post",
+                data: {
+                    recordId: equipmentId,
+                    deviceLocation: deviceLocation,
+                    testSituation: testSituation,
+                    testTime: testTime,
+                    testResult: testResult,
+                    sitePhotos: sitePhotos
+                },
+                success: function (res) {
+                    if (res.code == 0) {
+                        $.modal.msgSuccess("维护信息保存成功");
+                        layer.close(layerIndex);
+                        setTimeout(function () {
+                            location.reload();
+                        }, 500);
+                    } else {
+                        $.modal.alertError(res.msg);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

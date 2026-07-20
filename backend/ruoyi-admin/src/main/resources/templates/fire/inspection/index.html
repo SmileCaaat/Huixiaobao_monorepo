@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('巡检入口')" />
+    <style>
+        .inspection-wrapper {
+            padding: 20px;
+        }
+
+        .current-status {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .status-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .company-select-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .company-select-box select {
+            min-width: 300px;
+        }
+
+        .session-info {
+            background: #f0f9eb;
+            border: 1px solid #e1f3d8;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .session-info.not-signed {
+            background: #fef0f0;
+            border-color: #fde2e2;
+        }
+
+        .session-info h5 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #67c23a;
+        }
+
+        .session-info.not-signed h5 {
+            color: #f56c6c;
+        }
+
+        .session-detail {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .session-detail span {
+            margin-right: 20px;
+        }
+
+        .checkin-btn {
+            padding: 10px 30px;
+            border-radius: 4px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .checkin-btn.sign-in {
+            background: #409eff;
+            color: #fff;
+        }
+
+        .checkin-btn.sign-out {
+            background: #f56c6c;
+            color: #fff;
+        }
+
+        .apps-panel {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .apps-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .apps-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 20px;
+        }
+
+        .app-item {
+            text-align: center;
+            padding: 15px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid #eee;
+        }
+
+        .app-item:hover {
+            background: #f5f7fa;
+            border-color: #409eff;
+        }
+
+        .app-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .app-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-size: 24px;
+            color: #fff;
+        }
+
+        .app-name {
+            font-size: 13px;
+            color: #333;
+        }
+
+        .tip-text {
+            color: #909399;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .location-text {
+            font-size: 12px;
+            color: #909399;
+            margin-top: 10px;
+        }
+
+        .location-text i {
+            color: #409eff;
+        }
+    </style>
+</head>
+
+<body class="gray-bg">
+    <div class="inspection-wrapper">
+        <!-- 当前状态 -->
+        <div class="current-status">
+            <div class="status-header">
+                <span class="status-title">巡检状态</span>
+                <div class="company-select-box">
+                    <label>切换公司：</label>
+                    <select id="companySelect" class="form-control" onchange="onCompanyChange()">
+                        <option value="">请选择巡检公司</option>
+                        <th:block th:each="company : ${companies}">
+                            <option th:value="${company.companyId}" th:text="${company.companyName}"
+                                th:data-name="${company.companyName}"
+                                th:selected="${currentSession != null && currentSession.companyId == company.companyId}">
+                            </option>
+                        </th:block>
+                    </select>
+                    <button class="checkin-btn" id="checkinBtn"
+                        th:class="${currentSession != null} ? 'checkin-btn sign-out' : 'checkin-btn sign-in'"
+                        onclick="handleCheckIn()">
+                        <i th:class="${currentSession != null} ? 'fa fa-sign-out' : 'fa fa-sign-in'"></i>
+                        <span th:text="${currentSession != null} ? '签退' : '签到'"></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 会话信息 -->
+            <div th:if="${currentSession != null}" class="session-info">
+                <h5><i class="fa fa-check-circle"></i> 已签到</h5>
+                <div class="session-detail">
+                    <span><b>公司：</b><span th:text="${currentSession.companyName}"></span></span>
+                    <span><b>签到时间：</b><span
+                            th:text="${#dates.format(currentSession.checkInTime, 'yyyy-MM-dd HH:mm:ss')}"></span></span>
+                    <span><b>签到地址：</b><span th:text="${currentSession.checkInAddress} ?: '未知'"></span></span>
+                </div>
+            </div>
+            <div th:if="${currentSession == null}" class="session-info not-signed">
+                <h5><i class="fa fa-exclamation-circle"></i> 未签到</h5>
+                <div class="session-detail">
+                    请选择巡检公司并点击"签到"按钮开始巡检。签到后可进入各功能模块进行数据操作。
+                </div>
+            </div>
+
+            <div class="location-text" id="locationText">
+                <i class="fa fa-map-marker"></i> 正在获取位置...
+            </div>
+        </div>
+
+        <!-- 功能菜单 -->
+        <div class="apps-panel">
+            <div class="apps-title">功能菜单 <span class="tip-text" th:if="${currentSession == null}">（签到后可使用）</span></div>
+            <div class="apps-grid">
+                <div class="app-item" th:classappend="${currentSession == null} ? 'disabled' : ''"
+                    onclick="goToApp('checkIn', this)">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #52c41a, #73d13d);">
+                        <i class="fa fa-check"></i>
+                    </div>
+                    <div class="app-name">维保签到</div>
+                </div>
+                <div class="app-item" th:classappend="${currentSession == null} ? 'disabled' : ''"
+                    onclick="goToApp('task', this)">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #1890ff, #40a9ff);">
+                        <i class="fa fa-tasks"></i>
+                    </div>
+                    <div class="app-name">维保任务</div>
+                </div>
+                <div class="app-item" th:classappend="${currentSession == null} ? 'disabled' : ''"
+                    onclick="goToApp('building', this)">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #722ed1, #9254de);">
+                        <i class="fa fa-building"></i>
+                    </div>
+                    <div class="app-name">建筑信息</div>
+                </div>
+                <div class="app-item" th:classappend="${currentSession == null} ? 'disabled' : ''"
+                    onclick="goToApp('equipment', this)">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #eb2f96, #f759ab);">
+                        <i class="fa fa-fire-extinguisher"></i>
+                    </div>
+                    <div class="app-name">设备信息</div>
+                </div>
+                <div class="app-item" th:classappend="${currentSession == null} ? 'disabled' : ''"
+                    onclick="goToApp('report', this)">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #fa8c16, #ffa940);">
+                        <i class="fa fa-file-text"></i>
+                    </div>
+                    <div class="app-name">维保报告</div>
+                </div>
+                <div class="app-item" onclick="goToApp('history', this)">
+                    <div class="app-icon" style="background: linear-gradient(135deg, #595959, #8c8c8c);">
+                        <i class="fa fa-history"></i>
+                    </div>
+                    <div class="app-name">签到历史</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 签到历史 -->
+        <div class="apps-panel" style="margin-top: 20px;">
+            <div class="apps-title">最近签到记录</div>
+            <table id="historyTable" class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>公司名称</th>
+                        <th>签到时间</th>
+                        <th>签退时间</th>
+                        <th>签到地址</th>
+                        <th>状态</th>
+                    </tr>
+                </thead>
+                <tbody id="historyBody">
+                    <tr>
+                        <td colspan="5" style="text-align:center;color:#999;">加载中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/inspection";
+        var currentSession = [[${ currentSession }]];
+        var currentLocation = {
+            longitude: null,
+            latitude: null,
+            address: '未知位置'
+        };
+
+        $(function () {
+            getLocation();
+            loadHistory();
+        });
+
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function (position) {
+                    currentLocation.longitude = position.coords.longitude;
+                    currentLocation.latitude = position.coords.latitude;
+                    currentLocation.address = '定位成功: ' + currentLocation.latitude.toFixed(4) + ', ' + currentLocation.longitude.toFixed(4);
+                    $('#locationText').html('<i class="fa fa-map-marker"></i> ' + currentLocation.address);
+                }, function (error) {
+                    currentLocation.longitude = 111.9632;
+                    currentLocation.latitude = 21.8567;
+                    currentLocation.address = '阳江市高新区（模拟位置）';
+                    $('#locationText').html('<i class="fa fa-map-marker"></i> ' + currentLocation.address);
+                }, { timeout: 10000, enableHighAccuracy: true });
+            } else {
+                currentLocation.longitude = 111.9632;
+                currentLocation.latitude = 21.8567;
+                currentLocation.address = '阳江市高新区（模拟位置）';
+                $('#locationText').html('<i class="fa fa-map-marker"></i> ' + currentLocation.address);
+            }
+        }
+
+        function onCompanyChange() {
+            var companyId = $('#companySelect').val();
+            if (!companyId) return;
+
+            if (currentSession && currentSession.companyId != companyId) {
+                if (confirm('切换公司需要先从当前公司签退，是否继续？')) {
+                    switchCompany(companyId);
+                } else {
+                    $('#companySelect').val(currentSession.companyId);
+                }
+            }
+        }
+
+        function switchCompany(newCompanyId) {
+            $.ajax({
+                url: prefix + '/api/session/switch',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    companyId: newCompanyId,
+                    longitude: currentLocation.longitude,
+                    latitude: currentLocation.latitude,
+                    address: currentLocation.address
+                }),
+                success: function (res) {
+                    if (res.code == 0) {
+                        $.modal.msgSuccess('切换成功');
+                        setTimeout(function () { location.reload(); }, 1000);
+                    } else {
+                        $.modal.alertError(res.msg);
+                    }
+                }
+            });
+        }
+
+        function handleCheckIn() {
+            var companyId = $('#companySelect').val();
+
+            if (currentSession) {
+                $.ajax({
+                    url: prefix + '/api/session/checkOut',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        longitude: currentLocation.longitude,
+                        latitude: currentLocation.latitude,
+                        address: currentLocation.address
+                    }),
+                    success: function (res) {
+                        if (res.code == 0) {
+                            $.modal.msgSuccess('签退成功');
+                            setTimeout(function () { location.reload(); }, 1000);
+                        } else {
+                            $.modal.alertError(res.msg);
+                        }
+                    }
+                });
+            } else {
+                if (!companyId) {
+                    $.modal.alertWarning('请先选择巡检公司');
+                    return;
+                }
+                $.ajax({
+                    url: prefix + '/api/session/checkIn',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        companyId: companyId,
+                        longitude: currentLocation.longitude,
+                        latitude: currentLocation.latitude,
+                        address: currentLocation.address
+                    }),
+                    success: function (res) {
+                        if (res.code == 0) {
+                            $.modal.msgSuccess('签到成功');
+                            setTimeout(function () { location.reload(); }, 1000);
+                        } else {
+                            $.modal.alertError(res.msg);
+                        }
+                    }
+                });
+            }
+        }
+
+        function goToApp(type, elem) {
+            if ($(elem).hasClass('disabled')) {
+                $.modal.alertWarning('请先签到后再使用此功能');
+                return;
+            }
+
+            var companyId = currentSession ? currentSession.companyId : '';
+            var companyName = currentSession ? currentSession.companyName : '';
+
+            var urls = {
+                'checkIn': ctx + 'fire/checkIn',
+                'task': ctx + 'fire/task',
+                'building': ctx + 'fire/building',
+                'equipment': ctx + 'fire/equipment',
+                'report': ctx + 'fire/report',
+                'company': ctx + 'fire/company',
+                'history': prefix
+            };
+
+            var needCompanyParam = ['checkIn', 'task', 'building', 'equipment', 'report'];
+
+            var targetUrl = urls[type];
+            if (targetUrl && companyId && needCompanyParam.indexOf(type) >= 0) {
+                targetUrl += '?companyId=' + companyId + '&companyName=' + encodeURIComponent(companyName);
+            }
+
+            if (targetUrl) {
+                if (window.parent && window.parent !== window && window.parent.$.modal) {
+                    try {
+                        var title = $(elem).find('.app-name').text();
+                        if (companyId && needCompanyParam.indexOf(type) >= 0) {
+                            title += '【' + companyName + '】';
+                        }
+                        window.parent.$.modal.openTab(title, targetUrl);
+                    } catch (e) {
+                        window.location.href = targetUrl;
+                    }
+                } else {
+                    window.location.href = targetUrl;
+                }
+            }
+        }
+
+        function loadHistory() {
+            $.ajax({
+                url: prefix + '/api/session/history',
+                type: 'GET',
+                success: function (res) {
+                    var html = '';
+                    if (res.rows && res.rows.length > 0) {
+                        res.rows.forEach(function (row) {
+                            html += '<tr>';
+                            html += '<td>' + row.companyName + '</td>';
+                            html += '<td>' + (row.checkInTime || '-') + '</td>';
+                            html += '<td>' + (row.checkOutTime || '-') + '</td>';
+                            html += '<td>' + (row.checkInAddress || '-') + '</td>';
+                            html += '<td>' + (row.status == '0' ? '<span class="label label-success">已签到</span>' : '<span class="label label-default">已签退</span>') + '</td>';
+                            html += '</tr>';
+                        });
+                    } else {
+                        html = '<tr><td colspan="5" style="text-align:center;color:#999;">暂无签到记录</td></tr>';
+                    }
+                    $('#historyBody').html(html);
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

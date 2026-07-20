@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireFaultRepairMapper">
+
+    <resultMap type="com.ruoyi.fire.domain.FireFaultRepair" id="FireFaultRepairResult">
+        <result property="repairId"           column="repair_id"           />
+        <result property="repairNo"           column="repair_no"           />
+        <result property="companyId"          column="company_id"          />
+        <result property="companyName"        column="company_name"        />
+        <result property="systemTypeId"       column="system_type_id"      />
+        <result property="systemTypeName"     column="system_type_name"    />
+        <result property="equipmentId"        column="equipment_id"        />
+        <result property="equipmentName"      column="equipment_name"      />
+        <result property="foundTime"          column="found_time"          />
+        <result property="isReported"         column="is_reported"         />
+        <result property="urgencyLevel"       column="urgency_level"       />
+        <result property="faultDescription"   column="fault_description"   />
+        <result property="faultImages"        column="fault_images"        />
+        <result property="reporterName"       column="reporter_name"       />
+        <result property="reporterPhone"      column="reporter_phone"      />
+        <result property="reporterId"         column="reporter_id"         />
+        <result property="customerAddress"    column="customer_address"    />
+        <result property="repairStatus"       column="repair_status"       />
+        <result property="repairUserId"       column="repair_user_id"      />
+        <result property="repairPerson"       column="repair_person"       />
+        <result property="repairPhone"        column="repair_phone"        />
+        <result property="dispatchBy"         column="dispatch_by"         />
+        <result property="dispatchTime"       column="dispatch_time"       />
+        <result property="acceptTime"         column="accept_time"         />
+        <result property="startTime"          column="start_time"          />
+        <result property="completeTime"       column="complete_time"       />
+        <result property="repairDescription"  column="repair_description"  />
+        <result property="repairImages"       column="repair_images"       />
+        <result property="status"             column="status"              />
+        <result property="delFlag"            column="del_flag"            />
+        <result property="createBy"           column="create_by"           />
+        <result property="createTime"         column="create_time"         />
+        <result property="updateBy"           column="update_by"           />
+        <result property="updateTime"         column="update_time"         />
+        <result property="remark"             column="remark"              />
+    </resultMap>
+
+    <sql id="selectFireFaultRepairVo">
+        SELECT repair_id, repair_no, company_id, company_name, system_type_id, system_type_name,
+               equipment_id, equipment_name, found_time, is_reported, urgency_level,
+               fault_description, fault_images, reporter_name, reporter_phone, reporter_id,
+               customer_address, repair_status, repair_user_id, repair_person, repair_phone,
+               dispatch_by, dispatch_time, accept_time, start_time, complete_time,
+               repair_description, repair_images, status, del_flag,
+               create_by, create_time, update_by, update_time, remark
+        FROM fire_fault_repair
+    </sql>
+
+    <select id="selectFireFaultRepairList" parameterType="com.ruoyi.fire.domain.FireFaultRepair" resultMap="FireFaultRepairResult">
+        <include refid="selectFireFaultRepairVo"/>
+        <where>
+            del_flag = '0'
+            <if test="repairNo != null and repairNo != ''">
+                AND repair_no LIKE CONCAT('%', #{repairNo}, '%')
+            </if>
+            <if test="companyId != null">
+                AND company_id = #{companyId}
+            </if>
+            <if test="companyName != null and companyName != ''">
+                AND company_name LIKE CONCAT('%', #{companyName}, '%')
+            </if>
+            <if test="systemTypeId != null">
+                AND system_type_id = #{systemTypeId}
+            </if>
+            <if test="equipmentId != null">
+                AND equipment_id = #{equipmentId}
+            </if>
+            <if test="equipmentName != null and equipmentName != ''">
+                AND equipment_name LIKE CONCAT('%', #{equipmentName}, '%')
+            </if>
+            <if test="urgencyLevel != null and urgencyLevel != ''">
+                AND urgency_level = #{urgencyLevel}
+            </if>
+            <if test="repairStatus != null and repairStatus != ''">
+                AND repair_status = #{repairStatus}
+            </if>
+            <if test="reporterName != null and reporterName != ''">
+                AND reporter_name LIKE CONCAT('%', #{reporterName}, '%')
+            </if>
+            <if test="reporterId != null">
+                AND reporter_id = #{reporterId}
+            </if>
+            <if test="repairUserId != null">
+                AND repair_user_id = #{repairUserId}
+            </if>
+            <if test="repairPerson != null and repairPerson != ''">
+                AND repair_person LIKE CONCAT('%', #{repairPerson}, '%')
+            </if>
+            <if test="params.relatedUserId != null and params.relatedUserId != ''">
+                AND (reporter_id = #{params.relatedUserId} OR repair_user_id = #{params.relatedUserId})
+            </if>
+            <if test="params.beginFoundTime != null and params.beginFoundTime != ''">
+                AND DATE_FORMAT(found_time,'%Y-%m-%d') &gt;= DATE_FORMAT(#{params.beginFoundTime},'%Y-%m-%d')
+            </if>
+            <if test="params.endFoundTime != null and params.endFoundTime != ''">
+                AND DATE_FORMAT(found_time,'%Y-%m-%d') &lt;= DATE_FORMAT(#{params.endFoundTime},'%Y-%m-%d')
+            </if>
+        </where>
+        ORDER BY found_time DESC, create_time DESC
+    </select>
+
+    <select id="selectFireFaultRepairById" parameterType="Long" resultMap="FireFaultRepairResult">
+        <include refid="selectFireFaultRepairVo"/>
+        WHERE repair_id = #{repairId} AND del_flag = '0'
+    </select>
+
+    <select id="generateRepairNo" resultType="String">
+        SELECT CONCAT('BX', DATE_FORMAT(NOW(), '%Y%m%d'),
+               LPAD(IFNULL(MAX(CAST(SUBSTRING(repair_no, 11) AS UNSIGNED)), 0) + 1, 4, '0'))
+        FROM fire_fault_repair
+        WHERE repair_no LIKE CONCAT('BX', DATE_FORMAT(NOW(), '%Y%m%d'), '%')
+    </select>
+
+    <insert id="insertFireFaultRepair" parameterType="com.ruoyi.fire.domain.FireFaultRepair" useGeneratedKeys="true" keyProperty="repairId">
+        INSERT INTO fire_fault_repair
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="repairNo != null and repairNo != ''">repair_no,</if>
+            <if test="companyId != null">company_id,</if>
+            <if test="companyName != null and companyName != ''">company_name,</if>
+            <if test="systemTypeId != null">system_type_id,</if>
+            <if test="systemTypeName != null and systemTypeName != ''">system_type_name,</if>
+            <if test="equipmentId != null">equipment_id,</if>
+            <if test="equipmentName != null and equipmentName != ''">equipment_name,</if>
+            <if test="foundTime != null">found_time,</if>
+            <if test="isReported != null">is_reported,</if>
+            <if test="urgencyLevel != null">urgency_level,</if>
+            <if test="faultDescription != null">fault_description,</if>
+            <if test="faultImages != null">fault_images,</if>
+            <if test="reporterName != null">reporter_name,</if>
+            <if test="reporterPhone != null">reporter_phone,</if>
+            <if test="reporterId != null">reporter_id,</if>
+            <if test="customerAddress != null">customer_address,</if>
+            <if test="repairStatus != null">repair_status,</if>
+            <if test="repairUserId != null">repair_user_id,</if>
+            <if test="repairPerson != null">repair_person,</if>
+            <if test="repairPhone != null">repair_phone,</if>
+            <if test="dispatchBy != null">dispatch_by,</if>
+            <if test="dispatchTime != null">dispatch_time,</if>
+            <if test="acceptTime != null">accept_time,</if>
+            <if test="startTime != null">start_time,</if>
+            <if test="completeTime != null">complete_time,</if>
+            <if test="repairDescription != null">repair_description,</if>
+            <if test="repairImages != null">repair_images,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="remark != null">remark,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="repairNo != null and repairNo != ''">#{repairNo},</if>
+            <if test="companyId != null">#{companyId},</if>
+            <if test="companyName != null and companyName != ''">#{companyName},</if>
+            <if test="systemTypeId != null">#{systemTypeId},</if>
+            <if test="systemTypeName != null and systemTypeName != ''">#{systemTypeName},</if>
+            <if test="equipmentId != null">#{equipmentId},</if>
+            <if test="equipmentName != null and equipmentName != ''">#{equipmentName},</if>
+            <if test="foundTime != null">#{foundTime},</if>
+            <if test="isReported != null">#{isReported},</if>
+            <if test="urgencyLevel != null">#{urgencyLevel},</if>
+            <if test="faultDescription != null">#{faultDescription},</if>
+            <if test="faultImages != null">#{faultImages},</if>
+            <if test="reporterName != null">#{reporterName},</if>
+            <if test="reporterPhone != null">#{reporterPhone},</if>
+            <if test="reporterId != null">#{reporterId},</if>
+            <if test="customerAddress != null">#{customerAddress},</if>
+            <if test="repairStatus != null">#{repairStatus},</if>
+            <if test="repairUserId != null">#{repairUserId},</if>
+            <if test="repairPerson != null">#{repairPerson},</if>
+            <if test="repairPhone != null">#{repairPhone},</if>
+            <if test="dispatchBy != null">#{dispatchBy},</if>
+            <if test="dispatchTime != null">#{dispatchTime},</if>
+            <if test="acceptTime != null">#{acceptTime},</if>
+            <if test="startTime != null">#{startTime},</if>
+            <if test="completeTime != null">#{completeTime},</if>
+            <if test="repairDescription != null">#{repairDescription},</if>
+            <if test="repairImages != null">#{repairImages},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="remark != null">#{remark},</if>
+            NOW()
+        </trim>
+    </insert>
+
+    <update id="updateFireFaultRepair" parameterType="com.ruoyi.fire.domain.FireFaultRepair">
+        UPDATE fire_fault_repair
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="companyId != null">company_id = #{companyId},</if>
+            <if test="companyName != null">company_name = #{companyName},</if>
+            <if test="systemTypeId != null">system_type_id = #{systemTypeId},</if>
+            <if test="systemTypeName != null">system_type_name = #{systemTypeName},</if>
+            <if test="equipmentId != null">equipment_id = #{equipmentId},</if>
+            <if test="equipmentName != null">equipment_name = #{equipmentName},</if>
+            <if test="foundTime != null">found_time = #{foundTime},</if>
+            <if test="isReported != null">is_reported = #{isReported},</if>
+            <if test="urgencyLevel != null">urgency_level = #{urgencyLevel},</if>
+            <if test="faultDescription != null">fault_description = #{faultDescription},</if>
+            <if test="faultImages != null">fault_images = #{faultImages},</if>
+            <if test="reporterName != null">reporter_name = #{reporterName},</if>
+            <if test="reporterPhone != null">reporter_phone = #{reporterPhone},</if>
+            <if test="reporterId != null">reporter_id = #{reporterId},</if>
+            <if test="customerAddress != null">customer_address = #{customerAddress},</if>
+            <if test="repairStatus != null">repair_status = #{repairStatus},</if>
+            <if test="repairUserId != null">repair_user_id = #{repairUserId},</if>
+            <if test="repairPerson != null">repair_person = #{repairPerson},</if>
+            <if test="repairPhone != null">repair_phone = #{repairPhone},</if>
+            <if test="dispatchBy != null">dispatch_by = #{dispatchBy},</if>
+            <if test="dispatchTime != null">dispatch_time = #{dispatchTime},</if>
+            <if test="acceptTime != null">accept_time = #{acceptTime},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="completeTime != null">complete_time = #{completeTime},</if>
+            <if test="repairDescription != null">repair_description = #{repairDescription},</if>
+            <if test="repairImages != null">repair_images = #{repairImages},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = NOW()
+        </trim>
+        WHERE repair_id = #{repairId}
+    </update>
+
+    <delete id="deleteFireFaultRepairById" parameterType="Long">
+        UPDATE fire_fault_repair SET del_flag = '2' WHERE repair_id = #{repairId}
+    </delete>
+
+    <delete id="deleteFireFaultRepairByIds" parameterType="String">
+        UPDATE fire_fault_repair SET del_flag = '2' WHERE repair_id IN
+        <foreach item="repairId" collection="array" open="(" separator="," close=")">
+            #{repairId}
+        </foreach>
+    </delete>
+
+</mapper>

@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireMaintenanceTaskMapper">
+    
+    <resultMap type="FireMaintenanceTask" id="FireMaintenanceTaskResult">
+        <result property="taskId"    column="task_id"    />
+        <result property="taskName"    column="task_name"    />
+        <result property="companyId"    column="company_id"    />
+        <result property="companyName"    column="company_name"    />
+        <result property="planStartTime"    column="plan_start_time"    />
+        <result property="planEndTime"    column="plan_end_time"    />
+        <result property="actualStartTime"    column="actual_start_time"    />
+        <result property="actualEndTime"    column="actual_end_time"    />
+        <result property="taskStatus"    column="task_status"    />
+        <result property="totalItems"    column="total_items"    />
+        <result property="completedItems"    column="completed_items"    />
+        <result property="normalItems"    column="normal_items"    />
+        <result property="faultItems"    column="fault_items"    />
+        <result property="noDeviceItems"    column="no_device_items"    />
+        <result property="executorId"    column="executor_id"    />
+        <result property="executorName"    column="executor_name"    />
+        <result property="taskType"    column="task_type"    />
+        <result property="periodType"    column="period_type"    />
+        <result property="periodYear"    column="period_year"    />
+        <result property="periodNum"    column="period_num"    />
+        <result property="managerId"    column="manager_id"    />
+        <result property="managerName"    column="manager_name"    />
+        <result property="managerPhone"    column="manager_phone"    />
+        <result property="operatorIds"    column="operator_ids"    />
+        <result property="operatorNames"    column="operator_names"    />
+        <result property="buildingId"    column="building_id"    />
+        <result property="buildingName"    column="building_name"    />
+        <result property="maintenanceSummary"    column="maintenance_summary"    />
+        <result property="maintenanceTime"    column="maintenance_time"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="updateBy"    column="update_by"    />
+        <result property="updateTime"    column="update_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectFireMaintenanceTaskVo">
+        select task_id, task_name, company_id, company_name, plan_start_time, plan_end_time, actual_start_time, actual_end_time, task_status, total_items, completed_items, normal_items, fault_items, no_device_items, executor_id, executor_name, task_type, period_type, period_year, period_num, manager_id, manager_name, manager_phone, operator_ids, operator_names, building_id, building_name, maintenance_summary, maintenance_time, create_by, create_time, update_by, update_time, remark from fire_maintenance_task
+    </sql>
+
+    <select id="selectFireMaintenanceTaskList" parameterType="FireMaintenanceTask" resultMap="FireMaintenanceTaskResult">
+        select t.task_id, t.task_name, t.company_id, t.company_name, t.plan_start_time, t.plan_end_time,
+            t.actual_start_time, t.actual_end_time,
+            CASE
+                WHEN (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3) > 0
+                     AND (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result != '0')
+                         = (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3)
+                THEN '2'
+                WHEN (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result != '0') > 0
+                THEN '1'
+                ELSE t.task_status
+            END as task_status,
+            (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3) as total_items,
+            (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result != '0') as completed_items,
+            (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result = '1') as normal_items,
+            (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result = '2') as fault_items,
+            (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result = '3') as no_device_items,
+            t.executor_id, t.executor_name, t.task_type, t.period_type, t.period_year, t.period_num,
+            t.manager_id, t.manager_name, t.manager_phone, t.operator_ids, t.operator_names,
+            t.building_id, t.building_name, t.maintenance_summary, t.maintenance_time,
+            t.create_by, t.create_time, t.update_by, t.update_time, t.remark
+        from fire_maintenance_task t
+        <where>  
+            <if test="taskName != null  and taskName != ''"> and t.task_name like concat('%', #{taskName}, '%')</if>
+            <if test="companyId != null "> and t.company_id = #{companyId}</if>
+            <if test="companyName != null  and companyName != ''"> and t.company_name like concat('%', #{companyName}, '%')</if>
+            <if test="taskStatus != null  and taskStatus != ''"> and t.task_status = #{taskStatus}</if>
+            <if test="executorId != null "> and t.executor_id = #{executorId}</if>
+            <if test="executorName != null  and executorName != ''"> and t.executor_name like concat('%', #{executorName}, '%')</if>
+            <if test="taskType != null  and taskType != ''"> and t.task_type = #{taskType}</if>
+            <if test="periodType != null  and periodType != ''"> and t.period_type = #{periodType}</if>
+            <if test="periodYear != null "> and t.period_year = #{periodYear}</if>
+            <if test="managerId != null "> 
+                and (
+                    t.manager_id = #{managerId}
+                    or t.executor_id = #{managerId}
+                    or FIND_IN_SET(#{managerId}, t.operator_ids) > 0
+                )
+            </if>
+            <if test="buildingId != null "> and t.building_id = #{buildingId}</if>
+        </where>
+        order by t.create_time desc
+    </select>
+    
+    <select id="selectFireMaintenanceTaskByTaskId" parameterType="Long" resultMap="FireMaintenanceTaskResult">
+        <include refid="selectFireMaintenanceTaskVo"/>
+        where task_id = #{taskId}
+    </select>
+        
+    <insert id="insertFireMaintenanceTask" parameterType="FireMaintenanceTask" useGeneratedKeys="true" keyProperty="taskId">
+        insert into fire_maintenance_task
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="taskName != null and taskName != ''">task_name,</if>
+            <if test="companyId != null">company_id,</if>
+            <if test="companyName != null">company_name,</if>
+            <if test="planStartTime != null">plan_start_time,</if>
+            <if test="planEndTime != null">plan_end_time,</if>
+            <if test="actualStartTime != null">actual_start_time,</if>
+            <if test="actualEndTime != null">actual_end_time,</if>
+            <if test="taskStatus != null">task_status,</if>
+            <if test="totalItems != null">total_items,</if>
+            <if test="completedItems != null">completed_items,</if>
+            <if test="normalItems != null">normal_items,</if>
+            <if test="faultItems != null">fault_items,</if>
+            <if test="noDeviceItems != null">no_device_items,</if>
+            <if test="executorId != null">executor_id,</if>
+            <if test="executorName != null">executor_name,</if>
+            <if test="taskType != null">task_type,</if>
+            <if test="periodType != null">period_type,</if>
+            <if test="periodYear != null">period_year,</if>
+            <if test="periodNum != null">period_num,</if>
+            <if test="managerId != null">manager_id,</if>
+            <if test="managerName != null">manager_name,</if>
+            <if test="managerPhone != null">manager_phone,</if>
+            <if test="operatorIds != null">operator_ids,</if>
+            <if test="operatorNames != null">operator_names,</if>
+            <if test="buildingId != null">building_id,</if>
+            <if test="buildingName != null">building_name,</if>
+            <if test="maintenanceSummary != null">maintenance_summary,</if>
+            <if test="maintenanceTime != null">maintenance_time,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateBy != null">update_by,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="taskName != null and taskName != ''">#{taskName},</if>
+            <if test="companyId != null">#{companyId},</if>
+            <if test="companyName != null">#{companyName},</if>
+            <if test="planStartTime != null">#{planStartTime},</if>
+            <if test="planEndTime != null">#{planEndTime},</if>
+            <if test="actualStartTime != null">#{actualStartTime},</if>
+            <if test="actualEndTime != null">#{actualEndTime},</if>
+            <if test="taskStatus != null">#{taskStatus},</if>
+            <if test="totalItems != null">#{totalItems},</if>
+            <if test="completedItems != null">#{completedItems},</if>
+            <if test="normalItems != null">#{normalItems},</if>
+            <if test="faultItems != null">#{faultItems},</if>
+            <if test="noDeviceItems != null">#{noDeviceItems},</if>
+            <if test="executorId != null">#{executorId},</if>
+            <if test="executorName != null">#{executorName},</if>
+            <if test="taskType != null">#{taskType},</if>
+            <if test="periodType != null">#{periodType},</if>
+            <if test="periodYear != null">#{periodYear},</if>
+            <if test="periodNum != null">#{periodNum},</if>
+            <if test="managerId != null">#{managerId},</if>
+            <if test="managerName != null">#{managerName},</if>
+            <if test="managerPhone != null">#{managerPhone},</if>
+            <if test="operatorIds != null">#{operatorIds},</if>
+            <if test="operatorNames != null">#{operatorNames},</if>
+            <if test="buildingId != null">#{buildingId},</if>
+            <if test="buildingName != null">#{buildingName},</if>
+            <if test="maintenanceSummary != null">#{maintenanceSummary},</if>
+            <if test="maintenanceTime != null">#{maintenanceTime},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateBy != null">#{updateBy},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFireMaintenanceTask" parameterType="FireMaintenanceTask">
+        update fire_maintenance_task
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="taskName != null and taskName != ''">task_name = #{taskName},</if>
+            <if test="companyId != null">company_id = #{companyId},</if>
+            <if test="companyName != null">company_name = #{companyName},</if>
+            <if test="planStartTime != null">plan_start_time = #{planStartTime},</if>
+            <if test="planEndTime != null">plan_end_time = #{planEndTime},</if>
+            <if test="actualStartTime != null">actual_start_time = #{actualStartTime},</if>
+            <if test="actualEndTime != null">actual_end_time = #{actualEndTime},</if>
+            <if test="taskStatus != null">task_status = #{taskStatus},</if>
+            <if test="totalItems != null">total_items = #{totalItems},</if>
+            <if test="completedItems != null">completed_items = #{completedItems},</if>
+            <if test="normalItems != null">normal_items = #{normalItems},</if>
+            <if test="faultItems != null">fault_items = #{faultItems},</if>
+            <if test="noDeviceItems != null">no_device_items = #{noDeviceItems},</if>
+            <if test="executorId != null">executor_id = #{executorId},</if>
+            <if test="executorName != null">executor_name = #{executorName},</if>
+            <if test="taskType != null">task_type = #{taskType},</if>
+            <if test="periodType != null">period_type = #{periodType},</if>
+            <if test="periodYear != null">period_year = #{periodYear},</if>
+            <if test="periodNum != null">period_num = #{periodNum},</if>
+            <if test="managerId != null">manager_id = #{managerId},</if>
+            <if test="managerName != null">manager_name = #{managerName},</if>
+            <if test="managerPhone != null">manager_phone = #{managerPhone},</if>
+            <if test="operatorIds != null">operator_ids = #{operatorIds},</if>
+            <if test="operatorNames != null">operator_names = #{operatorNames},</if>
+            <if test="buildingId != null">building_id = #{buildingId},</if>
+            <if test="buildingName != null">building_name = #{buildingName},</if>
+            <if test="maintenanceSummary != null">maintenance_summary = #{maintenanceSummary},</if>
+            <if test="maintenanceTime != null">maintenance_time = #{maintenanceTime},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where task_id = #{taskId}
+    </update>
+
+    <delete id="deleteFireMaintenanceTaskByTaskId" parameterType="Long">
+        delete from fire_maintenance_task where task_id = #{taskId}
+    </delete>
+
+    <delete id="deleteFireMaintenanceTaskByTaskIds" parameterType="String">
+        delete from fire_maintenance_task where task_id in 
+        <foreach item="taskId" collection="array" open="(" separator="," close=")">
+            #{taskId}
+        </foreach>
+    </delete>
+</mapper>

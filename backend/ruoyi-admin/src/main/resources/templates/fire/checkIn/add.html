@@ -1,0 +1,315 @@
+﻿<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('新增签到')" />
+    <th:block th:include="include :: bootstrap-fileinput-css" />
+    <style>
+        .image-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .image-preview-item {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .image-preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-preview-item .remove-btn {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 18px;
+            text-align: center;
+        }
+
+        .image-preview-item .remove-btn:hover {
+            background: rgba(255, 0, 0, 0.9);
+        }
+
+        .upload-btn-container {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-checkIn-add">
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">所属客户：</label>
+                <div class="col-sm-8">
+                    <select name="companyId" id="companyId" class="form-control" required>
+                        <option value="">请选择公司</option>
+                    </select>
+                    <input type="hidden" name="companyName" id="companyName">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">关联任务：</label>
+                <div class="col-sm-8">
+                    <select name="taskId" class="form-control m-b" id="taskId">
+                        <option value="">请先选择公司</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">签到类型：</label>
+                <div class="col-sm-8">
+                    <select name="checkInType" class="form-control m-b" required
+                        th:with="type=${@dict.getType('fire_check_in_type')}">
+                        <option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}">
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">签到时间：</label>
+                <div class="col-sm-8">
+                    <div class="input-group date">
+                        <input name="checkInTime" class="form-control" placeholder="yyyy-MM-dd HH:mm:ss" type="text">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">经度：</label>
+                <div class="col-sm-8">
+                    <input name="longitude" class="form-control" type="number" step="0.000001" placeholder="请输入经度">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">纬度：</label>
+                <div class="col-sm-8">
+                    <input name="latitude" class="form-control" type="number" step="0.000001" placeholder="请输入纬度">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">签到地址：</label>
+                <div class="col-sm-8">
+                    <input name="address" class="form-control" type="text" placeholder="请输入签到地址">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">签到人姓名：</label>
+                <div class="col-sm-8">
+                    <input name="userName" class="form-control" type="text" placeholder="请输入签到人姓名">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">签到图片：</label>
+                <div class="col-sm-8">
+                    <div class="upload-btn-container">
+                        <input type="file" id="imageUpload" multiple accept="image/*" style="display: none;">
+                        <button type="button" class="btn btn-primary btn-sm"
+                            onclick="document.getElementById('imageUpload').click()">
+                            <i class="fa fa-upload"></i> 上传图片
+                        </button>
+                        <span class="text-muted" style="margin-left: 10px;">支持多张图片上传</span>
+                    </div>
+                    <div class="image-preview-container" id="imagePreviewContainer"></div>
+                    <input type="hidden" name="imageUrls" id="imageUrls">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">备注：</label>
+                <div class="col-sm-8">
+                    <textarea name="remark" class="form-control" rows="3" placeholder="请输入备注信息"></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: bootstrap-fileinput-js" />
+    <th:block th:include="include :: datetimepicker-js" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/checkIn";
+        var uploadedImages = []; // 存储已上传的图片URL
+
+        // 从URL获取公司参数
+        var urlParams = new URLSearchParams(window.location.search);
+        var filterCompanyId = urlParams.get('companyId');
+        var filterCompanyName = urlParams.get('companyName');
+
+        $(function () {
+            // 加载公司下拉列表
+            loadCompanyList();
+
+            // 初始化日期时间选择器
+            $("input[name='checkInTime']").datetimepicker({
+                format: "yyyy-mm-dd hh:ii:ss",
+                minView: "hour",
+                autoclose: true,
+                todayBtn: true,
+                todayHighlight: true
+            });
+
+            // 设置默认签到时间为当前时间
+            var now = new Date();
+            var formattedDate = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + ' ' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0');
+            $("input[name='checkInTime']").val(formattedDate);
+
+            // 图片上传事件
+            $('#imageUpload').on('change', function () {
+                var files = this.files;
+                for (var i = 0; i < files.length; i++) {
+                    uploadImage(files[i]);
+                }
+                // 清空文件输入，允许重复选择相同文件
+                this.value = '';
+            });
+
+            // 表单验证
+            $("#form-checkIn-add").validate({
+                focusCleanup: true
+            });
+        });
+
+        // 加载公司列表
+        function loadCompanyList() {
+            $.ajax({
+                url: ctx + 'fire/company/all',
+                type: 'POST',
+                success: function (res) {
+                    if (res.code == 0 && res.data) {
+                        var html = '<option value="">请选择公司</option>';
+                        res.data.forEach(function (company) {
+                            var selected = filterCompanyId && company.companyId == filterCompanyId ? ' selected' : '';
+                            html += '<option value="' + company.companyId + '" data-name="' + company.companyName + '"' + selected + '>' + company.companyName + '</option>';
+                        });
+                        $('#companyId').html(html);
+
+                        // 如果有URL参数，设置公司名称并加载任务
+                        if (filterCompanyId && filterCompanyName) {
+                            $('#companyName').val(decodeURIComponent(filterCompanyName));
+                            loadTasksByCompany(filterCompanyId);
+                        }
+                    }
+                }
+            });
+        }
+
+        // 公司选择变化时更新隐藏字段并加载任务
+        $('#companyId').on('change', function () {
+            var name = $(this).find('option:selected').data('name') || '';
+            $('#companyName').val(name);
+            var companyId = $(this).val();
+            loadTasksByCompany(companyId);
+        });
+
+        // 根据公司ID加载维保任务列表
+        function loadTasksByCompany(companyId) {
+            if (!companyId) {
+                $('#taskId').html('<option value="">请先选择公司</option>');
+                return;
+            }
+            $.ajax({
+                url: prefix + '/listTasksByCompany',
+                type: 'POST',
+                data: { companyId: companyId },
+                success: function (res) {
+                    var html = '<option value="">请选择任务（可选）</option>';
+                    if (res.code == 0 && res.data) {
+                        res.data.forEach(function (task) {
+                            html += '<option value="' + task.taskId + '">' + task.taskName + '</option>';
+                        });
+                    }
+                    $('#taskId').html(html);
+                }
+            });
+        }
+
+        // 上传图片
+        function uploadImage(file) {
+            var formData = new FormData();
+            formData.append('file', file);
+
+            $.ajax({
+                url: ctx + 'common/upload',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (result) {
+                    if (result.code === 0) {
+                        uploadedImages.push(result.url);
+                        updateImagePreview();
+                        updateImageUrls();
+                    } else {
+                        $.modal.alertError("图片上传失败：" + result.msg);
+                    }
+                },
+                error: function () {
+                    $.modal.alertError("图片上传失败，请稍后重试");
+                }
+            });
+        }
+
+        // 更新图片预览
+        function updateImagePreview() {
+            var container = $('#imagePreviewContainer');
+            container.empty();
+
+            for (var i = 0; i < uploadedImages.length; i++) {
+                var item = $('<div class="image-preview-item"></div>');
+                var img = $('<img>').attr('src', uploadedImages[i]);
+                var removeBtn = $('<button class="remove-btn" type="button">&times;</button>')
+                    .attr('data-index', i)
+                    .on('click', function () {
+                        removeImage($(this).attr('data-index'));
+                    });
+                item.append(img).append(removeBtn);
+                container.append(item);
+            }
+        }
+
+        // 移除图片
+        function removeImage(index) {
+            uploadedImages.splice(index, 1);
+            updateImagePreview();
+            updateImageUrls();
+        }
+
+        // 更新隐藏字段的图片URL
+        function updateImageUrls() {
+            $('#imageUrls').val(uploadedImages.join(','));
+        }
+
+        function submitHandler() {
+            // 设置公司名称
+            var name = $('#companyId').find('option:selected').data('name') || '';
+            $('#companyName').val(name);
+
+            if ($.validate.form()) {
+                $.operate.save(prefix + "/add", $('#form-checkIn-add').serialize());
+            }
+        }
+    </script>
+</body>
+
+</html>

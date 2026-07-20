@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.FireReportRecordMapper">
+    
+    <resultMap type="FireReportRecord" id="FireReportRecordResult">
+        <result property="reportId"    column="report_id"    />
+        <result property="taskId"    column="task_id"    />
+        <result property="taskName"    column="task_name"    />
+        <result property="reportName"    column="report_name"    />
+        <result property="filePath"    column="file_path"    />
+        <result property="fileSize"    column="file_size"    />
+        <result property="createBy"    column="create_by"    />
+        <result property="createTime"    column="create_time"    />
+        <result property="remark"    column="remark"    />
+    </resultMap>
+
+    <sql id="selectFireReportRecordVo">
+        select report_id, task_id, task_name, report_name, file_path, file_size, create_by, create_time, remark from fire_report_record
+    </sql>
+
+    <select id="selectFireReportRecordList" parameterType="FireReportRecord" resultMap="FireReportRecordResult">
+        <include refid="selectFireReportRecordVo"/>
+        <where>  
+            <if test="taskId != null "> and task_id = #{taskId}</if>
+            <if test="taskName != null  and taskName != ''"> and task_name like concat('%', #{taskName}, '%')</if>
+            <if test="reportName != null  and reportName != ''"> and report_name like concat('%', #{reportName}, '%')</if>
+        </where>
+        order by create_time desc
+    </select>
+    
+    <select id="selectFireReportRecordById" parameterType="Long" resultMap="FireReportRecordResult">
+        <include refid="selectFireReportRecordVo"/>
+        where report_id = #{reportId}
+    </select>
+        
+    <insert id="insertFireReportRecord" parameterType="FireReportRecord" useGeneratedKeys="true" keyProperty="reportId">
+        insert into fire_report_record
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="taskId != null">task_id,</if>
+            <if test="taskName != null">task_name,</if>
+            <if test="reportName != null and reportName != ''">report_name,</if>
+            <if test="filePath != null and filePath != ''">file_path,</if>
+            <if test="fileSize != null">file_size,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="remark != null">remark,</if>
+         </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="taskId != null">#{taskId},</if>
+            <if test="taskName != null">#{taskName},</if>
+            <if test="reportName != null and reportName != ''">#{reportName},</if>
+            <if test="filePath != null and filePath != ''">#{filePath},</if>
+            <if test="fileSize != null">#{fileSize},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="remark != null">#{remark},</if>
+         </trim>
+    </insert>
+
+    <update id="updateFireReportRecord" parameterType="FireReportRecord">
+        update fire_report_record
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="taskId != null">task_id = #{taskId},</if>
+            <if test="taskName != null">task_name = #{taskName},</if>
+            <if test="reportName != null and reportName != ''">report_name = #{reportName},</if>
+            <if test="filePath != null and filePath != ''">file_path = #{filePath},</if>
+            <if test="fileSize != null">file_size = #{fileSize},</if>
+            <if test="createBy != null">create_by = #{createBy},</if>
+            <if test="createTime != null">create_time = #{createTime},</if>
+            <if test="remark != null">remark = #{remark},</if>
+        </trim>
+        where report_id = #{reportId}
+    </update>
+
+    <delete id="deleteFireReportRecordById" parameterType="Long">
+        delete from fire_report_record where report_id = #{reportId}
+    </delete>
+
+    <delete id="deleteFireReportRecordByIds" parameterType="String">
+        delete from fire_report_record where report_id in 
+        <foreach item="reportId" collection="array" open="(" separator="," close=")">
+            #{reportId}
+        </foreach>
+    </delete>
+    
+</mapper>

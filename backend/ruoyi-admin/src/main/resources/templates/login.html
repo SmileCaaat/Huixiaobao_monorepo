@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>消防设备管理系统 - 登录</title>
+    <meta name="description" content="消防设备管理系统">
+    <link href="../static/css/bootstrap.min.css" th:href="@{/css/bootstrap.min.css}" rel="stylesheet" />
+    <link href="../static/css/font-awesome.min.css" th:href="@{/css/font-awesome.min.css}" rel="stylesheet" />
+    <link href="../static/css/style.min.css" th:href="@{/css/style.min.css}" rel="stylesheet" />
+    <link href="../static/ruoyi/css/ry-ui.css" th:href="@{/ruoyi/css/ry-ui.css?v=4.8.2}" rel="stylesheet" />
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <link rel="shortcut icon" href="../static/favicon.ico" th:href="@{favicon.ico}" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            position: relative;
+            overflow: hidden;
+            padding: 20px;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(ellipse at 10% 20%, rgba(220, 53, 69, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(253, 126, 20, 0.15) 0%, transparent 50%);
+            animation: backgroundPulse 8s ease-in-out infinite;
+        }
+
+        @keyframes backgroundPulse {
+
+            0%,
+            100% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .login-container {
+            display: flex;
+            max-width: 1000px;
+            width: 90%;
+            min-height: 550px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+            position: relative;
+            z-index: 2;
+        }
+
+        .login-left {
+            flex: 1;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 50%, #a71d2a 100%);
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-left::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 100%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
+            animation: rotateGradient 15s linear infinite;
+        }
+
+        @keyframes rotateGradient {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .login-left-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .login-left .fire-icon {
+            font-size: 80px;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 30px;
+            text-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            animation: fireGlow 2s ease-in-out infinite;
+        }
+
+        @keyframes fireGlow {
+
+            0%,
+            100% {
+                text-shadow: 0 5px 20px rgba(0, 0, 0, 0.2), 0 0 30px rgba(255, 193, 7, 0.3);
+            }
+
+            50% {
+                text-shadow: 0 5px 20px rgba(0, 0, 0, 0.2), 0 0 50px rgba(255, 193, 7, 0.6);
+            }
+        }
+
+        .login-left h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .login-left p {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.8;
+            margin-bottom: 30px;
+        }
+
+        .login-left .features {
+            list-style: none;
+        }
+
+        .login-left .features li {
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 12px;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .login-left .features li i {
+            margin-right: 12px;
+            font-size: 18px;
+            color: #ffc107;
+        }
+
+        .login-right {
+            flex: 1;
+            padding: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .login-right h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .login-right .subtitle {
+            color: #6c757d;
+            margin-bottom: 35px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #adb5bd;
+            font-size: 16px;
+            transition: color 0.3s;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 14px 20px 14px 45px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 15px;
+            transition: all 0.3s;
+            background: #f8f9fa;
+        }
+
+        .input-wrapper input:focus {
+            border-color: #dc3545;
+            background: white;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1);
+        }
+
+        .input-wrapper input:focus+i,
+        .input-wrapper:focus-within i {
+            color: #dc3545;
+        }
+
+        .captcha-wrapper {
+            display: flex;
+            gap: 15px;
+        }
+
+        .captcha-wrapper .input-wrapper {
+            flex: 1;
+        }
+
+        .captcha-wrapper img {
+            height: 50px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 2px solid #e9ecef;
+            transition: transform 0.3s;
+        }
+
+        .captcha-wrapper img:hover {
+            transform: scale(1.05);
+        }
+
+        .remember-me {
+            display: flex;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        .remember-me input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 10px;
+            accent-color: #dc3545;
+        }
+
+        .remember-me label {
+            color: #6c757d;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 20px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(220, 53, 69, 0.5);
+        }
+
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 25px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .register-link a {
+            color: #dc3545;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .beian-info {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 12px;
+            line-height: 1.8;
+            margin-top: 20px;
+            z-index: 2;
+            position: relative;
+        }
+
+        .beian-info a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .beian-info a:hover {
+            color: rgba(255, 255, 255, 1);
+            text-decoration: underline;
+        }
+
+        label.error {
+            position: inherit;
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                flex-direction: column;
+                min-height: auto;
+            }
+
+            .login-left {
+                padding: 30px;
+            }
+
+            .login-left .fire-icon {
+                font-size: 50px;
+            }
+
+            .login-left h1 {
+                font-size: 24px;
+            }
+
+            .login-left .features {
+                display: none;
+            }
+
+            .login-right {
+                padding: 30px;
+            }
+        }
+    </style>
+    <script>
+        if (window.top !== window.self) { alert('未登录或登录超时。请重新登录'); window.top.location = window.location };
+    </script>
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-left">
+            <div class="login-left-content">
+                <i class="fa fa-fire fire-icon"></i>
+                <h1>消防设备管理系统</h1>
+                <p>全方位消防设备监控与管理解决方案，保障您的消防安全。</p>
+                <ul class="features">
+                    <li><i class="fa fa-building-o"></i> 建筑信息智能管理</li>
+                    <li><i class="fa fa-fire-extinguisher"></i> 消防设备全生命周期管理</li>
+                    <li><i class="fa fa-bell-o"></i> 实时预警与故障提醒</li>
+                    <li><i class="fa fa-bar-chart"></i> 数据统计与可视化分析</li>
+                    <li><i class="fa fa-shield"></i> 多级权限安全管控</li>
+                </ul>
+            </div>
+        </div>
+        <div class="login-right">
+            <h2>欢迎登录</h2>
+            <p class="subtitle">请输入您的账号信息进行登录</p>
+            <form id="signupForm" autocomplete="off">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <div class="input-wrapper">
+                        <input type="text" name="username" placeholder="请输入用户名" />
+                        <i class="fa fa-user"></i>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <div class="input-wrapper">
+                        <input type="password" name="password" placeholder="请输入密码" />
+                        <i class="fa fa-lock"></i>
+                    </div>
+                </div>
+                <div class="form-group" th:if="${captchaEnabled==true}">
+                    <label>验证码</label>
+                    <div class="captcha-wrapper">
+                        <div class="input-wrapper">
+                            <input type="text" name="validateCode" class="code" placeholder="请输入验证码" maxlength="5" />
+                            <i class="fa fa-picture-o"></i>
+                        </div>
+                        <a href="javascript:void(0);" title="点击更换验证码">
+                            <img th:src="@{/captcha/captchaImage(type=${captchaType})}" class="imgcode" />
+                        </a>
+                    </div>
+                </div>
+                <div class="remember-me" th:if="${isRemembered}">
+                    <input type="checkbox" id="rememberme" name="rememberme">
+                    <label for="rememberme">记住我</label>
+                </div>
+                <button type="submit" class="btn-login" id="btnSubmit" data-loading="正在验证登录，请稍候...">
+                    <i class="fa fa-sign-in"></i> 登录系统
+                </button>
+            </form>
+            <div class="register-link" th:if="${isAllowRegister}">
+                还没有账号？ <a th:href="@{/register}">立即注册</a>
+            </div>
+        </div>
+    </div>
+    <!-- 备案信息 -->
+    <div class="beian-info">
+        <div>Copyright © 2026 消防设备管理系统 All Rights Reserved.</div>
+        <div style="margin-top: 5px;">
+            <a href="https://beian.miit.gov.cn/" target="_blank" rel="noreferrer">粤ICP备2026011749号-1</a>
+            <span style="margin: 0 8px;">|</span>
+            <a href="https://beian.mps.gov.cn/#/query/webSearch?code=44170202000450" rel="noreferrer" target="_blank">粤公网安备44170202000450号</a>
+        </div>
+    </div>
+    <script
+        th:inline="javascript">var ctx = [[@{/}]]; var captchaType = [[${ captchaType }]]; var captchaEnabled = [[${ captchaEnabled }]];</script>
+    <!--[if lte IE 8]><script>window.location.href=ctx+'html/ie.html';</script><![endif]-->
+    <script src="../static/js/jquery.min.js" th:src="@{/js/jquery.min.js}"></script>
+    <script src="../static/ajax/libs/validate/jquery.validate.min.js"
+        th:src="@{/ajax/libs/validate/jquery.validate.min.js}"></script>
+    <script src="../static/ajax/libs/layer/layer.min.js" th:src="@{/ajax/libs/layer/layer.min.js}"></script>
+    <script src="../static/ajax/libs/blockUI/jquery.blockUI.js"
+        th:src="@{/ajax/libs/blockUI/jquery.blockUI.js}"></script>
+    <script src="../static/ruoyi/js/ry-ui.js" th:src="@{/ruoyi/js/ry-ui.js?v=4.8.2}"></script>
+    <script src="../static/ruoyi/login.js" th:src="@{/ruoyi/login.js}"></script>
+</body>
+
+</html>

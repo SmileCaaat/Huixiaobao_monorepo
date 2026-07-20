@@ -1,0 +1,233 @@
+﻿<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+
+<head>
+    <th:block th:include="include :: header('维保签到列表')" />
+    <style>
+        .company-filter-tip {
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 4px;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+            color: #1890ff;
+        }
+
+        .company-filter-tip i {
+            margin-right: 5px;
+        }
+
+        .company-filter-tip a {
+            margin-left: 10px;
+            color: #1890ff;
+        }
+    </style>
+</head>
+
+<body class="gray-bg">
+    <div class="container-div">
+        <div class="row">
+            <!-- 公司过滤提示 -->
+            <div class="col-sm-12 company-filter-tip" id="companyFilterTip" style="display:none;">
+                <i class="fa fa-filter"></i>
+                <span>当前仅显示【<span id="filterCompanyName"></span>】的数据</span>
+                <a href="javascript:void(0)" onclick="clearCompanyFilter()"><i class="fa fa-times"></i> 清除筛选</a>
+            </div>
+
+            <div class="col-sm-12 search-collapse">
+                <form id="formId">
+                    <div class="select-list">
+                        <ul>
+                            <li>
+                                <label>所属客户：</label>
+                                <select name="companyId" id="companyId">
+                                    <option value="">所有公司</option>
+                                </select>
+                            </li>
+                            <li>
+                                <label>签到人：</label>
+                                <input type="text" name="userName" />
+                            </li>
+                            <li>
+                                <label>签到类型：</label>
+                                <select name="checkInType" th:with="type=${@dict.getType('fire_check_in_type')}">
+                                    <option value="">所有</option>
+                                    <option th:each="dict : ${type}" th:text="${dict.dictLabel}"
+                                        th:value="${dict.dictValue}"></option>
+                                </select>
+                            </li>
+                            <li class="select-time">
+                                <label>签到时间：</label>
+                                <input type="text" class="time-input" id="startTime" placeholder="开始时间"
+                                    name="params[beginTime]" />
+                                <span>-</span>
+                                <input type="text" class="time-input" id="endTime" placeholder="结束时间"
+                                    name="params[endTime]" />
+                            </li>
+                            <li>
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
+                                        class="fa fa-search"></i>&nbsp;搜索</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
+                                        class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+
+            <div class="btn-group-sm" id="toolbar" role="group">
+                <a class="btn btn-success" onclick="handleAdd()" shiro:hasPermission="fire:checkIn:add">
+                    <i class="fa fa-plus"></i> 新增
+                </a>
+                <a class="btn btn-danger" onclick="$.operate.removeAll()" shiro:hasPermission="fire:checkIn:remove">
+                    <i class="fa fa-remove"></i> 删除
+                </a>
+                <a class="btn btn-warning" onclick="$.table.exportExcel()" shiro:hasPermission="fire:checkIn:export">
+                    <i class="fa fa-download"></i> 导出
+                </a>
+            </div>
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table"></table>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var detailFlag = [[${@permission.hasPermi('fire:checkIn:detail') }]];
+        var editFlag = [[${@permission.hasPermi('fire:checkIn:edit') }]];
+        var removeFlag = [[${@permission.hasPermi('fire:checkIn:remove') }]];
+        var checkInTypeDatas = [[${@dict.getType('fire_check_in_type') }]];
+        var prefix = ctx + "fire/checkIn";
+
+        // 从URL获取公司参数
+        var urlParams = new URLSearchParams(window.location.search);
+        var filterCompanyId = urlParams.get('companyId');
+        var filterCompanyName = urlParams.get('companyName');
+
+        $(function () {
+            var options = {
+                url: prefix + "/list",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                detailUrl: prefix + "/detail/{id}",
+                removeUrl: prefix + "/remove",
+                exportUrl: prefix + "/export",
+                modalName: "维保签到",
+                columns: [{
+                    checkbox: true
+                },
+                {
+                    field: 'checkInId',
+                    title: 'ID',
+                    visible: false
+                },
+                {
+                    field: 'companyName',
+                    title: '所属客户',
+                    formatter: function (value, row, index) {
+                        return $.table.tooltip(value, 15);
+                    }
+                },
+                {
+                    field: 'taskName',
+                    title: '任务名称',
+                    formatter: function (value, row, index) {
+                        return $.table.tooltip(value, 30);
+                    }
+                },
+                {
+                    field: 'userName',
+                    title: '签到人'
+                },
+                {
+                    field: 'checkInTime',
+                    title: '签到时间'
+                },
+                {
+                    field: 'checkInType',
+                    title: '签到类型',
+                    formatter: function (value, row, index) {
+                        return $.table.selectDictLabel(checkInTypeDatas, value);
+                    }
+                },
+                {
+                    field: 'address',
+                    title: '签到地址',
+                    formatter: function (value, row, index) {
+                        return $.table.tooltip(value, 30);
+                    }
+                },
+                {
+                    field: 'remark',
+                    title: '备注'
+                },
+                {
+                    title: '操作',
+                    align: 'center',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.checkInId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+                        actions.push('<a class="btn btn-info btn-xs ' + detailFlag + '" href="javascript:void(0)" onclick="$.operate.detail(\'' + row.checkInId + '\')"><i class="fa fa-eye"></i>详情</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.checkInId + '\')"><i class="fa fa-remove"></i>删除</a>');
+                        return actions.join('');
+                    }
+                }]
+            };
+            $.table.init(options);
+
+            // 加载公司下拉列表
+            loadCompanyList();
+
+            // 如果有URL参数，自动设置并显示提示
+            if (filterCompanyId) {
+                $('#companyFilterTip').show();
+                $('#filterCompanyName').text(decodeURIComponent(filterCompanyName || ''));
+            }
+        });
+
+        // 加载公司列表
+        function loadCompanyList() {
+            $.ajax({
+                url: ctx + 'fire/company/all',
+                type: 'POST',
+                success: function (res) {
+                    if (res.code == 0 && res.data) {
+                        var html = '<option value="">所有公司</option>';
+                        res.data.forEach(function (company) {
+                            var selected = filterCompanyId && company.companyId == filterCompanyId ? ' selected' : '';
+                            html += '<option value="' + company.companyId + '"' + selected + '>' + company.companyName + '</option>';
+                        });
+                        $('#companyId').html(html);
+
+                        // 如果有URL参数，自动搜索
+                        if (filterCompanyId) {
+                            $.table.search();
+                        }
+                    }
+                }
+            });
+        }
+
+        // 清除公司筛选
+        function clearCompanyFilter() {
+            filterCompanyId = null;
+            filterCompanyName = null;
+            $('#companyId').val('');
+            $('#companyFilterTip').hide();
+            var newUrl = window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+            $.table.search();
+        }
+
+        // 新增时带上公司参数
+        function handleAdd() {
+            var url = prefix + "/add";
+            if (filterCompanyId) {
+                url += "?companyId=" + filterCompanyId + "&companyName=" + encodeURIComponent(filterCompanyName || '');
+            }
+            $.modal.open("新增签到", url);
+        }
+    </script>
+</body>
+
+</html>

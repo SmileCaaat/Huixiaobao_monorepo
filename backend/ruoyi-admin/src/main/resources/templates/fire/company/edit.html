@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('修改维保客户')" />
+    <style>
+        .wrapper.wrapper-content.animated.fadeInRight.ibox-content {
+            padding: 2px 4px 0;
+        }
+
+        .wizard-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            padding: 10px 14px;
+            border: 1px solid #e5e6e7;
+            background: #fff;
+        }
+
+        .wizard-step {
+            position: relative;
+            flex: 1;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .wizard-step:not(:last-child)::after {
+            content: "";
+            position: absolute;
+            top: 14px;
+            left: 56px;
+            right: 18px;
+            height: 1px;
+            background: #dcdfe6;
+        }
+
+        .wizard-step .step-no {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            border-radius: 50%;
+            margin-right: 8px;
+            background: #dcdfe6;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .wizard-step.active {
+            color: #333;
+        }
+
+        .wizard-step.active .step-no {
+            background: #1c84c6;
+        }
+
+        .panel-wrap {
+            border: 1px solid #e5e6e7;
+            background: #fff;
+            overflow-x: auto;
+        }
+
+        .entry-table {
+            margin-bottom: 0;
+            table-layout: fixed;
+        }
+
+        .entry-table > tbody > tr > th,
+        .entry-table > tbody > tr > td {
+            padding: 5px 6px;
+            vertical-align: middle;
+        }
+
+        .entry-table .label-cell {
+            width: 8.5%;
+            text-align: right;
+            font-weight: normal;
+            background: #fafafa;
+            color: #333;
+        }
+
+        .entry-table .value-cell {
+            width: 41.5%;
+            background: #fff;
+        }
+
+        .entry-table .full-cell {
+            width: 91.5%;
+            background: #fff;
+        }
+
+        .entry-table .form-control {
+            height: 32px;
+            padding: 4px 8px;
+        }
+
+        .entry-table textarea.form-control {
+            height: auto;
+            min-height: 62px;
+        }
+
+        .group-row td {
+            padding: 8px 12px !important;
+            background: #f7fbff !important;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1c84c6;
+        }
+
+        #buildingContainer {
+            width: 100%;
+            display: block;
+        }
+
+        .building-item-table {
+            table-layout: fixed;
+            width: 100% !important;
+        }
+
+        .building-item-table th.label-cell {
+            width: 12% !important;
+            background: #f4f7fa;
+        }
+
+        .building-item-table td.value-cell {
+            width: 21.33% !important;
+        }
+
+        .required-mark {
+            color: #ed5565;
+            margin-left: 4px;
+        }
+
+        .inline-radio {
+            display: inline-block;
+            margin-right: 12px;
+            font-weight: normal;
+        }
+
+        .inline-radio input {
+            margin-right: 4px;
+            vertical-align: middle;
+        }
+
+        .region-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .region-group .form-control {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .copy-group .form-control,
+        .choose-group .form-control {
+            border-right: 0;
+        }
+
+        .copy-group .input-group-btn .btn,
+        .choose-group .input-group-btn .btn {
+            border-left: 0;
+        }
+
+        .multi-hint {
+            color: #999;
+            margin-left: 8px;
+            font-size: 12px;
+        }
+
+        .standard-wrap {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .standard-wrap .form-control {
+            flex: 0 0 620px;
+            max-width: 100%;
+        }
+
+        .standard-tip {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .content-grid {
+            display: flex;
+            flex-wrap: wrap;
+            border: 1px solid #e5e6e7;
+            border-bottom: 0;
+        }
+
+        .content-grid label {
+            display: flex;
+            align-items: center;
+            width: 16.6667%;
+            min-height: 34px;
+            padding: 0 10px;
+            margin: 0;
+            border-right: 1px solid #e5e6e7;
+            border-bottom: 1px solid #e5e6e7;
+            font-weight: normal;
+        }
+
+        .content-grid label:nth-child(6n) {
+            border-right: 0;
+        }
+
+        .content-grid input {
+            margin-right: 5px;
+        }
+
+        .scheme-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .scheme-box .btn {
+            min-width: 70px;
+        }
+
+        .scheme-file {
+            width: 180px;
+            background: #fff;
+        }
+
+        .textarea-box {
+            width: 100%;
+            min-height: 56px;
+            resize: vertical;
+        }
+
+        .footer-note {
+            padding: 12px 14px;
+            border-top: 1px solid #e5e6e7;
+            background: #fafafa;
+            color: #333;
+        }
+
+        .footer-note strong {
+            margin-right: 6px;
+        }
+
+        @media (max-width: 1400px) {
+            .content-grid label {
+                width: 20%;
+            }
+
+            .content-grid label:nth-child(6n) {
+                border-right: 1px solid #e5e6e7;
+            }
+
+            .content-grid label:nth-child(5n) {
+                border-right: 0;
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .content-grid label {
+                width: 25%;
+            }
+
+            .content-grid label:nth-child(6n),
+            .content-grid label:nth-child(5n) {
+                border-right: 1px solid #e5e6e7;
+            }
+
+            .content-grid label:nth-child(4n) {
+                border-right: 0;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .wizard-bar {
+                display: block;
+                padding: 12px 16px;
+            }
+
+            .wizard-step {
+                margin-bottom: 8px;
+            }
+
+            .wizard-step:not(:last-child)::after {
+                display: none;
+            }
+
+            .entry-table,
+            .entry-table tbody,
+            .entry-table tr,
+            .entry-table th,
+            .entry-table td {
+                display: block;
+                width: 100% !important;
+            }
+
+            .entry-table .label-cell {
+                text-align: left;
+                border-bottom: 0;
+            }
+
+            .region-group {
+                display: block;
+            }
+
+            .region-group .form-control {
+                margin-bottom: 8px;
+            }
+
+            .content-grid label {
+                width: 50%;
+            }
+
+            .content-grid label:nth-child(4n) {
+                border-right: 1px solid #e5e6e7;
+            }
+
+            .content-grid label:nth-child(2n) {
+                border-right: 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="gray-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-company-edit" th:object="${company}">
+            <input type="hidden" th:field="*{companyId}">
+            <input type="hidden" th:field="*{companyType}">
+            <input type="hidden" th:field="*{status}">
+            <input type="hidden" name="signRequirement" th:value="${company.signRequirement != null and company.signRequirement != '' ? company.signRequirement : '0'}">
+            <input type="hidden" th:field="*{maintenanceContent}" id="maintenanceContent">
+            <input type="hidden" th:field="*{maintenanceSchemeName}" id="maintenanceSchemeName">
+            <input type="hidden" th:field="*{maintenanceSchemePath}" id="maintenanceSchemePath">
+
+            <div class="wizard-bar">
+                <div class="wizard-step active"><span class="step-no">1</span>客户</div>
+                <div class="wizard-step"><span class="step-no">2</span>合同</div>
+                <div class="wizard-step"><span class="step-no">3</span>计划</div>
+                <div class="wizard-step"><span class="step-no">4</span>APP执业</div>
+            </div>
+
+            <div class="panel-wrap">
+                <table class="table table-bordered entry-table">
+                    <tbody>
+                        <tr class="group-row">
+                            <td colspan="4">基础信息</td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">重点单位:</th>
+                            <td class="value-cell">
+                                <label class="inline-radio"><input type="radio" name="isKeyUnit" value="1" th:checked="${company.isKeyUnit == '1'}">是</label>
+                                <label class="inline-radio"><input type="radio" name="isKeyUnit" value="0" th:checked="${company.isKeyUnit == null or company.isKeyUnit == '0'}">否</label>
+                                <span class="required-mark">*</span>
+                            </td>
+                            <th class="label-cell">录入单位:</th>
+                            <td class="value-cell">
+                                <input class="form-control" type="text" value="Admin" readonly>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">所属区域:</th>
+                            <td class="full-cell" colspan="3">
+                                <div class="region-group">
+                                    <input th:field="*{province}" class="form-control" type="text" maxlength="50" placeholder="省">
+                                    <input th:field="*{city}" class="form-control" type="text" maxlength="50" placeholder="市">
+                                    <input th:field="*{district}" class="form-control" type="text" maxlength="50" placeholder="区县">
+                                </div>
+                                <span class="required-mark">*</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">企业名称:</th>
+                            <td class="value-cell">
+                                <input th:field="*{companyName}" id="companyName" class="form-control" type="text" maxlength="200" required placeholder="请输入企业名称">
+                                <span class="required-mark">*</span>
+                            </td>
+                            <th class="label-cell">项目名称:</th>
+                            <td class="value-cell">
+                                <div class="input-group copy-group">
+                                    <input th:field="*{projectName}" id="projectName" class="form-control" type="text" maxlength="200" placeholder="请输入项目名称">
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-primary" onclick="copyProjectName()">复制项目</button>
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">项目地址:</th>
+                            <td class="value-cell">
+                                <input th:field="*{address}" class="form-control" type="text" maxlength="500" placeholder="请输入项目地址">
+                                <span class="required-mark">*</span>
+                            </td>
+                            <th class="label-cell">统一社会信用代码:</th>
+                            <td class="value-cell">
+                                <input th:field="*{creditCode}" class="form-control" type="text" maxlength="50" placeholder="请输入统一社会信用代码">
+                                <span class="required-mark">*</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">消防安全管理员:</th>
+                            <td class="value-cell">
+                                <input th:field="*{contactPerson}" class="form-control" type="text" maxlength="50" placeholder="请输入消防安全管理员">
+                                <span class="required-mark">*</span>
+                            </td>
+                            <th class="label-cell">手机号码(报告签收):</th>
+                            <td class="value-cell">
+                                <input th:field="*{contactPhone}" class="form-control" type="text" maxlength="20" placeholder="请输入手机号码">
+                                <span class="required-mark">*</span>
+                                <span class="multi-hint">多个手机号用英文逗号分隔</span>
+                            </td>
+                        </tr>
+                        <tr class="group-row">
+                            <td colspan="4">建筑信息 <span style="font-weight:normal;font-size:12px;color:#999;">（可添加多个建筑，信息将同步全量更新入建筑管理）</span></td>
+                        </tr>
+                        <tr>
+                            <td colspan="4" style="padding:10px;">
+                                <div id="buildingContainer" style="width: 100%;">
+                                </div>
+                                <button type="button" class="btn btn-default btn-sm building-add-btn" onclick="addBuildingRow()" style="margin:6px 0;">
+                                    <i class="fa fa-plus"></i> 添加建筑
+                                </button>
+                            </td>
+                        </tr>
+                        <tr class="group-row">
+                            <td colspan="4">维保信息</td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">维保标准:</th>
+                            <td class="full-cell" colspan="3">
+                                <div class="standard-wrap">
+                                    <input th:field="*{maintenanceStandard}" class="form-control" type="text">
+                                    <span class="required-mark">*</span>
+                                    <span class="standard-tip">当前按保存值回显，未填时会使用默认标准</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">维保内容:</th>
+                            <td class="full-cell" colspan="3">
+                                <div class="content-grid">
+                                    <label><input class="maintenance-content-item" type="checkbox" value="消防供配电设施">消防供配电设施</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="火灾自动报警系统">火灾自动报警系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="电气火灾监控系统">电气火灾监控系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="可燃气体探测报警系统">可燃气体探测报警系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="消防供水设施">消防供水设施</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="消火栓（消防炮）灭火系统">消火栓（消防炮）灭火系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="自动喷水灭火系统">自动喷水灭火系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="泡沫灭火系统">泡沫灭火系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="气体灭火系统">气体灭火系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="防排烟系统">防排烟系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="消防应急照明和疏散指示标志">消防应急照明和疏散指示标志</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="应急广播系统">应急广播系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="消防专用电话">消防专用电话</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="防火分隔设施">防火分隔设施</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="消防电梯系统">消防电梯系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="细水雾灭火系统">细水雾灭火系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="干粉灭火系统">干粉灭火系统</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="灭火器">灭火器</label>
+                                    <label><input class="maintenance-content-item" type="checkbox" value="其他">其他</label>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">项目概况:</th>
+                            <td class="value-cell">
+                                <textarea th:field="*{projectOverview}" class="form-control textarea-box" rows="3" maxlength="1000" placeholder="请输入项目概况"></textarea>
+                                <span class="required-mark">*</span>
+                            </td>
+                            <th class="label-cell">报告模式:</th>
+                            <td class="value-cell">
+                                <label class="inline-radio"><input type="radio" name="reportMode" value="0" th:checked="${company.reportMode == null or company.reportMode == '0'}">线上</label>
+                                <label class="inline-radio"><input type="radio" name="reportMode" value="1" th:checked="${company.reportMode == '1'}">线下</label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">维保方案:</th>
+                            <td class="value-cell">
+                                <div class="scheme-box">
+                                    <input id="schemeFileName" class="form-control scheme-file" type="text" th:value="*{maintenanceSchemeName}" readonly placeholder="未上传维保方案">
+                                    <button type="button" class="btn btn-default" onclick="triggerSchemeUpload()">上传</button>
+                                    <a class="btn btn-primary"
+                                       href="https://www.kdocs.cn/office/w/cjU82kXJBUGX?sub_file_id=LQUL6NRGAAQGE&attachment_store_type=upload_ks3&disablePlugins&readonly"
+                                       target="_blank">方案模板</a>
+                                    <a id="previewSchemeBtn" href="javascript:void(0)" onclick="previewSchemeFile()"
+                                       th:style="${company.maintenanceSchemePath != null and company.maintenanceSchemePath != ''} ? 'display:inline-block;' : 'display:none;'">查看</a>
+                                    <a id="removeSchemeBtn" href="javascript:void(0)" onclick="removeSchemeFile()"
+                                       th:style="${company.maintenanceSchemePath != null and company.maintenanceSchemePath != ''} ? 'display:inline-block;' : 'display:none;'">删除</a>
+                                    <span class="multi-hint">10M以内文件</span>
+                                </div>
+                                <input type="file" id="schemeUploadInput" style="display: none;" onchange="uploadSchemeFile(this)">
+                            </td>
+                            <th class="label-cell">技术负责人:</th>
+                            <td class="value-cell">
+                                <input th:field="*{technicalLeaderName}" class="form-control" type="text" maxlength="50" placeholder="请输入技术负责人">
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">项目负责人:</th>
+                            <td class="value-cell">
+                                <input th:field="*{projectLeaderName}" class="form-control" type="text" maxlength="50" placeholder="请输入项目负责人">
+                            </td>
+                            <th class="label-cell">物业管理单位:</th>
+                            <td class="value-cell">
+                                <input th:field="*{propertyManageUnit}" class="form-control" type="text" maxlength="200" placeholder="请输入物业管理单位">
+                            </td>
+                        </tr>
+                        <tr class="group-row">
+                            <td colspan="4">打卡配置</td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">打卡地址:</th>
+                            <td class="value-cell">
+                                <div class="input-group choose-group">
+                                    <input id="checkInAddress" th:field="*{checkInAddress}" class="form-control" type="text" maxlength="500" placeholder="请输入打卡地址">
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-primary" onclick="selectMap()">选择位置</button>
+                                    </span>
+                                </div>
+                            </td>
+                            <th class="label-cell">打卡范围(米):</th>
+                            <td class="value-cell">
+                                <input name="checkInRadius" class="form-control" type="number" min="1"
+                                       th:value="${company.checkInRadius != null ? company.checkInRadius : 500}" placeholder="默认500米">
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">打卡经度:</th>
+                            <td class="value-cell">
+                                <input id="checkInLongitude" th:field="*{checkInLongitude}" class="form-control" type="number" step="0.000001" placeholder="例如 113.264385">
+                            </td>
+                            <th class="label-cell">打卡纬度:</th>
+                            <td class="value-cell">
+                                <input id="checkInLatitude" th:field="*{checkInLatitude}" class="form-control" type="number" step="0.000001" placeholder="例如 23.129112">
+                            </td>
+                        </tr>
+                        <tr class="group-row">
+                            <td colspan="4">其他信息</td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">客户简称:</th>
+                            <td class="value-cell">
+                                <input th:field="*{shortName}" class="form-control" type="text" maxlength="100" placeholder="请输入客户简称">
+                            </td>
+                            <th class="label-cell">联系邮箱:</th>
+                            <td class="value-cell">
+                                <input th:field="*{contactEmail}" class="form-control" type="email" maxlength="100" placeholder="请输入联系邮箱">
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">备注:</th>
+                            <td class="full-cell" colspan="3">
+                                <textarea th:field="*{remark}" class="form-control textarea-box" rows="3" maxlength="500" placeholder="请输入备注"></textarea>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="text-center" style="padding: 16px 0 8px;">
+                    <button type="button" class="btn btn-primary" onclick="submitHandler()">保存</button>
+                </div>
+
+                <div class="footer-note">
+                    <strong>说明:</strong>
+                    1、保留现有经纬度打卡配置，不影响原有接口保存逻辑。 2、录入单位当前固定为 Admin。 3、维保方案支持替换上传并保存路径。
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/company";
+
+        $(function () {
+            fillMaintenanceContent();
+        });
+
+        $("#form-company-edit").validate({
+            focusCleanup: true,
+            rules: {
+                companyName: {
+                    required: true
+                }
+            }
+        });
+
+        function copyProjectName() {
+            $("#projectName").val($.trim($("#companyName").val()));
+        }
+
+        function fillMaintenanceContent() {
+            var saved = $("#maintenanceContent").val();
+            if ($.common.isEmpty(saved)) {
+                return;
+            }
+            var values = saved.split(",");
+            $(".maintenance-content-item").each(function () {
+                if ($.inArray($(this).val(), values) >= 0) {
+                    $(this).prop("checked", true);
+                }
+            });
+        }
+
+        function syncMaintenanceContent() {
+            var values = [];
+            $(".maintenance-content-item:checked").each(function () {
+                values.push($(this).val());
+            });
+            $("#maintenanceContent").val(values.join(","));
+        }
+
+        function triggerSchemeUpload() {
+            $("#schemeUploadInput").click();
+        }
+
+        function uploadSchemeFile(input) {
+            if (!input.files || !input.files[0]) {
+                return;
+            }
+            var formData = new FormData();
+            formData.append("file", input.files[0]);
+            $.ajax({
+                url: ctx + "common/upload",
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (res) {
+                    if (res.code === 0) {
+                        $("#maintenanceSchemeName").val(res.originalFilename);
+                        $("#maintenanceSchemePath").val(res.fileName);
+                        $("#schemeFileName").val(res.originalFilename);
+                        $("#previewSchemeBtn").show();
+                        $("#removeSchemeBtn").show();
+                    } else {
+                        $.modal.alertError(res.msg);
+                    }
+                    $(input).val("");
+                }
+            });
+        }
+
+        function previewSchemeFile() {
+            var path = $("#maintenanceSchemePath").val();
+            if ($.common.isEmpty(path)) {
+                $.modal.alertWarning("请先上传维保方案");
+                return;
+            }
+            window.open(normalizeResourceUrl(path), "_blank");
+        }
+
+        function removeSchemeFile() {
+            $("#maintenanceSchemeName").val("");
+            $("#maintenanceSchemePath").val("");
+            $("#schemeFileName").val("");
+            $("#previewSchemeBtn").hide();
+            $("#removeSchemeBtn").hide();
+        }
+
+        function normalizeResourceUrl(path) {
+            if (path.indexOf("http") === 0) {
+                return path;
+            }
+            if (ctx.charAt(ctx.length - 1) === "/" && path.charAt(0) === "/") {
+                return ctx + path.substring(1);
+            }
+            if (ctx.charAt(ctx.length - 1) !== "/" && path.charAt(0) !== "/") {
+                return ctx + "/" + path;
+            }
+            return ctx + path;
+        }
+
+        window.mapCallback = function (lng, lat, address) {
+            $("#checkInLongitude").val(lng);
+            $("#checkInLatitude").val(lat);
+            $("#checkInAddress").val(address);
+        };
+
+        function selectMap() {
+            layer.open({
+                type: 2,
+                title: "选择地址",
+                maxmin: true,
+                shadeClose: false,
+                area: ["800px", "600px"],
+                content: prefix + "/map"
+            });
+        }
+
+        var buildingRowIndex = 0;
+        var buildingTypeOptions = (function() {
+            var list = [[${@dict.getType('fire_building_type')}]];
+            var html = '<option value="">--请选择--</option>';
+            if (list && list.length) {
+                list.forEach(function(d) {
+                    html += '<option value="' + d.dictValue + '">' + d.dictLabel + '</option>';
+                });
+            }
+            return html;
+        })();
+
+        var fireLevelOptions = (function() {
+            var list = [[${@dict.getType('fire_level')}]];
+            var html = '<option value="">--请选择--</option>';
+            if (list && list.length) {
+                list.forEach(function(d) {
+                    html += '<option value="' + d.dictValue + '">' + d.dictLabel + '</option>';
+                });
+            }
+            return html;
+        })();
+
+        function addBuildingRow(data) {
+            var idx = buildingRowIndex++;
+            var n = 'buildingList[' + idx + '].';
+            data = data || {};
+            
+            function val(v) { return v != null ? v : ''; }
+            
+            var bTypeOpts = buildingTypeOptions;
+            if (data.buildingType) {
+                bTypeOpts = bTypeOpts.replace('value="' + data.buildingType + '"', 'value="' + data.buildingType + '" selected');
+            }
+            var fLevelOpts = fireLevelOptions;
+            if (data.fireLevel) {
+                fLevelOpts = fLevelOpts.replace('value="' + data.fireLevel + '"', 'value="' + data.fireLevel + '" selected');
+            }
+            // 自动消防设施特殊处理
+            var auto1 = data.autoFireSystem == '1' ? 'selected' : '';
+            var auto0 = data.autoFireSystem == '0' ? 'selected' : '';
+            if(!auto1 && !auto0) auto1 = 'selected'; // 默认
+            
+            var html = '<table class="table table-bordered entry-table building-item-table" id="brow_' + idx + '" style="width:100%; margin-bottom:15px; border:2px solid #aec2cf;">' +
+                '<tbody>' +
+                '<tr>' +
+                    '<th class="label-cell" style="width:10%;">建筑名称:</th>' +
+                    '<td class="value-cell" style="width:23%;"><input type="text" name="' + n + 'buildingName" value="' + val(data.buildingName) + '" class="form-control" placeholder="建筑名称"></td>' +
+                    '<th class="label-cell" style="width:10%;">建筑地址:</th>' +
+                    '<td class="value-cell" style="width:23%;"><input type="text" name="' + n + 'address" value="' + val(data.address) + '" class="form-control" placeholder="建筑地址"></td>' +
+                    '<th class="label-cell" style="width:10%;">建筑类别:</th>' +
+                    '<td class="value-cell" style="width:20%;"><select name="' + n + 'buildingType" class="form-control">' + bTypeOpts + '</select></td>' +
+                    '<td rowspan="4" style="width:4%;text-align:center;vertical-align:middle;background:#fef5f5;">' +
+                        '<button type="button" class="del-btn" onclick="removeBuildingRow(' + idx + ')" title="删除建筑" style="color:#d9534f;border:none;background:transparent;font-size:18px;"><i class="fa fa-trash"></i></button>' +
+                    '</td>' +
+                '</tr>' +
+                '<tr>' +
+                    '<th class="label-cell">自动消防设施:</th>' +
+                    '<td class="value-cell"><select name="' + n + 'autoFireSystem" class="form-control"><option value="1" '+auto1+'>有</option><option value="0" '+auto0+'>无</option></select></td>' +
+                    '<th class="label-cell">占地面积(㎡):</th>' +
+                    '<td class="value-cell"><input type="number" name="' + n + 'landArea" value="' + val(data.landArea) + '" class="form-control" step="0.01" min="0" placeholder="面积"></td>' +
+                    '<th class="label-cell">建筑面积(㎡):</th>' +
+                    '<td class="value-cell"><input type="number" name="' + n + 'area" value="' + val(data.area) + '" class="form-control" step="0.01" min="0" placeholder="面积"></td>' +
+                '</tr>' +
+                '<tr>' +
+                    '<th class="label-cell">楼层数(层):</th>' +
+                    '<td class="value-cell">' + 
+                        '<div style="display:flex;gap:4px;">' +
+                            '<input type="number" name="' + n + 'floorCount" value="' + val(data.floorCount) + '" class="form-control" min="0" placeholder="总层数">' +
+                            '<input type="number" name="' + n + 'buildingHeight" value="' + val(data.buildingHeight) + '" class="form-control" step="0.01" min="0" placeholder="高度(m)">' +
+                        '</div>' +
+                    '</td>' +
+                    '<th class="label-cell">出入口/楼梯:</th>' +
+                    '<td class="value-cell">' +
+                        '<div style="display:flex;gap:4px;">' +
+                            '<input type="number" name="' + n + 'emergencyExits" value="' + val(data.emergencyExits) + '" class="form-control" min="0" placeholder="出口">' +
+                            '<input type="number" name="' + n + 'evacuationStairs" value="' + val(data.evacuationStairs) + '" class="form-control" min="0" placeholder="楼梯">' +
+                        '</div>' +
+                    '</td>' +
+                    '<th class="label-cell">其它设施:</th>' +
+                    '<td class="value-cell">' +
+                        '<div style="display:flex;gap:4px;">' +
+                            '<input type="number" name="' + n + 'fireElevators" value="' + val(data.fireElevators) + '" class="form-control" min="0" placeholder="消防电梯">' +
+                            '<input type="text" name="' + n + 'refugeFloor" value="' + val(data.refugeFloor) + '" class="form-control" placeholder="避难层">' +
+                        '</div>' +
+                    '</td>' +
+                '</tr>' +
+                '<tr>' +
+                    '<th class="label-cell">地上地下层:</th>' +
+                    '<td class="value-cell">' +
+                        '<div style="display:flex;gap:4px;">' +
+                            '<input type="number" name="' + n + 'aboveGroundFloors" value="' + val(data.aboveGroundFloors) + '" class="form-control" min="0" placeholder="地上">' +
+                            '<input type="number" name="' + n + 'undergroundFloors" value="' + val(data.undergroundFloors) + '" class="form-control" min="0" placeholder="地下">' +
+                        '</div>' +
+                    '</td>' +
+                    '<th class="label-cell">消防等级:</th>' +
+                    '<td class="value-cell"><select name="' + n + 'fireLevel" class="form-control">' + fLevelOpts + '</select></td>' +
+                    '<th class="label-cell">建筑联系人:</th>' +
+                    '<td class="value-cell">' +
+                        '<div style="display:flex;gap:4px;">' +
+                            '<input type="text" name="' + n + 'contactPerson" value="' + val(data.contactPerson) + '" class="form-control" placeholder="姓名">' +
+                            '<input type="text" name="' + n + 'contactPhone" value="' + val(data.contactPhone) + '" class="form-control" placeholder="电话">' +
+                        '</div>' +
+                    '</td>' +
+                '</tr>' +
+                '</tbody>' +
+                '</table>';
+            
+            $('#buildingContainer').append(html);
+        }
+
+        function removeBuildingRow(idx) {
+            $('#brow_' + idx).remove();
+        }
+        
+        // 渲染已有的建筑列表
+        var existList = [[${buildingList}]];
+        if (existList && existList.length > 0) {
+            for(var i=0; i<existList.length; i++) {
+                addBuildingRow(existList[i]);
+            }
+        }
+
+        function submitHandler() {
+            syncMaintenanceContent();
+            if ($.validate.form()) {
+                $.operate.save(prefix + "/edit", $("#form-company-edit").serialize());
+            }
+        }
+    </script>
+</body>
+
+</html>

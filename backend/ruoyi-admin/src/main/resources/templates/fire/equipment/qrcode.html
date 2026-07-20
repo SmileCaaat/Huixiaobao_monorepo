@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('设备二维码')" />
+    <style>
+        .qrcode-container {
+            text-align: center;
+            padding: 15px;
+        }
+
+        .qrcode-box {
+            display: inline-block;
+            background: #fff;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .qrcode-img {
+            width: 180px;
+            height: 180px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .equipment-info {
+            margin-top: 12px;
+            color: #333;
+        }
+
+        .equipment-info h4 {
+            font-size: 14px;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+
+        .equipment-info p {
+            font-size: 12px;
+            color: #666;
+            margin: 3px 0;
+        }
+
+        .action-buttons {
+            margin-top: 15px;
+        }
+
+        .action-buttons .btn {
+            padding: 6px 15px;
+            font-size: 12px;
+        }
+
+        .tip-text {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #999;
+        }
+    </style>
+</head>
+
+<body class="white-bg">
+    <div class="qrcode-container">
+        <div class="qrcode-box">
+            <img id="qrcodeImg" class="qrcode-img" th:src="@{'data:image/png;base64,' + ${qrBase64}}" alt="设备二维码">
+            <div class="equipment-info">
+                <h4 th:text="${equipment.equipmentName}">设备名称</h4>
+                <p><i class="fa fa-barcode"></i> <span th:text="${equipment.equipmentCode}">EQ001</span></p>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button type="button" class="btn btn-primary btn-sm" onclick="downloadQrCode()">
+                <i class="fa fa-download"></i> 下载
+            </button>
+            <button type="button" class="btn btn-success btn-sm" onclick="copyUrl()">
+                <i class="fa fa-copy"></i> 复制链接
+            </button>
+        </div>
+
+        <p class="tip-text">
+            <i class="fa fa-info-circle"></i> 扫码获取设备JSON数据
+        </p>
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var equipmentId = [[${ equipment.equipmentId }]];
+        var qrUrl = [[${ qrUrl }]];
+        var prefix = ctx + "fire/equipment";
+
+        function downloadQrCode() {
+            window.location.href = prefix + "/qrcode/download/" + equipmentId;
+        }
+
+        function copyUrl() {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(qrUrl).then(function () {
+                    $.modal.msgSuccess("链接已复制");
+                });
+            } else {
+                var textarea = document.createElement('textarea');
+                textarea.value = qrUrl;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                $.modal.msgSuccess("链接已复制");
+            }
+        }
+    </script>
+</body>
+
+</html>

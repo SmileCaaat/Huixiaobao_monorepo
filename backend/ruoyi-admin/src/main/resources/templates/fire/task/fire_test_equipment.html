@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('消防测试检查项')" />
+    <th:block th:include="include :: bootstrap-fileinput-css" />
+    <style>
+        .detail-container {
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        .equipment-header {
+            background: linear-gradient(135deg, #e65100, #ff9800);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .equipment-header h3 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .equipment-header h3 i {
+            margin-right: 10px;
+        }
+
+        .check-list {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .check-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.3s;
+        }
+
+        .check-item:last-child {
+            border-bottom: none;
+        }
+
+        .check-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .check-info {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .check-info:hover {
+            opacity: 0.8;
+        }
+
+        .check-name {
+            font-size: 15px;
+            color: #333;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .check-code {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .check-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .status-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .status-btn:hover {
+            opacity: 0.8;
+        }
+
+        .status-btn.active {
+            font-weight: bold;
+            border-width: 2px;
+        }
+
+        .status-btn.btn-normal {
+            color: #28a745;
+            border-color: #28a745;
+        }
+
+        .status-btn.btn-normal.active {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-btn.btn-fault {
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .status-btn.btn-fault.active {
+            background: #dc3545;
+            color: white;
+        }
+
+        .status-btn.btn-nodevice {
+            color: #ffc107;
+            border-color: #ffc107;
+        }
+
+        .status-btn.btn-nodevice.active {
+            background: #ffc107;
+            color: white;
+        }
+
+        .fault-desc-area {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #e0e0e0;
+            display: none;
+        }
+
+        .fault-desc-area.show {
+            display: block;
+        }
+
+        .fault-desc-area textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .fault-desc-area .btn-save {
+            margin-top: 8px;
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+
+        .btn-toolbar {
+            margin-bottom: 15px;
+        }
+
+        .btn-toolbar .btn {
+            margin-right: 10px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+        }
+
+        .no-data i {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+
+<body class="gray-bg">
+    <div class="detail-container">
+        <div class="equipment-header">
+            <h3><i class="fa fa-fire-extinguisher"></i> <span th:text="${equipment.itemName}">设备名称</span></h3>
+        </div>
+
+        <div class="btn-toolbar">
+            <a class="btn btn-default" onclick="goBack()"><i class="fa fa-arrow-left"></i> 返回</a>
+        </div>
+
+        <div class="check-list" id="checkList">
+            <div th:each="item : ${checkItems}" class="check-item" th:data-id="${item.recordId}"
+                th:data-name="${item.itemName}" th:data-result="${item.checkResult}"
+                th:data-desc="${item.faultDescription}">
+                <div class="check-header">
+                    <div class="check-info" onclick="openCheckDetailFromCard(this)">
+                        <div class="check-name" th:text="${item.itemName}">检查项名称</div>
+                        <div class="check-code" th:text="${item.itemCode}">检查项编码</div>
+                    </div>
+                    <div class="check-actions">
+                        <button type="button" class="status-btn btn-normal"
+                            th:classappend="${item.checkResult == '1' ? 'active' : ''}"
+                            th:data-record-id="${item.recordId}" onclick="updateStatus(event, this, '1')">
+                            正常
+                        </button>
+                        <button type="button" class="status-btn btn-fault"
+                            th:classappend="${item.checkResult == '2' ? 'active' : ''}"
+                            th:data-record-id="${item.recordId}" onclick="updateStatus(event, this, '2')">
+                            故障
+                        </button>
+                        <button type="button" class="status-btn btn-nodevice"
+                            th:classappend="${item.checkResult == '3' ? 'active' : ''}"
+                            th:data-record-id="${item.recordId}" onclick="updateStatus(event, this, '3')">
+                            无此设备
+                        </button>
+                    </div>
+                </div>
+                <div class="fault-desc-area" th:classappend="${item.checkResult == '2' ? 'show' : ''}"
+                    th:id="'faultArea-' + ${item.recordId}">
+                    <textarea th:id="'faultDesc-' + ${item.recordId}" placeholder="请输入故障描述..."
+                        th:text="${item.faultDescription}"></textarea>
+                    <button type="button" class="btn btn-primary btn-save" th:data-record-id="${item.recordId}"
+                        onclick="saveFaultDesc(event, this)">
+                        保存描述
+                    </button>
+                </div>
+            </div>
+            <div class="no-data" th:if="${checkItems == null or #lists.isEmpty(checkItems)}">
+                <i class="fa fa-inbox"></i>
+                <p>暂无检查项数据</p>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: bootstrap-fileinput-js" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/task";
+        var equipmentRecordId = [[${ equipment.recordId }]];
+        var checkItemsData = [[${ checkItems }]];
+
+        function goBack() {
+            var parentRecordId = [[${ equipment.parentRecordId }]];
+            window.location.href = prefix + "/fireTestSystem/" + parentRecordId;
+        }
+
+        function openCheckDetailFromCard(element) {
+            var $item = $(element).closest('.check-item');
+            var recordId = $item.data('id');
+            var itemName = $item.data('name');
+            openCheckDetail(recordId, itemName);
+        }
+
+        function updateStatus(event, element, status) {
+            event.stopPropagation();
+            var recordId = $(element).data('record-id');
+
+            $.ajax({
+                url: prefix + "/updateCheckResult",
+                type: "post",
+                data: {
+                    recordId: recordId,
+                    checkResult: status
+                },
+                success: function (res) {
+                    if (res.code == 0) {
+                        $.modal.msgSuccess("状态更新成功");
+                        var $item = $('[data-id="' + recordId + '"]');
+                        $item.find('.status-btn').removeClass('active');
+                        $(element).addClass('active');
+                        var $faultArea = $('#faultArea-' + recordId);
+                        if (status == '2') {
+                            $faultArea.addClass('show');
+                        } else {
+                            $faultArea.removeClass('show');
+                            $('#faultDesc-' + recordId).val('');
+                        }
+                    } else {
+                        $.modal.alertError(res.msg);
+                    }
+                }
+            });
+        }
+
+        function saveFaultDesc(event, element) {
+            event.stopPropagation();
+            var recordId = $(element).data('record-id');
+            var faultDesc = $('#faultDesc-' + recordId).val();
+
+            $.ajax({
+                url: prefix + "/updateFaultDesc",
+                type: "post",
+                data: {
+                    recordId: recordId,
+                    faultDescription: faultDesc
+                },
+                success: function (res) {
+                    if (res.code == 0) {
+                        $.modal.msgSuccess("故障描述保存成功");
+                    } else {
+                        $.modal.alertError(res.msg);
+                    }
+                }
+            });
+        }
+
+        function openCheckDetail(recordId, itemName) {
+            var currentItem = null;
+            for (var i = 0; i < checkItemsData.length; i++) {
+                if (checkItemsData[i].recordId == recordId) {
+                    currentItem = checkItemsData[i];
+                    break;
+                }
+            }
+
+            var checkResult = currentItem ? currentItem.checkResult : '1';
+            var faultDescription = currentItem ? (currentItem.faultDescription || '') : '';
+            var otherNotes = currentItem ? (currentItem.otherNotes || '') : '';
+            var faultImages = currentItem ? (currentItem.faultImages || '') : '';
+
+            var html = '<div style="max-height: calc(85vh - 120px); overflow-y: auto; padding-right: 10px;">' +
+                '<form id="checkForm" style="padding: 20px;">' +
+                '<div class="form-group">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">' + itemName + '是否完好？</label>' +
+                '<div style="margin-bottom: 15px;">' +
+                '<label style="margin-right: 20px; cursor: pointer;">' +
+                '<input type="radio" name="isGood" value="yes" ' + (checkResult == '1' ? 'checked' : '') + ' style="margin-right: 5px;"> 是' +
+                '</label>' +
+                '<label style="cursor: pointer;">' +
+                '<input type="radio" name="isGood" value="no" ' + (checkResult == '2' || checkResult == '3' ? 'checked' : '') + ' style="margin-right: 5px;"> 否' +
+                '</label>' +
+                '</div>' +
+                '</div>' +
+                '<div class="form-group">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">设备状态：</label>' +
+                '<select id="deviceStatus" class="form-control">' +
+                '<option value="1" ' + (checkResult == '1' ? 'selected' : '') + '>正常</option>' +
+                '<option value="2" ' + (checkResult == '2' ? 'selected' : '') + '>故障</option>' +
+                '<option value="3" ' + (checkResult == '3' ? 'selected' : '') + '>无此设备</option>' +
+                '</select>' +
+                '</div>' +
+                '<div class="form-group" id="faultDescGroup" style="' + (checkResult == '2' ? '' : 'display:none;') + '">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">故障说明：</label>' +
+                '<textarea id="faultDesc" class="form-control" rows="3" placeholder="请输入故障说明...">' + faultDescription + '</textarea>' +
+                '</div>' +
+                '<div class="form-group">' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">其他说明：</label>' +
+                '<textarea id="otherNotes" class="form-control" rows="3" placeholder="请输入其他说明...">' + otherNotes + '</textarea>' +
+                '</div>' +
+                '</form>' +
+                '</div>';
+
+            layer.open({
+                type: 1,
+                title: '检查详情',
+                area: ['650px', '85%'],
+                maxmin: true,
+                scrollbar: true,
+                content: html,
+                btn: ['保存', '取消'],
+                yes: function (index, layero) {
+                    saveCheckDetail(recordId, index);
+                },
+                btn2: function (index, layero) {
+                    // 取消按钮，直接关闭
+                    return true;
+                },
+                success: function (layero, index) {
+                    // 弹窗打开后的初始化
+                }
+            });
+
+            $('input[name="isGood"]').change(function () {
+                var isGood = $(this).val();
+                if (isGood == 'yes') {
+                    $('#deviceStatus').val('1');
+                    $('#faultDescGroup').hide();
+                } else {
+                    if ($('#deviceStatus').val() == '1') {
+                        $('#deviceStatus').val('2');
+                    }
+                    if ($('#deviceStatus').val() == '2') {
+                        $('#faultDescGroup').show();
+                    }
+                }
+            });
+
+            $('#deviceStatus').change(function () {
+                var status = $(this).val();
+                if (status == '1') {
+                    $('input[name="isGood"][value="yes"]').prop('checked', true);
+                    $('#faultDescGroup').hide();
+                } else if (status == '2' || status == '3') {
+                    $('input[name="isGood"][value="no"]').prop('checked', true);
+                    if (status == '2') {
+                        $('#faultDescGroup').show();
+                    } else {
+                        $('#faultDescGroup').hide();
+                    }
+                }
+            });
+        }
+
+        function saveCheckDetail(recordId, layerIndex) {
+            var deviceStatus = $('#deviceStatus').val();
+            var faultDesc = $('#faultDesc').val();
+            var otherNotes = $('#otherNotes').val();
+
+            $.ajax({
+                url: prefix + "/updateCheckDetail",
+                type: "post",
+                data: {
+                    recordId: recordId,
+                    checkResult: deviceStatus,
+                    faultDescription: faultDesc,
+                    otherNotes: otherNotes
+                },
+                success: function (res) {
+                    if (res.code == 0) {
+                        $.modal.msgSuccess("保存成功");
+                        layer.close(layerIndex);
+                        setTimeout(function () {
+                            location.reload();
+                        }, 500);
+                    } else {
+                        $.modal.alertError(res.msg);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

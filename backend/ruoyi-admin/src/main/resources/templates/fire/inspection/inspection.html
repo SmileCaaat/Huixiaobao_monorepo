@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+
+<head>
+    <th:block th:include="include :: header('巡检管理')" />
+</head>
+
+<body class="gray-bg">
+    <div class="container-div">
+        <div class="row">
+            <div class="col-sm-12 search-collapse">
+                <form id="formId">
+                    <div class="select-list">
+                        <ul>
+                            <li>
+                                <label>公司名称：</label>
+                                <select name="companyId" th:with="companies=${companies}">
+                                    <option value="">所有</option>
+                                    <option th:each="company : ${companies}" th:value="${company.companyId}"
+                                        th:text="${company.companyName}"></option>
+                                </select>
+                            </li>
+                            <li>
+                                <label>维保类型：</label>
+                                <select name="inspectionType" th:with="type=${@dict.getType('fire_inspection_type')}">
+                                    <option value="">所有</option>
+                                    <option th:each="dict : ${type}" th:value="${dict.dictValue}"
+                                        th:text="${dict.dictLabel}"></option>
+                                </select>
+                            </li>
+                            <li>
+                                <label>设备名称：</label>
+                                <input type="text" name="equipmentName" />
+                            </li>
+                            <li>
+                                <label>设备状态：</label>
+                                <select name="equipmentStatus">
+                                    <option value="">所有</option>
+                                    <option value="0">正常</option>
+                                    <option value="1">异常</option>
+                                </select>
+                            </li>
+                            <li>
+                                <label>巡检时间：</label>
+                                <input type="text" class="time-input" placeholder="开始时间" name="params[beginTime]" />
+                                <span>-</span>
+                                <input type="text" class="time-input" placeholder="结束时间" name="params[endTime]" />
+                            </li>
+                            <li>
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
+                                        class="fa fa-search"></i>&nbsp;搜索</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
+                                        class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+
+            <div class="btn-group-sm" id="toolbar" role="group">
+                <a class="btn btn-success" onclick="$.operate.add()" shiro:hasPermission="fire:inspection:add">
+                    <i class="fa fa-plus"></i> 新增
+                </a>
+                <a class="btn btn-primary single disabled" onclick="$.operate.edit()"
+                    shiro:hasPermission="fire:inspection:edit">
+                    <i class="fa fa-edit"></i> 修改
+                </a>
+                <a class="btn btn-danger multiple disabled" onclick="$.operate.removeAll()"
+                    shiro:hasPermission="fire:inspection:remove">
+                    <i class="fa fa-remove"></i> 删除
+                </a>
+                <a class="btn btn-warning" onclick="$.table.exportExcel()" shiro:hasPermission="fire:inspection:export">
+                    <i class="fa fa-download"></i> 导出
+                </a>
+            </div>
+            <div class="col-sm-12 select-table table-striped">
+                <table id="bootstrap-table"></table>
+            </div>
+        </div>
+    </div>
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var editFlag = [[${@permission.hasPermi('fire:inspection:edit') }]];
+        var removeFlag = [[${@permission.hasPermi('fire:inspection:remove') }]];
+        var inspectionTypes = [[${@dict.getType('fire_inspection_type') }]];
+        var prefix = ctx + "fire/inspection";
+
+        $(function () {
+            var options = {
+                url: prefix + "/list",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                removeUrl: prefix + "/remove",
+                exportUrl: prefix + "/export",
+                detailUrl: prefix + "/detail/{id}",
+                modalName: "巡检登记",
+                columns: [{
+                    checkbox: true
+                },
+                {
+                    field: 'inspectionId',
+                    title: 'ID',
+                    visible: false
+                },
+                {
+                    field: 'equipmentName',
+                    title: '设备名称',
+                    width: 200,
+                    formatter: function (value, row, index) {
+                        var typeName = $.table.selectDictLabel(inspectionTypes, row.inspectionType);
+                        var labelClass = 'label-primary';
+                        if (row.inspectionType == '0') labelClass = 'label-info';
+                        else if (row.inspectionType == '1') labelClass = 'label-primary';
+                        else if (row.inspectionType == '2') labelClass = 'label-success';
+                        return value + ' <span class="label ' + labelClass + '" style="margin-left: 5px;">' + typeName + '</span>';
+                    }
+                },
+                {
+                    field: 'inspectionTime',
+                    title: '巡检时间',
+                    width: 150
+                },
+                {
+                    field: 'inspectorName',
+                    title: '巡查人员',
+                    width: 80
+                },
+                {
+                    field: 'equipmentCount',
+                    title: '数量',
+                    width: 50,
+                    align: 'center'
+                },
+                {
+                    field: 'location',
+                    title: '具体位置',
+                    width: 120
+                },
+                {
+                    field: 'buildingName',
+                    title: '所在建筑',
+                    width: 100
+                },
+                {
+                    field: 'systemName',
+                    title: '系统名称',
+                    width: 140
+                },
+                {
+                    field: 'equipmentStatus',
+                    title: '设备状态',
+                    width: 80,
+                    align: 'center',
+                    formatter: function (value, row, index) {
+                        if (value === '0') {
+                            return '<span class="label label-success">正常</span>';
+                        } else {
+                            return '<span class="label label-danger">异常</span>';
+                        }
+                    }
+                },
+                {
+                    title: '操作',
+                    align: 'center',
+                    formatter: function (value, row, index) {
+                        var actions = [];
+                        actions.push('<a class="btn btn-info btn-xs" href="javascript:void(0)" onclick="$.operate.detail(\'' + row.inspectionId + '\')"><i class="fa fa-eye"></i>查看</a> ');
+                        actions.push('<a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.inspectionId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+                        if (removeFlag) {
+                            actions.push('<a class="btn btn-danger btn-xs" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.inspectionId + '\')"><i class="fa fa-remove"></i>删除</a>');
+                        }
+                        return actions.join('');
+                    }
+                }]
+            };
+            $.table.init(options);
+        });
+    </script>
+</body>
+
+</html>

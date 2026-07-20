@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('修改消防设备')" />
+    <th:block th:include="include :: datetimepicker-css" />
+    <style>
+        .image-preview {
+            width: 80px;
+            height: 80px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+
+        .image-preview:hover {
+            border-color: #1890ff;
+        }
+
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-equipment-edit" th:object="${equipment}">
+            <input name="equipmentId" th:field="*{equipmentId}" type="hidden">
+            <!-- 所属客户 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">所属客户：</label>
+                <div class="col-sm-8">
+                    <select name="companyId" id="companyId" class="form-control m-b">
+                        <option value="">请选择</option>
+                    </select>
+                </div>
+            </div>
+            <!-- 1. 所在建筑 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">所在建筑：</label>
+                <div class="col-sm-8">
+                    <select name="buildingId" id="buildingId" class="form-control m-b">
+                        <option value="">请选择</option>
+                        <option th:each="building : ${buildings}" th:text="${building.buildingName}"
+                            th:value="${building.buildingId}" th:selected="${building.buildingId} == *{buildingId}">
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <!-- 2. 所在楼层 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">所在楼层：</label>
+                <div class="col-sm-8">
+                    <input name="floorNo" th:field="*{floorNo}" class="form-control" type="text" placeholder="请输入所在楼层">
+                </div>
+            </div>
+            <!-- 3. 系统名称 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">系统名称：</label>
+                <div class="col-sm-8">
+                    <input name="systemName" id="systemName" list="systemNameList" class="form-control"
+                        th:value="*{systemName}" placeholder="可选择或直接输入">
+                    <datalist id="systemNameList">
+                        <option th:each="name : ${systemNames}" th:value="${name}"></option>
+                    </datalist>
+                </div>
+            </div>
+            <!-- 4. 项目类别 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">项目类别：</label>
+                <div class="col-sm-8">
+                    <select name="projectCategory" id="projectCategory" class="form-control m-b"
+                        th:field="*{projectCategory}">
+                        <option value="">请选择</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- 5. 设备名称 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">设备名称：</label>
+                <div class="col-sm-8">
+                    <input name="equipmentName" th:field="*{equipmentName}" class="form-control" type="text"
+                        placeholder="请选择或输入">
+                </div>
+            </div>
+
+            <!-- 6. 生产厂家 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">生产厂家：</label>
+                <div class="col-sm-8">
+                    <input name="manufacturer" th:field="*{manufacturer}" class="form-control" type="text"
+                        placeholder="请输入生产厂家">
+                </div>
+            </div>
+            <!-- 7. 有效日期 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">有效日期：</label>
+                <div class="col-sm-8">
+                    <div class="input-group date">
+                        <input name="expireDate" th:value="${#dates.format(equipment.expireDate, 'yyyy-MM-dd')}"
+                            class="form-control" placeholder="请选择有效期" type="text">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    </div>
+                </div>
+            </div>
+            <!-- 8. 设备数量 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">设备数量：</label>
+                <div class="col-sm-8">
+                    <div class="input-group">
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-default" onclick="decreaseQuantity()">－</button>
+                        </span>
+                        <input name="quantity" id="quantity" class="form-control text-center" type="number"
+                            th:value="*{quantity} ?: 1" min="1">
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-default" onclick="increaseQuantity()">＋</button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <!-- 9. 具体位置 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">具体位置：</label>
+                <div class="col-sm-8">
+                    <input name="location" th:field="*{location}" class="form-control" type="text"
+                        placeholder="请输入具体位置">
+                </div>
+            </div>
+            <!-- 10. 规格型号 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">规格型号：</label>
+                <div class="col-sm-8">
+                    <input name="model" th:field="*{model}" class="form-control" type="text" placeholder="选填">
+                </div>
+            </div>
+            <!-- 11. 设备图片 -->
+            <div class="form-group">
+                <label class="col-sm-3 control-label">设备图片：</label>
+                <div class="col-sm-8">
+                    <input type="hidden" name="image" id="image" th:field="*{image}">
+                    <div class="file-upload-box">
+                        <div id="imagePreview" class="image-preview" onclick="selectImage()">
+                            <th:block th:if="*{image}">
+                                <img th:src="*{image}">
+                            </th:block>
+                            <th:block th:unless="*{image}">
+                                <i class="fa fa-camera fa-2x"></i>
+                            </th:block>
+                        </div>
+                        <input type="file" id="imageUpload" accept="image/*" style="display:none"
+                            onchange="uploadImage(this)">
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: datetimepicker-js" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/equipment";
+        var currentProjectCategory = [[${ equipment.projectCategory }]];
+
+        $(function () {
+            $("#form-equipment-edit").validate({
+                focusCleanup: true
+            });
+
+            $(".input-group.date").datetimepicker({
+                format: "yyyy-mm-dd",
+                minView: "month",
+                autoclose: true
+            });
+
+            // 加载客户下拉列表
+            loadCompanyList();
+
+            // 加载项目类别列表
+            loadProjectCategories();
+        });
+
+        // 加载客户列表，并回显当前客户
+        function loadCompanyList() {
+            var currentCompanyId = [[${ equipment.companyId }]];
+            $.ajax({
+                url: ctx + 'fire/company/all',
+                type: 'GET',
+                success: function (res) {
+                    if (res.code == 0 && res.data) {
+                        var html = '<option value="">请选择</option>';
+                        res.data.forEach(function (company) {
+                            var selected = (company.companyId == currentCompanyId) ? ' selected' : '';
+                            html += '<option value="' + company.companyId + '"' + selected + '>' + company.companyName + '</option>';
+                        });
+                        $('#companyId').html(html);
+                    }
+                }
+            });
+        }
+
+        // 加载项目类别列表
+        function loadProjectCategories() {
+            $.ajax({
+                url: ctx + 'fire/systemType/all',
+                type: 'GET',
+                success: function (res) {
+                    if (res.code == 0 && res.data) {
+                        var html = '<option value="">请选择</option>';
+                        res.data.forEach(function (type) {
+                            var selected = (type.typeName == currentProjectCategory) ? ' selected' : '';
+                            html += '<option value="' + type.typeName + '"' + selected + '>' + type.typeName + '</option>';
+                        });
+                        $('#projectCategory').html(html);
+                    }
+                }
+            });
+        }
+
+
+        // 数量增减
+        function increaseQuantity() {
+            var qty = parseInt($('#quantity').val()) || 1;
+            $('#quantity').val(qty + 1);
+        }
+        function decreaseQuantity() {
+            var qty = parseInt($('#quantity').val()) || 1;
+            if (qty > 1) {
+                $('#quantity').val(qty - 1);
+            }
+        }
+
+        // 图片上传
+        function selectImage() {
+            $('#imageUpload').click();
+        }
+        function uploadImage(input) {
+            if (input.files && input.files[0]) {
+                var formData = new FormData();
+                formData.append('file', input.files[0]);
+                $.ajax({
+                    url: ctx + 'common/upload',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (res) {
+                        if (res.code == 0) {
+                            $('#image').val(res.fileName);
+                            $('#imagePreview').html('<img src="' + res.url + '" style="max-width:80px;max-height:80px;">');
+                        } else {
+                            $.modal.alertError(res.msg);
+                        }
+                    }
+                });
+            }
+        }
+
+        function submitHandler() {
+            if ($.validate.form()) {
+                $.operate.save(prefix + "/edit", $('#form-equipment-edit').serialize());
+            }
+        }
+    </script>
+</body>
+
+</html>

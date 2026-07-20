@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('新增维保任务')" />
+    <th:block th:include="include :: select2-css" />
+    <th:block th:include="include :: datetimepicker-css" />
+</head>
+
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-task-add">
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">所属客户：</label>
+                <div class="col-sm-8">
+                    <select name="companyId" id="companyId" class="form-control select2" required
+                        onchange="onCompanyChange()">
+                        <option value="">请选择公司</option>
+                    </select>
+                    <input type="hidden" name="companyName" id="companyName">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">任务名称：</label>
+                <div class="col-sm-8">
+                    <input name="taskName" class="form-control" type="text" required placeholder="请输入任务名称">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">任务类型：</label>
+                <div class="col-sm-8">
+                    <select name="taskType" class="form-control noselect2"
+                        th:with="type=${@dict.getType('fire_task_type')}" required>
+                        <option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}">
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">关联建筑：</label>
+                <div class="col-sm-8">
+                    <select name="buildingId" id="buildingId" class="form-control noselect2"
+                        onchange="setBuildingName(this)">
+                        <option value="">请选择建筑</option>
+                        <option th:each="building : ${buildings}" th:text="${building.buildingName}"
+                            th:value="${building.buildingId}"></option>
+                    </select>
+                    <input type="hidden" name="buildingName" id="buildingName" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">选择系统：</label>
+                <div class="col-sm-8">
+                    <button type="button" class="btn btn-info btn-sm" onclick="selectSystems()">
+                        <i class="fa fa-check-square-o"></i> 选择需要的系统
+                    </button>
+                    <span id="selectedSystemsText" style="margin-left: 10px; color: #999;">未选择（默认全部）</span>
+                    <input type="hidden" name="selectedSystemIds" id="selectedSystemIds" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">消防设施测试：</label>
+                <div class="col-sm-8">
+                    <button type="button" class="btn btn-warning btn-sm" onclick="selectFireTests()">
+                        <i class="fa fa-check-square-o"></i> 选择消防设施测试项
+                    </button>
+                    <span id="selectedFireTestsText" style="margin-left: 10px; color: #999;">未选择（默认全部）</span>
+                    <input type="hidden" name="selectedFireTestIds" id="selectedFireTestIds" />
+                    <span class="help-block m-b-none">
+                        <i class="fa fa-info-circle"></i> 可选择需要的消防设施测试系统
+                    </span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">周期类型：</label>
+                <div class="col-sm-8">
+                    <select name="periodType" class="form-control noselect2"
+                        th:with="type=${@dict.getType('fire_period_type')}">
+                        <option value="">请选择周期类型</option>
+                        <option th:each="dict : ${type}" th:text="${dict.dictLabel}" th:value="${dict.dictValue}">
+                        </option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">周期年份：</label>
+                <div class="col-sm-4">
+                    <input name="periodYear" class="form-control" type="number" placeholder="如2025">
+                </div>
+                <label class="col-sm-2 control-label">周期序号：</label>
+                <div class="col-sm-2">
+                    <input name="periodNum" class="form-control" type="number" placeholder="如第几季度">
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">计划开始时间：</label>
+                <div class="col-sm-8">
+                    <div class="input-group date">
+                        <input name="planStartTime" class="form-control" placeholder="yyyy-MM-dd" type="text">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">计划结束时间：</label>
+                <div class="col-sm-8">
+                    <div class="input-group date">
+                        <input name="planEndTime" class="form-control" placeholder="yyyy-MM-dd" type="text">
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">项目负责人：</label>
+                <div class="col-sm-8">
+                    <select name="managerId" id="managerId" class="form-control select2" required
+                        onchange="setManagerName(this)">
+                        <option value="">请选择负责人</option>
+                        <option th:each="user : ${users}" th:text="${user.userName}" th:value="${user.userId}"
+                            th:data-phone="${user.phonenumber}"></option>
+                    </select>
+                    <input type="hidden" name="managerName" id="managerName" />
+                    <input type="hidden" name="managerPhone" id="managerPhone" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">维保操作员：</label>
+                <div class="col-sm-8">
+                    <select name="operatorIds" id="operatorIds" class="form-control select2" multiple
+                        onchange="setOperatorNames()">
+                        <option th:each="user : ${users}" th:text="${user.userName}" th:value="${user.userId}"></option>
+                    </select>
+                    <input type="hidden" name="operatorNames" id="operatorNames" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">备注：</label>
+                <div class="col-sm-8">
+                    <textarea name="remark" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: datetimepicker-js" />
+    <th:block th:include="include :: select2-js" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/task";
+
+        // 从URL获取公司参数
+        var urlParams = new URLSearchParams(window.location.search);
+        var filterCompanyId = urlParams.get('companyId');
+        var filterCompanyName = urlParams.get('companyName');
+
+        $(function () {
+            $(".select2").select2({
+                width: '100%',
+                placeholder: "请选择"
+            });
+
+            // 加载公司列表
+            loadCompanyList();
+
+            $("#form-task-add").validate({
+                focusCleanup: true
+            });
+
+            $("input[name='planStartTime']").datetimepicker({
+                format: "yyyy-mm-dd",
+                minView: "month",
+                autoclose: true
+            });
+
+            $("input[name='planEndTime']").datetimepicker({
+                format: "yyyy-mm-dd",
+                minView: "month",
+                autoclose: true
+            });
+
+            // 如果有公司参数，重新加载建筑列表
+            if (filterCompanyId) {
+                loadBuildingList(filterCompanyId);
+            }
+        });
+
+        // 加载公司列表
+        function loadCompanyList() {
+            $.ajax({
+                url: ctx + 'fire/company/all',
+                type: 'GET',
+                success: function (res) {
+                    if (res.code == 0 && res.data) {
+                        var html = '<option value="">请选择公司</option>';
+                        res.data.forEach(function (company) {
+                            var selected = filterCompanyId && company.companyId == filterCompanyId ? ' selected' : '';
+                            html += '<option value="' + company.companyId + '" data-name="' + company.companyName + '"' + selected + '>' + company.companyName + '</option>';
+                        });
+                        $('#companyId').html(html);
+                        if ($.fn.select2) {
+                            $('#companyId').trigger('change');
+                        }
+
+                        // 如果有URL参数，设置公司名称
+                        if (filterCompanyId && filterCompanyName) {
+                            $('#companyName').val(decodeURIComponent(filterCompanyName));
+                        }
+                    }
+                }
+            });
+        }
+
+        // 公司选择变化
+        function onCompanyChange() {
+            var companyId = $('#companyId').val();
+            var companyName = $('#companyId').find('option:selected').data('name') || '';
+            $('#companyName').val(companyName);
+
+            // 重新加载该公司的建筑
+            loadBuildingList(companyId);
+        }
+
+        // 加载建筑列表（按公司过滤）
+        function loadBuildingList(companyId) {
+            var url = ctx + 'fire/building/all';
+            if (companyId) {
+                url += '?companyId=' + companyId;
+            }
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function (res) {
+                    if (res.code == 0 && res.data) {
+                        var html = '<option value="">请选择建筑</option>';
+                        res.data.forEach(function (building) {
+                            html += '<option value="' + building.buildingId + '">' + building.buildingName + '</option>';
+                        });
+                        $('#buildingId').html(html);
+                        $('#buildingName').val('');
+                    }
+                }
+            });
+        }
+
+        function setBuildingName(select) {
+            var text = $(select).find("option:selected").text();
+            $('#buildingName').val(text == '请选择建筑' ? '' : text);
+        }
+
+        function setManagerName(select) {
+            var text = $(select).find("option:selected").text();
+            var phone = $(select).find("option:selected").data('phone');
+            $('#managerName').val(text == '请选择负责人' ? '' : text);
+            $('#managerPhone').val(phone || '');
+        }
+
+        function setOperatorNames() {
+            var names = [];
+            $('#operatorIds option:selected').each(function () {
+                names.push($(this).text());
+            });
+            $('#operatorNames').val(names.join(','));
+        }
+
+        function submitHandler() {
+            // 确保公司名称被设置
+            var companyName = $('#companyId').find('option:selected').data('name') || '';
+            $('#companyName').val(companyName);
+
+            if ($.validate.form()) {
+                // select[multiple] 序列化时会生成多个同名参数（operatorIds=1&operatorIds=2），
+                // 后端 String 类型只能接收单个值，需手动合并成逗号分隔字符串
+                var formData = $('#form-task-add').serializeArray();
+                var operatorIdList = [];
+                var filteredData = [];
+                $.each(formData, function(i, field) {
+                    if (field.name === 'operatorIds') {
+                        operatorIdList.push(field.value);
+                    } else {
+                        filteredData.push(field);
+                    }
+                });
+                filteredData.push({ name: 'operatorIds', value: operatorIdList.join(',') });
+                var params = $.param(filteredData);
+                $.operate.save(prefix + "/add", params);
+            }
+        }
+
+        // 选择系统
+        var allSystems = [];
+        var selectedSystems = [];
+
+        function selectSystems() {
+            // 加载系统列表
+            if (allSystems.length === 0) {
+                $.ajax({
+                    url: prefix + '/templates/level1',
+                    type: 'GET',
+                    async: false,
+                    success: function (res) {
+                        if (res.code == 0 && res.data) {
+                            allSystems = res.data;
+                        }
+                    }
+                });
+            }
+
+            // 构建复选框列表
+            var html = '<div style="padding: 20px; max-height: 400px; overflow-y: auto;">';
+            html += '<div style="margin-bottom: 15px;">';
+            html += '<label style="cursor: pointer; font-weight: normal;"><input type="checkbox" id="selectAllSystems" onchange="toggleAllSystems(this)"> 全选</label>';
+            html += '</div>';
+            html += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">';
+
+            allSystems.forEach(function (system) {
+                var checked = selectedSystems.indexOf(system.id) >= 0 ? 'checked' : '';
+                html += '<label style="cursor: pointer; font-weight: normal;">';
+                html += '<input type="checkbox" class="system-checkbox" value="' + system.id + '" ' + checked + '> ';
+                html += system.itemName;
+                html += '</label>';
+            });
+
+            html += '</div></div>';
+
+            layer.open({
+                type: 1,
+                title: '选择需要的系统',
+                area: ['600px', '500px'],
+                content: html,
+                btn: ['确定', '取消'],
+                yes: function (index) {
+                    // 获取选中的系统
+                    selectedSystems = [];
+                    var selectedNames = [];
+                    $('.system-checkbox:checked').each(function () {
+                        var id = parseInt($(this).val());
+                        selectedSystems.push(id);
+                        var system = allSystems.find(function (s) { return s.id === id; });
+                        if (system) {
+                            selectedNames.push(system.itemName);
+                        }
+                    });
+
+                    // 更新隐藏字段和显示文本
+                    $('#selectedSystemIds').val(selectedSystems.join(','));
+                    if (selectedSystems.length === 0) {
+                        $('#selectedSystemsText').text('未选择（默认全部）').css('color', '#999');
+                    } else if (selectedSystems.length === allSystems.length) {
+                        $('#selectedSystemsText').text('已选择全部 ' + selectedSystems.length + ' 个系统').css('color', '#28a745');
+                    } else {
+                        $('#selectedSystemsText').text('已选择 ' + selectedSystems.length + ' 个系统：' + selectedNames.join('、')).css('color', '#007bff');
+                    }
+
+                    layer.close(index);
+                }
+            });
+
+            // 更新全选状态
+            updateSelectAllState();
+        }
+
+        function toggleAllSystems(checkbox) {
+            $('.system-checkbox').prop('checked', checkbox.checked);
+        }
+
+        function updateSelectAllState() {
+            setTimeout(function () {
+                var total = $('.system-checkbox').length;
+                var checked = $('.system-checkbox:checked').length;
+                $('#selectAllSystems').prop('checked', total > 0 && total === checked);
+            }, 100);
+        }
+
+        // 监听复选框变化
+        $(document).on('change', '.system-checkbox', function () {
+            updateSelectAllState();
+        });
+
+        // 选择消防设施测试
+        var allFireTests = [];
+        var selectedFireTests = [];
+
+        function selectFireTests() {
+            // 加载消防设施测试列表
+            if (allFireTests.length === 0) {
+                $.ajax({
+                    url: prefix + '/templates/firetest/level1',
+                    type: 'GET',
+                    async: false,
+                    success: function (res) {
+                        if (res.code == 0 && res.data) {
+                            allFireTests = res.data;
+                        }
+                    }
+                });
+            }
+
+            // 构建复选框列表
+            var html = '<div style="padding: 20px; max-height: 400px; overflow-y: auto;">';
+            html += '<div style="margin-bottom: 15px;">';
+            html += '<label style="cursor: pointer; font-weight: normal;"><input type="checkbox" id="selectAllFireTests" onchange="toggleAllFireTests(this)"> 全选</label>';
+            html += '</div>';
+            html += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">';
+
+            allFireTests.forEach(function (fireTest) {
+                var checked = selectedFireTests.indexOf(fireTest.id) >= 0 ? 'checked' : '';
+                html += '<label style="cursor: pointer; font-weight: normal;">';
+                html += '<input type="checkbox" class="firetest-checkbox" value="' + fireTest.id + '" ' + checked + '> ';
+                html += fireTest.itemName;
+                html += '</label>';
+            });
+
+            html += '</div></div>';
+
+            layer.open({
+                type: 1,
+                title: '选择消防设施测试项',
+                area: ['600px', '500px'],
+                content: html,
+                btn: ['确定', '取消'],
+                yes: function (index) {
+                    // 获取选中的消防设施测试
+                    selectedFireTests = [];
+                    var selectedNames = [];
+                    $('.firetest-checkbox:checked').each(function () {
+                        var id = parseInt($(this).val());
+                        selectedFireTests.push(id);
+                        var fireTest = allFireTests.find(function (f) { return f.id === id; });
+                        if (fireTest) {
+                            selectedNames.push(fireTest.itemName);
+                        }
+                    });
+
+                    // 更新隐藏字段和显示文本
+                    $('#selectedFireTestIds').val(selectedFireTests.join(','));
+                    if (selectedFireTests.length === 0) {
+                        $('#selectedFireTestsText').text('未选择（默认全部）').css('color', '#999');
+                    } else if (selectedFireTests.length === allFireTests.length) {
+                        $('#selectedFireTestsText').text('已选择全部 ' + selectedFireTests.length + ' 个测试项').css('color', '#28a745');
+                    } else {
+                        $('#selectedFireTestsText').text('已选择 ' + selectedFireTests.length + ' 个测试项：' + selectedNames.join('、')).css('color', '#ff9800');
+                    }
+
+                    layer.close(index);
+                }
+            });
+
+            // 更新全选状态
+            updateFireTestSelectAllState();
+        }
+
+        function toggleAllFireTests(checkbox) {
+            $('.firetest-checkbox').prop('checked', checkbox.checked);
+        }
+
+        function updateFireTestSelectAllState() {
+            setTimeout(function () {
+                var total = $('.firetest-checkbox').length;
+                var checked = $('.firetest-checkbox:checked').length;
+                $('#selectAllFireTests').prop('checked', total > 0 && total === checked);
+            }, 100);
+        }
+
+        // 监听消防设施测试复选框变化
+        $(document).on('change', '.firetest-checkbox', function () {
+            updateFireTestSelectAllState();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('合同续签')" />
+    <th:block th:include="include :: datetimepicker-css" />
+</head>
+
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-contract-renew" th:object="${contract}">
+            <input type="hidden" name="contractId" th:field="*{contractId}" />
+            <input type="hidden" name="renewedFromId" th:value="${contract.contractId}" />
+            <h4 class="form-header h4">续签信息</h4>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">客户名称：</label>
+                <div class="col-sm-8">
+                    <div class="input-group">
+                        <input type="hidden" name="companyId" th:field="*{companyId}" id="companyId" />
+                        <input type="text" class="form-control" name="companyName" th:field="*{companyName}" id="companyName" readonly required />
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-primary" onclick="chooseCompany()">选择</button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">项目名称：</label>
+                <div class="col-sm-8">
+                    <input type="text" class="form-control" name="projectName" th:field="*{projectName}" id="projectName" maxlength="200" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">合同名称：</label>
+                <div class="col-sm-8">
+                    <input type="text" class="form-control" name="contractName" th:field="*{contractName}" required maxlength="200" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">合同编号：</label>
+                <div class="col-sm-8">
+                    <input type="text" class="form-control" name="contractNo" th:field="*{contractNo}" required maxlength="100" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">合同金额：</label>
+                <div class="col-sm-8">
+                    <input type="number" class="form-control" name="contractAmount" th:field="*{contractAmount}" required min="0" step="0.01" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label is-required">合同有效期：</label>
+                <div class="col-sm-4">
+                    <div class="input-group date">
+                        <input type="text" class="form-control" name="startDate" id="startDate" th:value="${#dates.format(contract.startDate, 'yyyy-MM-dd')}" readonly required />
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    </div>
+                </div>
+                <div class="col-sm-4">
+                    <div class="input-group date">
+                        <input type="text" class="form-control" name="endDate" id="endDate" th:value="${#dates.format(contract.endDate, 'yyyy-MM-dd')}" readonly required />
+                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">录入单位：</label>
+                <div class="col-sm-8">
+                    <input type="text" class="form-control" name="entryUnit" th:field="*{entryUnit}" readonly />
+                </div>
+            </div>
+
+            <h4 class="form-header h4">合同附件</h4>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">合同文件：</label>
+                <div class="col-sm-8">
+                    <input type="hidden" name="attachmentPath" th:field="*{attachmentPath}" id="attachmentPath" />
+                    <input type="hidden" name="attachmentName" th:field="*{attachmentName}" id="attachmentName" />
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="attachmentText" th:value="${contract.attachmentName}" readonly placeholder="请上传合同附件" />
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-primary" onclick="triggerUpload()">上传</button>
+                        </span>
+                    </div>
+                    <span class="help-block m-b-none"><i class="fa fa-info-circle"></i> 支持常见办公文档，建议 10M 以内</span>
+                    <input type="file" id="uploadInput" style="display: none" onchange="uploadFile(this)" />
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label"></label>
+                <div class="col-sm-8">
+                    <table class="table table-bordered" id="attachmentTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">序号</th>
+                                <th>合同附件</th>
+                                <th style="width: 100px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="emptyRow">
+                                <td colspan="3" class="text-center">暂无附件</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">备注：</label>
+                <div class="col-sm-8">
+                    <textarea class="form-control" rows="3" name="remark" maxlength="500" th:text="${contract.remark}"></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <th:block th:include="include :: datetimepicker-js" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/contract";
+
+        $(function () {
+            $("#form-contract-renew").validate({
+                focusCleanup: true
+            });
+            $(".input-group.date").datetimepicker({
+                format: "yyyy-mm-dd",
+                minView: "month",
+                autoclose: true
+            });
+            var attachmentPath = $("#attachmentPath").val();
+            var attachmentName = $("#attachmentName").val();
+            if ($.common.isNotEmpty(attachmentPath) && $.common.isNotEmpty(attachmentName)) {
+                renderAttachment(attachmentName, attachmentPath);
+            }
+        });
+
+        function chooseCompany() {
+            $.modal.openOptions({
+                title: "选择维保客户",
+                width: 900,
+                height: 620,
+                url: prefix + "/selectCompany",
+                callBack: function (index, layero) {
+                    var iframeWin = layero.find("iframe")[0].contentWindow;
+                    var row = iframeWin.getSelectedCompany();
+                    if (!row) {
+                        $.modal.alertWarning("请选择一个客户");
+                        return;
+                    }
+                    $("#companyId").val(row.companyId);
+                    $("#companyName").val(row.companyName);
+                    if ($.common.isEmpty($("#projectName").val())) {
+                        $("#projectName").val(row.companyName);
+                    }
+                    top.layer.close(index);
+                }
+            });
+        }
+
+        function triggerUpload() {
+            $("#uploadInput").click();
+        }
+
+        function uploadFile(input) {
+            if (!input.files || !input.files[0]) {
+                return;
+            }
+            var formData = new FormData();
+            formData.append("file", input.files[0]);
+            $.ajax({
+                url: ctx + "common/upload",
+                type: "POST",
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (res) {
+                    if (res.code === 0) {
+                        $("#attachmentPath").val(res.fileName);
+                        $("#attachmentName").val(res.originalFilename);
+                        $("#attachmentText").val(res.originalFilename);
+                        renderAttachment(res.originalFilename, res.fileName);
+                    } else {
+                        $.modal.alertError(res.msg);
+                    }
+                }
+            });
+        }
+
+        function renderAttachment(name, path) {
+            $("#emptyRow").remove();
+            var downloadUrl = ctx + "common/download/resource?resource=" + encodeURIComponent(path);
+            var html = [];
+            html.push('<tr id="attachmentRow">');
+            html.push("<td>1</td>");
+            html.push('<td><a href="' + downloadUrl + '">' + name + "</a></td>");
+            html.push('<td><a href="javascript:void(0)" onclick="removeAttachment()">删除</a></td>');
+            html.push("</tr>");
+            $("#attachmentTable tbody").html(html.join(""));
+        }
+
+        function removeAttachment() {
+            var fileName = $("#attachmentPath").val();
+            $("#attachmentPath").val("");
+            $("#attachmentName").val("");
+            $("#attachmentText").val("");
+            $("#attachmentTable tbody").html('<tr id="emptyRow"><td colspan="3" class="text-center">暂无附件</td></tr>');
+            if ($.common.isNotEmpty(fileName)) {
+                $.post(ctx + "common/remove", { fileName: fileName });
+            }
+        }
+
+        function submitHandler() {
+            if (!$.validate.form()) {
+                return;
+            }
+            if ($.common.isEmpty($("#companyId").val())) {
+                $.modal.alertWarning("请选择客户");
+                return;
+            }
+            var startDate = $("#startDate").val();
+            var endDate = $("#endDate").val();
+            if ($.common.isNotEmpty(startDate) && $.common.isNotEmpty(endDate) && endDate < startDate) {
+                $.modal.alertWarning("结束日期不能早于开始日期");
+                return;
+            }
+            $.operate.save(prefix + "/renew", $("#form-contract-renew").serialize());
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('分配巡检人员')" />
+</head>
+
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <form class="form-horizontal m" id="form-assign-users">
+            <input type="hidden" id="companyId" th:value="${company.companyId}">
+            <div class="form-group">
+                <label class="col-sm-3 control-label">公司名称：</label>
+                <div class="col-sm-8">
+                    <p class="form-control-static" th:text="${company.companyName}"></p>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">角色类型：</label>
+                <div class="col-sm-8">
+                    <select id="roleType" class="form-control">
+                        <option value="0">普通巡检员</option>
+                        <option value="1">项目负责人</option>
+                        <option value="2">管理员</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">选择人员：</label>
+                <div class="col-sm-8">
+                    <div class="checkbox-list"
+                        style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e6e7; padding: 10px; border-radius: 4px;">
+                        <th:block th:each="user : ${users}">
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="userIds" th:value="${user.userId}"
+                                        th:checked="${#lists.contains(assignedUsers.![userId], user.userId)}">
+                                    <span th:text="${' (' + user.userName + ')'}"></span>
+                                </label>
+                            </div>
+                        </th:block>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        var prefix = ctx + "fire/company";
+
+        function submitHandler() {
+            var companyId = $("#companyId").val();
+            var roleType = $("#roleType").val();
+            var userIds = [];
+            $("input[name='userIds']:checked").each(function () {
+                userIds.push($(this).val());
+            });
+
+            $.ajax({
+                type: "POST",
+                url: prefix + "/assignUsers",
+                data: {
+                    companyId: companyId,
+                    userIds: userIds.join(","),
+                    roleType: roleType
+                },
+                success: function (result) {
+                    if (result.code == 0) {
+                        $.modal.msgSuccess("分配成功");
+                        $.modal.close();
+                    } else {
+                        $.modal.alertError(result.msg);
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

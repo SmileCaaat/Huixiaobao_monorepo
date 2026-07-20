@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <th:block th:include="include :: header('客户信息')" />
+    <style>
+        .wrapper.wrapper-content.animated.fadeInRight.ibox-content {
+            padding: 8px 10px 16px;
+        }
+
+        .wizard-bar {
+            display: flex;
+            align-items: stretch;
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border: 1px solid #e5e6e7;
+            background: #fff;
+        }
+
+        .wizard-step {
+            position: relative;
+            flex: 1;
+        }
+
+        .wizard-step:not(:last-child)::after {
+            content: "";
+            position: absolute;
+            top: 22px;
+            left: calc(50% + 28px);
+            right: calc(-50% + 28px);
+            height: 1px;
+            background: #dcdfe6;
+        }
+
+        .wizard-link {
+            position: relative;
+            z-index: 1;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: #666;
+            text-decoration: none;
+            background: #fff;
+            padding-right: 12px;
+        }
+
+        .wizard-link:hover,
+        .wizard-link:focus {
+            color: #1c84c6;
+            text-decoration: none;
+        }
+
+        .wizard-step.active .wizard-link {
+            color: #333;
+        }
+
+        .step-no {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #1c84c6;
+            color: #fff;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .step-text-wrap {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.3;
+        }
+
+        .step-text {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .step-meta {
+            color: #999;
+            font-size: 12px;
+        }
+
+        .table-card {
+            margin-bottom: 12px;
+            border: 1px solid #e5e6e7;
+            background: #fff;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            border-left: 3px solid #1c84c6;
+            padding: 12px 12px 0 8px;
+            margin: 0 0 10px;
+        }
+
+        .table-card .table {
+            margin-bottom: 0;
+        }
+
+        .placeholder-text {
+            color: #999;
+        }
+
+        .expired-text {
+            color: #d9534f;
+            font-weight: 600;
+        }
+
+        .table th {
+            width: 150px;
+            background: #fafafa;
+        }
+
+        .overview-cell {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .status-tag {
+            display: inline-block;
+            min-width: 64px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 12px;
+            line-height: 18px;
+        }
+
+        .status-pending {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .status-running {
+            background: #e8f4fd;
+            color: #1c84c6;
+        }
+
+        .status-completed {
+            background: #e7f7ee;
+            color: #1ab394;
+        }
+
+        .status-overdue {
+            background: #fdeeee;
+            color: #d9534f;
+        }
+
+        @media (max-width: 992px) {
+            .wizard-bar {
+                display: block;
+            }
+
+            .wizard-step {
+                margin-bottom: 10px;
+            }
+
+            .wizard-step:not(:last-child)::after {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body class="white-bg">
+    <div class="wrapper wrapper-content animated fadeInRight ibox-content">
+        <div class="wizard-bar">
+            <div class="wizard-step active">
+                <a class="wizard-link" href="#section-customer">
+                    <span class="step-no">1</span>
+                    <span class="step-text-wrap">
+                        <span class="step-text">客户</span>
+                        <span class="step-meta">基础信息</span>
+                    </span>
+                </a>
+            </div>
+            <div class="wizard-step active">
+                <a class="wizard-link" href="#section-building">
+                    <span class="step-no">2</span>
+                    <span class="step-text-wrap">
+                        <span class="step-text">建筑</span>
+                        <span class="step-meta" th:text="${#lists.size(buildingList) + '项'}">0项</span>
+                    </span>
+                </a>
+            </div>
+            <div class="wizard-step active">
+                <a class="wizard-link" href="#section-contract">
+                    <span class="step-no">3</span>
+                    <span class="step-text-wrap">
+                        <span class="step-text">合同</span>
+                        <span class="step-meta" th:text="${#lists.size(contractList) + '份'}">0份</span>
+                    </span>
+                </a>
+            </div>
+            <div class="wizard-step active">
+                <a class="wizard-link" href="#section-plan">
+                    <span class="step-no">4</span>
+                    <span class="step-text-wrap">
+                        <span class="step-text">计划</span>
+                        <span class="step-meta" th:text="${#lists.size(yearPlanList) + '项'}">0项</span>
+                    </span>
+                </a>
+            </div>
+        </div>
+
+        <div id="section-customer" class="table-card">
+            <div class="section-title">1. 客户录入信息</div>
+            <table class="table table-bordered">
+                <tbody>
+                    <tr>
+                        <th>客户名称</th>
+                        <td th:text="${company.companyName != null and company.companyName != '' ? company.companyName : '-'}">-</td>
+                        <th>项目名称</th>
+                        <td th:text="${company.projectName != null and company.projectName != '' ? company.projectName : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>重点单位</th>
+                        <td th:text="${company.isKeyUnit == '1' ? '是' : '否'}">否</td>
+                        <th>录入单位</th>
+                        <td>Admin</td>
+                    </tr>
+                    <tr>
+                        <th>所属区域</th>
+                        <td th:text="${((company.province != null ? company.province : '') + (company.city != null ? company.city : '') + (company.district != null ? company.district : '')) != '' ? ((company.province != null ? company.province : '') + (company.city != null ? company.city : '') + (company.district != null ? company.district : '')) : '-'}">-</td>
+                        <th>客户简称</th>
+                        <td th:text="${company.shortName != null and company.shortName != '' ? company.shortName : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>项目地址</th>
+                        <td th:text="${company.address != null and company.address != '' ? company.address : '-'}">-</td>
+                        <th>统一社会信用代码</th>
+                        <td th:text="${company.creditCode != null and company.creditCode != '' ? company.creditCode : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>消防安全管理员</th>
+                        <td th:text="${company.contactPerson != null and company.contactPerson != '' ? company.contactPerson : '-'}">-</td>
+                        <th>手机号(报告签收)</th>
+                        <td th:text="${company.contactPhone != null and company.contactPhone != '' ? company.contactPhone : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>建筑类别</th>
+                        <td th:text="${company.buildingType != null and company.buildingType != '' ? ((@dict.getLabel('fire_building_type', company.buildingType) != null and @dict.getLabel('fire_building_type', company.buildingType) != '') ? @dict.getLabel('fire_building_type', company.buildingType) : company.buildingType) : '-'}">-</td>
+                        <th>自动消防设施</th>
+                        <td th:text="${company.autoFireSystem == '0' ? '无' : '有'}">有</td>
+                    </tr>
+                    <tr>
+                        <th>总占地面积(m²)</th>
+                        <td th:text="${company.totalLandArea != null ? company.totalLandArea : '-'}">-</td>
+                        <th>总建筑面积(m²)</th>
+                        <td th:text="${company.totalBuildingArea != null ? company.totalBuildingArea : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>建筑层数</th>
+                        <td th:text="${company.buildingFloorCount != null ? company.buildingFloorCount : '-'}">-</td>
+                        <th>建筑高度(m)</th>
+                        <td th:text="${company.buildingHeight != null ? company.buildingHeight : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>维保标准</th>
+                        <td th:text="${company.maintenanceStandard != null and company.maintenanceStandard != '' ? company.maintenanceStandard : '-'}">-</td>
+                        <th>报告模式</th>
+                        <td th:text="${company.reportMode == '1' ? '线下' : '线上'}">线上</td>
+                    </tr>
+                    <tr>
+                        <th>项目负责人</th>
+                        <td th:text="${company.projectLeaderName != null and company.projectLeaderName != '' ? company.projectLeaderName : '-'}">-</td>
+                        <th>技术负责人</th>
+                        <td th:text="${company.technicalLeaderName != null and company.technicalLeaderName != '' ? company.technicalLeaderName : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>物业管理单位</th>
+                        <td th:text="${company.propertyManageUnit != null and company.propertyManageUnit != '' ? company.propertyManageUnit : '-'}">-</td>
+                        <th>联系邮箱</th>
+                        <td th:text="${company.contactEmail != null and company.contactEmail != '' ? company.contactEmail : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>维保方案</th>
+                        <td>
+                            <a th:if="${company.maintenanceSchemePath != null and company.maintenanceSchemePath != ''}"
+                               href="javascript:void(0)"
+                               th:attr="data-path=${company.maintenanceSchemePath}"
+                               onclick="openLocalResource(this.getAttribute('data-path'))"
+                               th:text="${company.maintenanceSchemeName != null and company.maintenanceSchemeName != '' ? company.maintenanceSchemeName : '查看'}">查看</a>
+                            <span th:if="${company.maintenanceSchemePath == null or company.maintenanceSchemePath == ''}">-</span>
+                        </td>
+                        <th>维保内容</th>
+                        <td class="overview-cell" th:text="${company.maintenanceContent != null and company.maintenanceContent != '' ? company.maintenanceContent : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>打卡地址</th>
+                        <td th:text="${company.checkInAddress != null and company.checkInAddress != '' ? company.checkInAddress : '-'}">-</td>
+                        <th>打卡范围(米)</th>
+                        <td th:text="${company.checkInRadius != null ? company.checkInRadius : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>打卡经度</th>
+                        <td th:text="${company.checkInLongitude != null ? company.checkInLongitude : '-'}">-</td>
+                        <th>打卡纬度</th>
+                        <td th:text="${company.checkInLatitude != null ? company.checkInLatitude : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>项目概况</th>
+                        <td colspan="3" class="overview-cell" th:text="${company.projectOverview != null and company.projectOverview != '' ? company.projectOverview : '-'}">-</td>
+                    </tr>
+                    <tr>
+                        <th>备注</th>
+                        <td colspan="3" class="overview-cell" th:text="${company.remark != null and company.remark != '' ? company.remark : '-'}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="section-building" class="table-card">
+            <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+                <span>2. 建筑信息列表</span>
+                <a href="javascript:void(0)" class="btn btn-success btn-xs" onclick="addBuildingForCompany()" style="font-weight:normal;font-size:12px;">
+                    <i class="fa fa-plus"></i> 新增建筑
+                </a>
+            </div>
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">序号</th>
+                        <th>建筑名称</th>
+                        <th>占地面积</th>
+                        <th>建筑面积</th>
+                        <th>楼层数</th>
+                        <th>建筑高度</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(buildingList)}">
+                        <td colspan="6" class="text-center placeholder-text">暂无建筑信息</td>
+                    </tr>
+                    <tr th:each="building, stat : ${buildingList}">
+                        <td th:text="${stat.count}">1</td>
+                        <td>
+                            <a href="javascript:void(0)"
+                               th:attr="data-id=${building.buildingId}"
+                               onclick="openBuildingDetail(this.getAttribute('data-id'))"
+                               th:text="${building.buildingName}">建筑</a>
+                        </td>
+                        <td th:text="${building.landArea != null ? building.landArea + ' m²' : '-'}">-</td>
+                        <td th:text="${building.area != null ? building.area + ' m²' : '-'}">-</td>
+                        <td th:text="${building.floorCount != null ? building.floorCount + ' 层' : '-'}">-</td>
+                        <td th:text="${building.buildingHeight != null ? building.buildingHeight + ' m' : '-'}">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="section-contract" class="table-card">
+            <div class="section-title">3. 合同列表</div>
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">序号</th>
+                        <th>合同名称</th>
+                        <th>有效期</th>
+                        <th>合同状态</th>
+                        <th>录入单位</th>
+                        <th style="width: 120px;">附件</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(contractList)}">
+                        <td colspan="6" class="text-center placeholder-text">暂无合同信息</td>
+                    </tr>
+                    <tr th:each="contract, stat : ${contractList}">
+                        <td th:text="${stat.count}">1</td>
+                        <td>
+                            <a href="javascript:void(0)"
+                               th:attr="data-id=${contract.contractId}"
+                               onclick="openContractDetail(this.getAttribute('data-id'))"
+                               th:text="${contract.contractName != null and contract.contractName != '' ? contract.contractName : '-'}">合同</a>
+                        </td>
+                        <td>
+                            <span th:text="${contract.startDate != null ? #dates.format(contract.startDate, 'yyyy-MM-dd') : '-'}"></span>
+                            <span> 至 </span>
+                            <span th:text="${contract.endDate != null ? #dates.format(contract.endDate, 'yyyy-MM-dd') : '-'}"></span>
+                        </td>
+                        <td>
+                            <span th:if="${contract.endDate == null}" class="status-tag status-pending">未知</span>
+                            <span th:if="${contract.endDate != null and contract.endDate.time >= #dates.createNow().time}" class="status-tag status-completed">有效</span>
+                            <span th:if="${contract.endDate != null and contract.endDate.time < #dates.createNow().time}" class="status-tag status-overdue">到期</span>
+                        </td>
+                        <td>Admin</td>
+                        <td>
+                            <a th:if="${contract.attachmentPath != null and contract.attachmentPath != ''}"
+                               href="javascript:void(0)"
+                               th:attr="data-path=${contract.attachmentPath}"
+                               onclick="openContractAttachment(this.getAttribute('data-path'))">查看</a>
+                            <span th:if="${contract.attachmentPath == null or contract.attachmentPath == ''}">-</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="section-plan" class="table-card">
+            <div class="section-title">4. 本年度计划列表</div>
+            <table class="table table-bordered table-hover">
+                <thead>
+                    <tr>
+                        <th style="width: 60px;">序号</th>
+                        <th>客户名称</th>
+                        <th>计划名称</th>
+                        <th>起止时间</th>
+                        <th>计划状态</th>
+                        <th>录入单位</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(yearPlanList)}">
+                        <td colspan="6" class="text-center placeholder-text">暂无本年度计划</td>
+                    </tr>
+                    <tr th:each="task, stat : ${yearPlanList}">
+                        <td th:text="${stat.count}">1</td>
+                        <td th:text="${task.companyName != null and task.companyName != '' ? task.companyName : company.companyName}">-</td>
+                        <td>
+                            <a href="javascript:void(0)"
+                               th:attr="data-id=${task.taskId}"
+                               onclick="openTaskDetail(this.getAttribute('data-id'))"
+                               th:text="${task.taskName != null and task.taskName != '' ? task.taskName : '-'}">计划</a>
+                        </td>
+                        <td>
+                            <span th:text="${task.planStartTime != null ? #dates.format(task.planStartTime, 'yyyy-MM-dd') : '-'}"></span>
+                            <span> 至 </span>
+                            <span th:text="${task.planEndTime != null ? #dates.format(task.planEndTime, 'yyyy-MM-dd') : '-'}"></span>
+                        </td>
+                        <td>
+                            <th:block th:switch="${task.taskStatus}">
+                                <span th:case="'0'" class="status-tag status-pending">未开始</span>
+                                <span th:case="'1'" class="status-tag status-running">进行中</span>
+                                <span th:case="'2'" class="status-tag status-completed">已完成</span>
+                                <span th:case="'3'" class="status-tag status-overdue">已逾期</span>
+                                <span th:case="*" class="status-tag status-pending">未知</span>
+                            </th:block>
+                        </td>
+                        <td>Admin</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <th:block th:include="include :: footer" />
+    <script th:inline="javascript">
+        function openBuildingDetail(buildingId) {
+            $.get(ctx + "fire/building/" + buildingId, function (res) {
+                if (res.code !== 0 || !res.data) {
+                    $.modal.alertError("获取建筑详情失败");
+                    return;
+                }
+                var b = res.data;
+                var html = [];
+                html.push('<div style="padding:15px;">');
+                html.push('<table class="table table-bordered">');
+                html.push('<tr><th style="width:130px;">建筑名称</th><td colspan="3">' + $.common.nullToStr(b.buildingName) + '</td></tr>');
+                html.push('<tr><th>建筑编码</th><td>' + $.common.nullToStr(b.buildingCode) + '</td><th>建筑地址</th><td>' + $.common.nullToStr(b.address) + '</td></tr>');
+                html.push('<tr><th>建筑类别</th><td>' + $.common.nullToStr(b.buildingTypeText || b.buildingType) + '</td><th>自动消防设施</th><td>' + (b.autoFireSystem === "0" ? "无" : "有") + '</td></tr>');
+                html.push('<tr><th>占地面积(m²)</th><td>' + $.common.nullToStr(b.landArea) + '</td><th>建筑面积(m²)</th><td>' + $.common.nullToStr(b.area) + '</td></tr>');
+                html.push('<tr><th>楼层数</th><td>' + $.common.nullToStr(b.floorCount) + '</td><th>建筑高度(m)</th><td>' + $.common.nullToStr(b.buildingHeight) + '</td></tr>');
+                html.push('<tr><th>地上层数</th><td>' + $.common.nullToStr(b.aboveGroundFloors) + '</td><th>地下层数</th><td>' + $.common.nullToStr(b.undergroundFloors) + '</td></tr>');
+                html.push('<tr><th>安全出口数</th><td>' + $.common.nullToStr(b.emergencyExits) + '</td><th>疏散楼梯数</th><td>' + $.common.nullToStr(b.evacuationStairs) + '</td></tr>');
+                html.push('<tr><th>消防电梯数</th><td>' + $.common.nullToStr(b.fireElevators) + '</td><th>避难层位置</th><td>' + $.common.nullToStr(b.refugeFloor) + '</td></tr>');
+                html.push('<tr><th>消防等级</th><td>' + $.common.nullToStr(b.fireLevel) + '</td><th>联系人</th><td>' + $.common.nullToStr(b.contactPerson) + '</td></tr>');
+                html.push('<tr><th>联系电话</th><td colspan="3">' + $.common.nullToStr(b.contactPhone) + '</td></tr>');
+                html.push('</table>');
+                html.push('</div>');
+                layer.open({
+                    type: 1,
+                    title: "建筑信息",
+                    area: ["820px", "600px"],
+                    content: html.join("")
+                });
+            });
+        }
+
+        function addBuildingForCompany() {
+            var companyId = [[${company.companyId}]];
+            var companyName = encodeURIComponent([[${company.companyName}]]);
+            var url = ctx + 'fire/building/add?companyId=' + companyId + '&companyName=' + companyName;
+            layer.open({
+                type: 2,
+                title: "新增建筑",
+                maxmin: true,
+                shadeClose: false,
+                area: ["900px", "680px"],
+                content: url,
+                end: function() {
+                    location.reload();
+                }
+            });
+        }
+
+        function openContractDetail(contractId) {
+            $.modal.open("合同详情", ctx + "fire/contract/detail/" + contractId, 980, 680);
+        }
+
+        function openTaskDetail(taskId) {
+            $.modal.open("计划详情", ctx + "fire/task/detail/" + taskId, 1280, 860);
+        }
+
+        function openContractAttachment(path) {
+            if ($.common.isEmpty(path)) {
+                $.modal.alertWarning("未找到合同附件");
+                return;
+            }
+            window.open(normalizeResourceUrl(path), "_blank");
+        }
+
+        function openLocalResource(path) {
+            if ($.common.isEmpty(path)) {
+                $.modal.alertWarning("未找到文件");
+                return;
+            }
+            window.open(normalizeResourceUrl(path), "_blank");
+        }
+
+        function normalizeResourceUrl(path) {
+            if (path.indexOf("http") === 0) {
+                return path;
+            }
+            if (ctx.charAt(ctx.length - 1) === "/" && path.charAt(0) === "/") {
+                return ctx + path.substring(1);
+            }
+            if (ctx.charAt(ctx.length - 1) !== "/" && path.charAt(0) !== "/") {
+                return ctx + "/" + path;
+            }
+            return ctx + path;
+        }
+    </script>
+</body>
+
+</html>

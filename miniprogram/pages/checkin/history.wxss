@@ -1,0 +1,114 @@
+
+.page.data-v-f3aa1d8e {
+  width: 100vw;
+  height: 100vh;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+.nav-header.data-v-f3aa1d8e {
+  height: calc(160rpx + env(safe-area-inset-top));
+  background: linear-gradient(135deg, #e53935 0%, #ef5350 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30rpx;
+  padding-top: calc(60rpx + env(safe-area-inset-top));
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.nav-back.data-v-f3aa1d8e {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.back-icon.data-v-f3aa1d8e {
+  font-size: 48rpx;
+  color: #fff;
+  font-weight: bold;
+}
+.nav-title.data-v-f3aa1d8e {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #fff;
+}
+.nav-placeholder.data-v-f3aa1d8e {
+  width: 60rpx;
+}
+.history-list.data-v-f3aa1d8e {
+  flex: 1;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+.history-item.data-v-f3aa1d8e {
+  background: #fff;
+  border-radius: 12rpx;
+  padding: 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+}
+.item-main.data-v-f3aa1d8e {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+.type-tag.data-v-f3aa1d8e {
+  padding: 6rpx 20rpx;
+  border-radius: 6rpx;
+  font-size: 24rpx;
+  font-weight: bold;
+}
+.type-tag.in.data-v-f3aa1d8e {
+  background: rgba(30, 136, 229, 0.1);
+  color: #1e88e5;
+}
+.type-tag.out.data-v-f3aa1d8e {
+  background: rgba(239, 83, 80, 0.1);
+  color: #ef5350;
+}
+.item-time.data-v-f3aa1d8e {
+  font-size: 24rpx;
+  color: #999;
+}
+.item-detail.data-v-f3aa1d8e {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+.detail-row.data-v-f3aa1d8e {
+  display: flex;
+}
+.label.data-v-f3aa1d8e {
+  width: 100rpx;
+  font-size: 26rpx;
+  color: #999;
+  flex-shrink: 0;
+}
+.value.data-v-f3aa1d8e {
+  flex: 1;
+  font-size: 26rpx;
+  color: #333;
+  line-height: 1.4;
+}
+.item-images.data-v-f3aa1d8e {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+}
+.item-images image.data-v-f3aa1d8e {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: 8rpx;
+}
+.load-more.data-v-f3aa1d8e {
+  text-align: center;
+  padding: 40rpx 0;
+}
+.load-more text.data-v-f3aa1d8e {
+  font-size: 24rpx;
+  color: #999;
+}
