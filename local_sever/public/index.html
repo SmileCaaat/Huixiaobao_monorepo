@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>本地联调启动台 · 汇消宝</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="brand">汇消宝 · Local Sever</p>
+        <h1>本地联调启动台</h1>
+        <p class="lead">在这里启动后端管理端与小程序；Maven 进度请看 start.bat 控制台。</p>
+      </div>
+      <div class="hero-status" id="heroStatus">
+        <div class="pill" data-key="backend" id="backend">后端检测中…</div>
+        <div class="pill" data-key="mini" id="mini">小程序环境…</div>
+        <div class="pill" data-key="jar" id="jar">jar 状态…</div>
+      </div>
+    </header>
+
+    <section class="panel launch-panel">
+      <h2>联调操作</h2>
+      <p class="hint">Maven Clean / Package 可能较久，请在 start.bat 控制台查看进度。启动后端会打开管理端；启动小程序会打开开发者工具。</p>
+      <div class="launch-actions">
+        <button type="button" id="cleanBackendBtn" class="launch-btn clean">Maven Clean</button>
+        <button type="button" id="packageBackendBtn" class="launch-btn ghost-build">Maven Package</button>
+        <button type="button" id="openBackendBtn" class="launch-btn">启动 / 打开后端界面</button>
+        <button type="button" id="openMiniBtn" class="launch-btn secondary">启动 / 打开小程序</button>
+        <button type="button" id="refreshBtn" class="launch-btn secondary">刷新状态</button>
+      </div>
+      <p class="form-msg" id="launchMsg"></p>
+    </section>
+
+    <footer class="footer">
+      <span>Dashboard: <code id="dashUrl"></code></span>
+      <span>Backend: <code id="backendUrl"></code></span>
+      <span>Admin UI: <a id="adminLink" href="#" target="_blank" rel="noreferrer">打开管理端</a></span>
+    </footer>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>

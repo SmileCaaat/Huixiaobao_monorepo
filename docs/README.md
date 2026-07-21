@@ -18,6 +18,8 @@
 | [06-开发与部署.md](06-开发与部署.md) | 本地开发、微信开发者工具、生产部署、日志和回滚 |
 | [07-问题清单与重构路线.md](07-问题清单与重构路线.md) | P0/P1/P2 问题和 `feature/native-rewrite` 实施顺序 |
 | [08-接手检查清单.md](08-接手检查清单.md) | 需要向前任或运维确认的信息、首周建议和发布检查表 |
+| [09-local_sever.md](09-local_sever.md) | 本地测试网关、设备面板、一键启动与小程序联调 |
+| [10-本地与线上差异说明.md](10-本地与线上差异说明.md) | 本地管理端与线上不一致的原因、本地库来源与如何对齐 |
 
 ## 当前判断
 
@@ -47,4 +49,5 @@
 - 小程序请求封装：[`miniprogram/utils/request.js`](../miniprogram/utils/request.js)
 - 小程序 REST 聚合 Controller：[`FireMiniAppController.java`](../backend/ruoyi-admin/src/main/java/com/ruoyi/web/controller/api/FireMiniAppController.java)
 - 原始部署说明：[`汇消宝管理后台更新部署文档.pdf`](../汇消宝管理后台更新部署文档.pdf)
+- 本地一键测试：[`local_sever/`](../local_sever/)（说明见 [09-local_sever.md](09-local_sever.md)）
 

@@ -1,6 +1,6 @@
-"use strict";
+﻿"use strict";
 const common_vendor = require("../common/vendor.js");
-let BASE_URL = "https://huixiaobao-admin.site";
+let BASE_URL = "http://127.0.0.1:83";
 const TOKEN_KEY = "token";
 const getToken = () => {
   return common_vendor.index.getStorageSync(TOKEN_KEY);

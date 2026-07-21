@@ -17,3 +17,10 @@ backend/uploadPath/
 
 # Miniprogram (WeChat DevTools local settings)
 miniprogram/project.private.config.json
+
+# local_sever runtime
+local_sever/config.env
+local_sever/node_modules/
+local_sever/logs/
+local_sever/.pids/
+local_sever/state/
