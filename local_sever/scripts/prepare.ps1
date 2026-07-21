@@ -148,9 +148,28 @@ $BackendPidFile = Join-Path $PidDir "backend.pid"
 $BackendOutLog = Join-Path $LogDir "backend.out.log"
 $BackendErrLog = Join-Path $LogDir "backend.err.log"
 
+Write-Host "[local_sever] Ensuring dependencies (auto-install if missing)..."
+& powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "ensure-deps.ps1")
+if ($LASTEXITCODE -ne 0) {
+  throw "ensure-deps.ps1 failed with exit code $LASTEXITCODE"
+}
+# Reload PATH/JAVA_HOME after possible installs
+$env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
+            [System.Environment]::GetEnvironmentVariable("Path", "User")
+$javaHome = [System.Environment]::GetEnvironmentVariable("JAVA_HOME", "Machine")
+if (-not $javaHome) {
+  $javaHome = [System.Environment]::GetEnvironmentVariable("JAVA_HOME", "User")
+}
+if ($javaHome) {
+  $env:JAVA_HOME = $javaHome
+  $env:Path = "$javaHome\bin;" + $env:Path
+}
+
 Write-Host "[local_sever] Checking tools..."
 Assert-Command "node" | Out-Null
 Assert-Command "npm" | Out-Null
+Assert-Command "java" | Out-Null
+Assert-Command "mvn" | Out-Null
 Write-Host "[local_sever] node=$(node -v) npm=$(npm -v)"
 
 if (-not $SkipInstall) {

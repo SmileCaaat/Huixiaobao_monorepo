@@ -119,6 +119,68 @@ function resolveMavenCmd() {
   return process.platform === "win32" ? "mvn.cmd" : "mvn";
 }
 
+function refreshWindowsEnv() {
+  if (process.platform !== "win32") return;
+  try {
+    const pathOut = execSync(
+      "powershell -NoProfile -Command \"[Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')\"",
+      { encoding: "utf8" }
+    ).trim();
+    if (pathOut) {
+      process.env.Path = pathOut;
+      process.env.PATH = pathOut;
+    }
+    const javaHome = execSync(
+      "powershell -NoProfile -Command \"$j=[Environment]::GetEnvironmentVariable('JAVA_HOME','Machine'); if(-not $j){$j=[Environment]::GetEnvironmentVariable('JAVA_HOME','User')}; if($j){$j}\"",
+      { encoding: "utf8" }
+    ).trim();
+    if (javaHome) {
+      process.env.JAVA_HOME = javaHome;
+      process.env.Path = `${javaHome}\\bin;${process.env.Path || ""}`;
+      process.env.PATH = process.env.Path;
+    }
+  } catch (_) {}
+}
+
+function commandExists(cmd) {
+  try {
+    if (process.platform === "win32") {
+      execSync(`where ${cmd}`, { stdio: "ignore" });
+    } else {
+      execSync(`command -v ${cmd}`, { stdio: "ignore", shell: true });
+    }
+    return true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/**
+ * Refresh PATH and auto-install JDK/Maven/Node/MySQL when missing.
+ */
+function ensureBuildTools() {
+  refreshWindowsEnv();
+  const need =
+    !commandExists("java") || !commandExists("mvn") || !commandExists("node");
+  if (!need) return;
+
+  const script = path.join(__dirname, "..", "scripts", "ensure-deps.ps1");
+  if (!fs.existsSync(script)) {
+    throw new Error(`Missing ensure-deps script: ${script}`);
+  }
+  process.stdout.write("[local_sever] Missing build tools. Running ensure-deps.ps1...\n");
+  execSync(
+    `powershell -NoProfile -ExecutionPolicy Bypass -File "${script}"`,
+    { stdio: "inherit", windowsHide: false }
+  );
+  refreshWindowsEnv();
+  if (!commandExists("mvn") || !commandExists("java")) {
+    throw new Error(
+      "java/mvn still missing after ensure-deps. Reopen start.bat and retry."
+    );
+  }
+}
+
 /**
  * Stop backend before clean+package so Windows can delete the locked jar.
  */
@@ -211,6 +273,14 @@ function runMavenGoals(backendRoot, logFile, goals) {
       return;
     }
     mavenRunning = true;
+
+    try {
+      ensureBuildTools();
+    } catch (err) {
+      mavenRunning = false;
+      reject(err);
+      return;
+    }
 
     fs.mkdirSync(path.dirname(logFile), { recursive: true });
     const stamp = `\n\n===== mvn ${goalLabel} ${new Date().toISOString()} =====\n`;

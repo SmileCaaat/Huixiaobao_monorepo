@@ -1,10 +1,10 @@
 # 汇消宝项目文档
 
-本文档面向临时接手项目的开发者，依据当前仓库代码和根目录《汇消宝管理后台更新部署文档.pdf》整理。结论以代码为第一事实来源；原有接口文档和部署 PDF 仅作为补充，因为其中部分路径已经与当前实现不一致。
+本文档面向临时接手项目的开发者，依据当前仓库代码和 `docs/` 内《汇消宝管理后台更新部署文档.pdf》整理。结论以代码为第一事实来源；原有接口文档和部署 PDF 仅作为补充，因为其中部分路径已经与当前实现不一致。
 
 ## 一句话架构
 
-汇消宝是一个以 RuoYi 后端为核心、微信小程序为现场作业端的消防维保系统：后端业务模型和管理能力相对完整，小程序则是缺少源码的 uni-app 编译产物，适合在稳定接口契约后逐步或整体重写为原生小程序。
+汇消宝是一个以 RuoYi 后端为核心、微信小程序为现场作业端的消防维保系统：后端业务模型和管理能力相对完整，小程序则是缺少源码的 uni-app 编译产物，适合在稳定接口契约后逐步或整体重写为原生小程序。本地联调可通过 `local_sever/` 一键拉起后端面板并切换小程序 `BASE_URL`。
 
 ## 阅读顺序
 
@@ -25,8 +25,9 @@
 
 - `backend/` 是项目核心，业务数据模型、管理端、消防业务 Service/Mapper 和大部分小程序 REST API 都已存在。
 - `miniprogram/` 不是 uni-app 源工程，而是 `mp-weixin` 编译结果；仓库中没有 `.vue`、`pages.json`、`manifest.json`、`package.json` 或有效 sourcemap。
+- `local_sever/` 仅用于本机联调（网关、面板、一键启动），不是生产组件。
 - 小程序可以整体原生重构，但应先固定 API 契约，否则会把当前接口漂移复制进新代码。
-- 现有消防业务 SQL 主要是增量脚本，缺少从零创建全部 `fire_*` 表的完整基线。
+- 消防业务 SQL 仍以增量脚本为主；本地可用 `backend/sql/local_fire_baseline.sql` 建消防相关表。本地与线上菜单/数据差异通常来自数据库内容，而非代码分叉。
 - 生产部署 PDF 只覆盖 JAR 更新和日志查看，没有提供服务器、数据库、Nginx、备份或回滚信息。
 
 ## 事实来源优先级
@@ -35,10 +36,11 @@
 
 1. 当前 Java/Mapper/小程序调用代码。
 2. `application.yml`、`application-druid.yml`、POM 和 Dockerfile。
-3. `backend/sql/` 中可执行脚本。
+3. `backend/sql/` 中可执行脚本（含 `local_fire_baseline.sql`）。
 4. `miniprogram/改动记录.md`。
 5. `backend/docs/小程序对接文档.md`、`backend/ruoyi-admin/API接口文档.md`。
-6. 根目录部署 PDF。
+6. `docs/汇消宝管理后台更新部署文档.pdf`。
+7. `docs/09-local_sever.md`、`docs/10-本地与线上差异说明.md`（本地联调场景）。
 
 ## 快速入口
 
@@ -48,6 +50,6 @@
 - 小程序 API：[`miniprogram/api/index.js`](../miniprogram/api/index.js)
 - 小程序请求封装：[`miniprogram/utils/request.js`](../miniprogram/utils/request.js)
 - 小程序 REST 聚合 Controller：[`FireMiniAppController.java`](../backend/ruoyi-admin/src/main/java/com/ruoyi/web/controller/api/FireMiniAppController.java)
-- 原始部署说明：[`汇消宝管理后台更新部署文档.pdf`](../汇消宝管理后台更新部署文档.pdf)
+- 本地消防基线 SQL：[`backend/sql/local_fire_baseline.sql`](../backend/sql/local_fire_baseline.sql)
 - 本地一键测试：[`local_sever/`](../local_sever/)（说明见 [09-local_sever.md](09-local_sever.md)）
-
+- 原始部署说明：[`汇消宝管理后台更新部署文档.pdf`](./汇消宝管理后台更新部署文档.pdf)
