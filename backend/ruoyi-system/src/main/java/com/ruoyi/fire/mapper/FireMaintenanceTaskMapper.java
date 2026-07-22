@@ -1,6 +1,8 @@
 package com.ruoyi.fire.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
+import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 
 /**
@@ -58,4 +60,12 @@ public interface FireMaintenanceTaskMapper
      * @return 结果
      */
     public int deleteFireMaintenanceTaskByTaskIds(Long[] taskIds);
+
+    /**
+     * 查询用户作为负责人或操作员参与的任务所关联的公司列表（去重）
+     *
+     * @param userId 用户ID
+     * @return 公司列表
+     */
+    public List<FireCompany> selectCompanyListByTaskUserId(@Param("userId") Long userId);
 }

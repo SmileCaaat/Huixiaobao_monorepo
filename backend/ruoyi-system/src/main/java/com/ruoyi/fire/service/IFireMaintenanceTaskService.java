@@ -1,6 +1,7 @@
 package com.ruoyi.fire.service;
 
 import java.util.List;
+import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 
 /**
@@ -73,4 +74,12 @@ public interface IFireMaintenanceTaskService {
      * @return 模板列表
      */
     public List<com.ruoyi.fire.domain.FireMaintenanceTemplate> getAllTemplatesWithCache();
+
+    /**
+     * 查询用户作为负责人或操作员参与的任务所关联的公司列表（去重）
+     *
+     * @param userId 用户ID
+     * @return 公司列表
+     */
+    public List<FireCompany> selectCompanyListByTaskUserId(Long userId);
 }

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.fire.mapper.FireMaintenanceTaskMapper;
 import com.ruoyi.fire.mapper.FireMaintenanceTemplateMapper;
 import com.ruoyi.fire.mapper.FireMaintenanceRecordMapper;
+import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.domain.FireMaintenanceTemplate;
 import com.ruoyi.fire.domain.FireMaintenanceRecord;
@@ -454,4 +455,16 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
         // 再删除任务
         return fireMaintenanceTaskMapper.deleteFireMaintenanceTaskByTaskId(taskId);
     }
+
+    /**
+     * 查询用户作为负责人或操作员参与的任务所关联的公司列表（去重）
+     *
+     * @param userId 用户ID
+     * @return 公司列表
+     */
+    @Override
+    public List<FireCompany> selectCompanyListByTaskUserId(Long userId) {
+        return fireMaintenanceTaskMapper.selectCompanyListByTaskUserId(userId);
+    }
 }
+
