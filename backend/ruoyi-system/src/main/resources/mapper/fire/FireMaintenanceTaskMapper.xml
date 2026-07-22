@@ -41,6 +41,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="remark"    column="remark"    />
     </resultMap>
 
+    <resultMap type="com.ruoyi.fire.domain.FireCompany" id="TaskCompanyResult">
+        <id     property="companyId"        column="company_id"          />
+        <result property="companyCode"      column="company_code"        />
+        <result property="companyName"      column="company_name"        />
+        <result property="projectName"      column="project_name"        />
+        <result property="shortName"        column="short_name"          />
+        <result property="companyType"      column="company_type"        />
+        <result property="address"          column="address"             />
+        <result property="checkInLongitude" column="check_in_longitude"  />
+        <result property="checkInLatitude"  column="check_in_latitude"   />
+        <result property="checkInRadius"    column="check_in_radius"     />
+        <result property="checkInAddress"   column="check_in_address"    />
+        <result property="contactPerson"    column="contact_person"      />
+        <result property="contactPhone"     column="contact_phone"       />
+        <result property="status"           column="status"              />
+    </resultMap>
+
     <sql id="selectFireMaintenanceTaskVo">
         select task_id, task_name, company_id, company_name, plan_start_time, plan_end_time, actual_start_time, actual_end_time, task_status, total_items, completed_items, normal_items, fault_items, no_device_items, executor_id, executor_name, task_type, period_type, period_year, period_num, manager_id, manager_name, manager_phone, operator_ids, operator_names, building_id, building_name, maintenance_summary, maintenance_time, create_by, create_time, update_by, update_time, remark from fire_maintenance_task
     </sql>
@@ -77,6 +94,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="taskType != null  and taskType != ''"> and t.task_type = #{taskType}</if>
             <if test="periodType != null  and periodType != ''"> and t.period_type = #{periodType}</if>
             <if test="periodYear != null "> and t.period_year = #{periodYear}</if>
+            <if test="params != null and params.beginTime != null and params.beginTime != ''">
+                and date_format(t.plan_start_time, '%Y-%m-%d') &gt;= date_format(#{params.beginTime}, '%Y-%m-%d')
+            </if>
+            <if test="params != null and params.endTime != null and params.endTime != ''">
+                and date_format(t.plan_start_time, '%Y-%m-%d') &lt;= date_format(#{params.endTime}, '%Y-%m-%d')
+            </if>
             <if test="managerId != null "> 
                 and (
                     t.manager_id = #{managerId}
@@ -218,4 +241,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{taskId}
         </foreach>
     </delete>
+
+    <!-- 查询用户作为负责人或操作员参与的任务所关联的公司列表（去重） -->
+    <select id="selectCompanyListByTaskUserId" parameterType="Long" resultMap="TaskCompanyResult">
+        select c.company_id, c.company_code, c.company_name, c.project_name, c.short_name, c.company_type,
+               c.address, c.check_in_longitude, c.check_in_latitude, c.check_in_radius,
+               c.check_in_address, c.contact_person, c.contact_phone, c.status
+        from fire_company c
+        where c.del_flag = '0'
+          and c.status = '0'
+          and c.company_id in (
+              select distinct t.company_id
+              from fire_maintenance_task t
+              where t.manager_id = #{userId}
+                 or t.executor_id = #{userId}
+                 or FIND_IN_SET(#{userId}, t.operator_ids) > 0
+          )
+        order by c.company_name
+    </select>
 </mapper>

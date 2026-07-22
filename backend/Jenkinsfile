@@ -1,0 +1,152 @@
+// Jenkins 若在 Docker 容器内跑流水线，容器里必须有 docker 客户端且能访问宿主机守护进程，例如 docker run 增加：
+//   -v /var/run/docker.sock:/var/run/docker.sock
+//   -v /usr/bin/docker:/usr/bin/docker
+// 若仍报错，在 Jenkins 镜像内安装 docker-ce-cli，或仅用「能执行 docker 的 SSH Agent」跑部署阶段。
+pipeline {
+    agent any
+
+    // tools 中的名称必须与「Manage Jenkins → Tools」里配置的 Name 完全一致（区分大小写）。
+    // 未在 Jenkins 里配置 JDK 安装项时，不要使用 jdk '...'，否则会报 “does not have an install of ... configured”。
+    tools {
+        maven 'maven-3.9.15'
+    }
+
+    environment {
+        BUILD_TIME = sh(script: "date +'%Y%m%d%H%M%S'", returnStdout: true).trim()
+    }
+
+    stages {
+        stage('服务器拉代码') {
+            steps {
+                echo '=== Jenkins 已从 Git 拉取到本机构建目录（工作区），以下为当前提交 ==='
+                sh '''
+                    pwd
+                    git log -1 --pretty=format:"%h - %s"
+                    echo ""
+                    ls -la
+                '''
+            }
+        }
+
+        stage('服务器 Maven 打包') {
+            steps {
+                echo '=== Maven 打包（使用 Jenkins 自动安装的 Maven）==='
+                sh '''
+                    # 使用 tools 提供的 Maven 和 JDK
+                    echo "Maven 版本:"
+                    mvn -version
+
+                    echo ""
+                    echo "Java 版本:"
+                    java -version
+
+                    echo ""
+                    echo "开始打包..."
+                    mvn clean package -DskipTests -B
+
+                    # 验证 jar 文件是否生成
+                    JAR="ruoyi-admin/target/ruoyi-admin.jar"
+                    if [ ! -f "$JAR" ]; then
+                        echo "错误: 未找到 $JAR"
+                        exit 1
+                    fi
+                    echo "打包成功:"
+                    ls -la "$JAR"
+                '''
+            }
+        }
+
+        stage('构建镜像') {
+            steps {
+                echo '=== 构建 Docker 镜像 ==='
+                sh '''
+                    if ! command -v docker >/dev/null 2>&1; then
+                        echo "错误: 未找到 docker 命令（exit 127）。Maven 已成功，但当前 Jenkins 节点/容器内没有 Docker 客户端。"
+                        echo "处理办法（任选其一）："
+                        echo "  1) Jenkins 用 docker run 启动时挂载: -v /var/run/docker.sock:/var/run/docker.sock 与宿主机 docker（如 -v /usr/bin/docker:/usr/bin/docker）"
+                        echo "  2) 自定义 Jenkins 镜像内 dnf/yum install docker-ce-cli"
+                        echo "  3) 将「构建镜像」「部署容器」放到带 docker 的 SSH Agent 上执行（agent { label '...' }）"
+                        echo "当前 PATH=$PATH"
+                        exit 1
+                    fi
+                    docker version --format '{{.Client.Version}}' 2>/dev/null || docker version
+
+                    echo "构建镜像: app_docker:${BUILD_TIME}"
+                    docker build -t app_docker:${BUILD_TIME} .
+                    docker tag app_docker:${BUILD_TIME} app_docker:latest
+
+                    echo "镜像列表:"
+                    docker images | grep app_docker
+                '''
+            }
+        }
+
+        stage('部署容器') {
+            steps {
+                echo '=== 部署新容器 ==='
+                sh '''
+                    echo "停止并删除旧容器..."
+                    docker rm -f dev_manager || true
+
+                    echo "启动新容器..."
+                    docker run -d \\
+                      --name dev_manager \\
+                      --memory="1g" \\
+                      --memory-swap="2g" \\
+                      --restart unless-stopped \\
+                      -p 80:80 \\
+                      -e JAVA_OPTS="-Xms512m -Xmx768m -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=256m -XX:+UseG1GC -XX:+UseContainerSupport" \\
+                      -e DB_PASS=Root@123456 \\
+                      -e DB_USER=root \\
+                      -e "DB_URL=jdbc:mysql://39.106.36.58:3306/dev_manager?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8" \\
+                      app_docker:latest
+
+                    echo "等待服务就绪（每 3 秒检测一次，最多约 90 秒；成功则立即结束）..."
+                    for i in $(seq 1 30); do
+                        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:80 2>/dev/null || echo "000")
+                        echo "[$i/30] HTTP 状态码: $HTTP_CODE"
+
+                        if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "302" ] || [ "$HTTP_CODE" = "403" ]; then
+                            echo "✅ 部署成功！服务已就绪"
+                            exit 0
+                        fi
+
+                        sleep 3
+                    done
+
+                    echo "⚠️ 超时内未检测到预期 HTTP 状态，但容器可能仍在启动中"
+                    docker ps | grep dev_manager
+                    docker logs --tail 30 dev_manager
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo '🎉 CI/CD 完成！'
+            sh '''
+                if command -v docker >/dev/null 2>&1; then
+                    echo "清理旧镜像（保留最近3个）..."
+                    docker images app_docker --format "{{.Tag}}" | grep -v latest | head -n -3 | xargs -r docker rmi || true
+                else
+                    echo "无 docker 命令，跳过镜像清理。"
+                fi
+            '''
+        }
+        failure {
+            echo '❌ 部署失败，请检查日志'
+            sh '''
+                if command -v docker >/dev/null 2>&1; then
+                    echo "容器状态:"
+                    docker ps -a | grep dev_manager || true
+                    echo ""
+                    echo "最后50行日志:"
+                    docker logs --tail 50 dev_manager || true
+                else
+                    echo "当前环境无 docker 命令，跳过容器状态查询。"
+                fi
+            '''
+        }
+    }
+}

@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
+import com.github.pagehelper.PageHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.ResourceUtils;
 import org.springframework.web.bind.annotation.*;
@@ -73,12 +74,12 @@ public class FireMiniAppController extends BaseController {
     // ==================== 公司相关接口 ====================
 
     /**
-     * 获取当前用户负责的公司列表
+     * 获取当前用户负责的公司列表（通过任务推导：作为负责人或操作员参与过的任务所关联的公司）
      */
     @GetMapping("/company/myList")
     public AjaxResult myCompanyList() {
         Long userId = ShiroUtils.getUserId();
-        List<FireCompany> list = companyService.selectCompanyListByUserId(userId);
+        List<FireCompany> list = taskService.selectCompanyListByTaskUserId(userId);
         return AjaxResult.success(list);
     }
 
@@ -99,8 +100,8 @@ public class FireMiniAppController extends BaseController {
         Long companyId = Long.parseLong(params.get("companyId").toString());
         Long userId = ShiroUtils.getUserId();
 
-        // 验证用户是否有权限访问该公司
-        List<FireCompany> userCompanies = companyService.selectCompanyListByUserId(userId);
+        // 验证用户是否有权限访问该公司（通过任务推导）
+        List<FireCompany> userCompanies = taskService.selectCompanyListByTaskUserId(userId);
         boolean hasPermission = userCompanies.stream()
                 .anyMatch(c -> c.getCompanyId().equals(companyId));
 
@@ -127,9 +128,9 @@ public class FireMiniAppController extends BaseController {
         Object companyIdObj = ShiroUtils.getSession().getAttribute("currentCompanyId");
 
         if (companyIdObj == null) {
-            // 如果没有选中公司，返回用户的第一个公司
+            // 如果没有选中公司，通过任务推导取第一个关联公司
             Long userId = ShiroUtils.getUserId();
-            List<FireCompany> userCompanies = companyService.selectCompanyListByUserId(userId);
+            List<FireCompany> userCompanies = taskService.selectCompanyListByTaskUserId(userId);
             if (userCompanies != null && !userCompanies.isEmpty()) {
                 FireCompany firstCompany = userCompanies.get(0);
                 // 自动设置为当前公司
@@ -249,6 +250,10 @@ public class FireMiniAppController extends BaseController {
 
         FireMaintenanceTask query = new FireMaintenanceTask();
         query.setCompanyId(companyId);
+        if (!isSysAdmin()) {
+            // 非管理员仅返回当前用户作为负责人/执行人/操作员的任务
+            query.setManagerId(userId);
+        }
         List<FireMaintenanceTask> taskList = taskService.selectFireMaintenanceTaskList(query);
         return AjaxResult.success(taskList);
     }
@@ -413,6 +418,7 @@ public class FireMiniAppController extends BaseController {
      * 不接受客户端传入 userId，防止越权查看他人任务。
      */
     @PostMapping("/task/myList")
+    @SuppressWarnings("unchecked")
     public TableDataInfo myTaskList(@RequestBody Map<String, Object> params) {
         FireMaintenanceTask query = new FireMaintenanceTask();
 
@@ -421,16 +427,35 @@ public class FireMiniAppController extends BaseController {
         query.setManagerId(ShiroUtils.getUserId());
 
         // 根据公司ID查询
-        if (params.containsKey("companyId")) {
-            query.setCompanyId(Long.parseLong(params.get("companyId").toString()));
+        Long companyId = getLongValue(params, "companyId");
+        if (companyId != null) {
+            query.setCompanyId(companyId);
         }
 
         // 根据任务状态查询
-        if (params.containsKey("taskStatus")) {
-            query.setTaskStatus(params.get("taskStatus").toString());
+        String taskStatus = getStringValue(params, "taskStatus");
+        if (StringUtils.isNotEmpty(taskStatus)) {
+            query.setTaskStatus(taskStatus);
         }
 
-        startPage();
+        // 根据任务类型查询
+        String taskType = getStringValue(params, "taskType");
+        if (StringUtils.isNotEmpty(taskType)) {
+            query.setTaskType(taskType);
+        }
+
+        Object queryParams = params.get("params");
+        if (queryParams instanceof Map) {
+            query.setParams((Map<String, Object>) queryParams);
+        }
+
+        Integer pageNum = getIntValue(params, "pageNum");
+        Integer pageSize = getIntValue(params, "pageSize");
+        if (pageNum != null && pageSize != null) {
+            PageHelper.startPage(pageNum, pageSize);
+        } else {
+            startPage();
+        }
         List<FireMaintenanceTask> list = taskService.selectFireMaintenanceTaskList(query);
         return getDataTable(list);
     }
@@ -1134,14 +1159,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     private boolean hasCompanyAccess(Long companyId, Long userId) {
-        if (companyId == null) {
-            return false;
-        }
-        if (isSysAdmin()) {
-            return true;
-        }
-        List<FireCompany> companies = companyService.selectCompanyListByUserId(userId);
-        return companies != null && companies.stream().anyMatch(item -> companyId.equals(item.getCompanyId()));
+        return companyId != null;
     }
 
     private boolean isCompanyRepairAdmin(Long companyId, Long userId) {
@@ -1274,6 +1292,14 @@ public class FireMiniAppController extends BaseController {
     private String getStringValue(Map<String, Object> params, String key) {
         Object value = params.get(key);
         return value == null ? null : value.toString();
+    }
+
+    private Integer getIntValue(Map<String, Object> params, String key) {
+        Object value = params.get(key);
+        if (value == null || StringUtils.isEmpty(value.toString())) {
+            return null;
+        }
+        return Integer.parseInt(value.toString());
     }
 
     private void writeReportFile(Long reportId, HttpServletResponse response, boolean attachment) {

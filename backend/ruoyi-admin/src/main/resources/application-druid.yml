@@ -6,10 +6,10 @@ spring:
         druid:
             # 主库数据源（支持环境变量配置，线上部署时设置 DB_URL, DB_USER, DB_PASS）
             master:
-                url: ${DB_URL:jdbc:mysql://43.142.75.179:3306/dev_manager?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8}
+                url: ${DB_URL:jdbc:mysql://175.178.210.65:3306/dev_manager?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8}
                 username: ${DB_USER:root}
                 # 生产环境必须通过环境变量 DB_PASS 注入，不得有明文默认值
-                password: ${DB_PASS}
+                password: ${DB_PASS:HXB@123456!}
             # 从库数据源
             slave:
                 # 从数据源开关/默认关闭
