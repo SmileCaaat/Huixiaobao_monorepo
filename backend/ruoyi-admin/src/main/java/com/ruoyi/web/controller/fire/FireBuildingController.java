@@ -83,10 +83,13 @@ public class FireBuildingController extends BaseController {
     @PostMapping("/add")
     @ResponseBody
     public AjaxResult addSave(@Validated FireBuilding building) {
+        if (building.getCompanyId() == null) {
+            return error("请选择所属客户");
+        }
         if (!buildingService.checkBuildingCodeUnique(building)) {
             return error("新增建筑'" + building.getBuildingName() + "'失败，建筑编码已存在");
         } else if (!buildingService.checkBuildingNameUnique(building)) {
-            return error("新增建筑'" + building.getBuildingName() + "'失败，建筑名称已存在");
+            return error("新增建筑'" + building.getBuildingName() + "'失败，同一客户下建筑名称不能重复");
         }
         building.setCreateBy(getLoginName());
         return toAjax(buildingService.insertBuilding(building));
@@ -110,10 +113,13 @@ public class FireBuildingController extends BaseController {
     @PostMapping("/edit")
     @ResponseBody
     public AjaxResult editSave(@Validated FireBuilding building) {
+        if (building.getCompanyId() == null) {
+            return error("请选择所属客户");
+        }
         if (!buildingService.checkBuildingCodeUnique(building)) {
             return error("修改建筑'" + building.getBuildingName() + "'失败，建筑编码已存在");
         } else if (!buildingService.checkBuildingNameUnique(building)) {
-            return error("修改建筑'" + building.getBuildingName() + "'失败，建筑名称已存在");
+            return error("修改建筑'" + building.getBuildingName() + "'失败，同一客户下建筑名称不能重复");
         }
         building.setUpdateBy(getLoginName());
         return toAjax(buildingService.updateBuilding(building));

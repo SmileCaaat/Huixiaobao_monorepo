@@ -32,6 +32,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="operatorNames"    column="operator_names"    />
         <result property="buildingId"    column="building_id"    />
         <result property="buildingName"    column="building_name"    />
+        <result property="selectedSystemIds"    column="selected_system_ids"    />
+        <result property="selectedFireTestIds"    column="selected_fire_test_ids"    />
         <result property="maintenanceSummary"    column="maintenance_summary"    />
         <result property="maintenanceTime"    column="maintenance_time"    />
         <result property="createBy"    column="create_by"    />
@@ -59,7 +61,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectFireMaintenanceTaskVo">
-        select task_id, task_name, company_id, company_name, plan_start_time, plan_end_time, actual_start_time, actual_end_time, task_status, total_items, completed_items, normal_items, fault_items, no_device_items, executor_id, executor_name, task_type, period_type, period_year, period_num, manager_id, manager_name, manager_phone, operator_ids, operator_names, building_id, building_name, maintenance_summary, maintenance_time, create_by, create_time, update_by, update_time, remark from fire_maintenance_task
+        select task_id, task_name, company_id, company_name, plan_start_time, plan_end_time, actual_start_time, actual_end_time, task_status, total_items, completed_items, normal_items, fault_items, no_device_items, executor_id, executor_name, task_type, period_type, period_year, period_num, manager_id, manager_name, manager_phone, operator_ids, operator_names, building_id, building_name, selected_system_ids, selected_fire_test_ids, maintenance_summary, maintenance_time, create_by, create_time, update_by, update_time, remark from fire_maintenance_task
     </sql>
 
     <select id="selectFireMaintenanceTaskList" parameterType="FireMaintenanceTask" resultMap="FireMaintenanceTaskResult">
@@ -81,7 +83,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result = '3') as no_device_items,
             t.executor_id, t.executor_name, t.task_type, t.period_type, t.period_year, t.period_num,
             t.manager_id, t.manager_name, t.manager_phone, t.operator_ids, t.operator_names,
-            t.building_id, t.building_name, t.maintenance_summary, t.maintenance_time,
+            t.building_id, t.building_name, t.selected_system_ids, t.selected_fire_test_ids,
+            t.maintenance_summary, t.maintenance_time,
             t.create_by, t.create_time, t.update_by, t.update_time, t.remark
         from fire_maintenance_task t
         <where>  
@@ -146,6 +149,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="operatorNames != null">operator_names,</if>
             <if test="buildingId != null">building_id,</if>
             <if test="buildingName != null">building_name,</if>
+            <if test="selectedSystemIds != null">selected_system_ids,</if>
+            <if test="selectedFireTestIds != null">selected_fire_test_ids,</if>
             <if test="maintenanceSummary != null">maintenance_summary,</if>
             <if test="maintenanceTime != null">maintenance_time,</if>
             <if test="createBy != null">create_by,</if>
@@ -181,6 +186,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="operatorNames != null">#{operatorNames},</if>
             <if test="buildingId != null">#{buildingId},</if>
             <if test="buildingName != null">#{buildingName},</if>
+            <if test="selectedSystemIds != null">#{selectedSystemIds},</if>
+            <if test="selectedFireTestIds != null">#{selectedFireTestIds},</if>
             <if test="maintenanceSummary != null">#{maintenanceSummary},</if>
             <if test="maintenanceTime != null">#{maintenanceTime},</if>
             <if test="createBy != null">#{createBy},</if>
@@ -210,23 +217,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="executorId != null">executor_id = #{executorId},</if>
             <if test="executorName != null">executor_name = #{executorName},</if>
             <if test="taskType != null">task_type = #{taskType},</if>
-            <if test="periodType != null">period_type = #{periodType},</if>
-            <if test="periodYear != null">period_year = #{periodYear},</if>
-            <if test="periodNum != null">period_num = #{periodNum},</if>
             <if test="managerId != null">manager_id = #{managerId},</if>
             <if test="managerName != null">manager_name = #{managerName},</if>
             <if test="managerPhone != null">manager_phone = #{managerPhone},</if>
-            <if test="operatorIds != null">operator_ids = #{operatorIds},</if>
-            <if test="operatorNames != null">operator_names = #{operatorNames},</if>
-            <if test="buildingId != null">building_id = #{buildingId},</if>
-            <if test="buildingName != null">building_name = #{buildingName},</if>
+            <!-- 可清空字段：即使为空也更新，避免旧值残留 -->
+            period_type = #{periodType},
+            period_year = #{periodYear,jdbcType=INTEGER},
+            period_num = #{periodNum,jdbcType=INTEGER},
+            operator_ids = #{operatorIds},
+            operator_names = #{operatorNames},
+            building_id = #{buildingId,jdbcType=BIGINT},
+            building_name = #{buildingName},
+            selected_system_ids = #{selectedSystemIds},
+            selected_fire_test_ids = #{selectedFireTestIds},
+            remark = #{remark},
             <if test="maintenanceSummary != null">maintenance_summary = #{maintenanceSummary},</if>
             <if test="maintenanceTime != null">maintenance_time = #{maintenanceTime},</if>
             <if test="createBy != null">create_by = #{createBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
-            <if test="updateTime != null">update_time = #{updateTime},</if>
-            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate(),
         </trim>
         where task_id = #{taskId}
     </update>

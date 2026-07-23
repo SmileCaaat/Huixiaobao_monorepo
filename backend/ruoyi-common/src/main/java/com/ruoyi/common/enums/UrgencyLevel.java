@@ -32,4 +32,8 @@ public enum UrgencyLevel {
         }
         return null;
     }
+
+    public static boolean isValid(String code) {
+        return getInfo(code) != null;
+    }
 }

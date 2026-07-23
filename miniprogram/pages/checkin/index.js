@@ -28,7 +28,12 @@ const _sfc_main = {
     const checkType = common_vendor.ref("0");
     const imageList = common_vendor.ref([]);
     const remark = common_vendor.ref("正常打卡");
-    common_vendor.watch(selectedCompanyId, (newVal) => {
+    common_vendor.watch(selectedCompanyId, (newVal, oldVal) => {
+      if (newVal !== oldVal) {
+        selectedTaskId.value = null;
+        selectedTaskName.value = "";
+        taskList.value = [];
+      }
       if (newVal) {
         fetchTasks();
       }
@@ -48,6 +53,10 @@ const _sfc_main = {
             );
             if (task) {
               selectedTaskName.value = task.taskName;
+            } else {
+              selectedTaskId.value = null;
+              selectedTaskName.value = "";
+              common_vendor.index.showToast({ title: "预选任务不可用，请重新选择", icon: "none" });
             }
           }
         }
@@ -206,6 +215,9 @@ const _sfc_main = {
       });
     };
     const handleSubmit = async () => {
+      if (!selectedTaskId.value) {
+        return common_vendor.index.showToast({ title: "请选择维保任务", icon: "none" });
+      }
       if (imageList.value.length === 0) {
         return common_vendor.index.showToast({ title: "请至少上传一张照片", icon: "none" });
       }
@@ -220,13 +232,11 @@ const _sfc_main = {
           companyId: selectedCompanyId.value,
           companyName: selectedCompanyName.value,
           taskId: selectedTaskId.value,
-          // 新增任务ID支持
           checkInType: checkType.value,
           address: currentAddress.value,
           latitude: latitude.value,
           longitude: longitude.value,
           remark: remark.value,
-          // 更新为新的图片对象数组格式
           images: imageList.value.map((img, index) => ({
             imageUrl: img.serverUrl,
             imageName: `${checkType.value === "0" ? "签到" : "签退"}图片${index + 1}`,
@@ -351,7 +361,7 @@ const _sfc_main = {
       }, showDrawer.value ? common_vendor.e({
         p: common_vendor.t(checkType.value === "0" ? "签到确认" : "签退确认"),
         q: common_vendor.o(closeDrawer),
-        r: common_vendor.t(selectedTaskName.value || "请选择关联任务"),
+        r: common_vendor.t(selectedTaskName.value || "请选择任务名称（必选）"),
         s: taskList.value,
         t: common_vendor.o(onTaskChange),
         v: common_vendor.f(imageList.value, (img, idx, i0) => {

@@ -222,11 +222,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             </if>
             <if test="contractStatus != null and contractStatus != ''">
                 <choose>
-                    <when test="contractStatus == 'expired' or contractStatus == '2'">
+                    <when test='contractStatus.equals("expired") or contractStatus.equals("2")'>
                         and coalesce(lc.end_date, c.contract_end_date) &lt; curdate()
                     </when>
-                    <when test="contractStatus == 'valid' or contractStatus == '0'">
-                        and (coalesce(lc.end_date, c.contract_end_date) &gt;= curdate() or coalesce(lc.end_date, c.contract_end_date) is null)
+                    <when test='contractStatus.equals("valid")'>
+                        and exists (
+                            select 1
+                            from fire_contract active_contract
+                            where active_contract.company_id = c.company_id
+                              and active_contract.del_flag = '0'
+                              and active_contract.terminate_flag = '0'
+                              and active_contract.start_date is not null
+                              and active_contract.end_date is not null
+                              and active_contract.start_date &lt;= curdate()
+                              and active_contract.end_date &gt;= curdate()
+                        )
                     </when>
                 </choose>
             </if>

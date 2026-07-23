@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.*;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.enums.UrgencyLevel;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.ShiroUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.fire.domain.*;
@@ -157,33 +159,38 @@ public class FireMiniAppController extends BaseController {
      */
     @PostMapping("/checkIn/add")
     public AjaxResult addCheckIn(@RequestBody FireCheckIn checkIn) {
-        checkIn.setUserId(ShiroUtils.getUserId());
-        checkIn.setUserName(ShiroUtils.getSysUser().getUserName());
-        checkIn.setCheckInTime(new Date());
-        checkIn.setCreateBy(ShiroUtils.getLoginName());
+        try {
+            // 不信任请求体 userId/userName；强制会话用户并回查账号姓名
+            checkIn.setUserId(null);
+            checkIn.setUserName(null);
+            checkInService.prepareMobileInsert(checkIn, true);
 
-        // 校验是否在打卡范围内
-        FireCompany company = companyService.selectFireCompanyById(checkIn.getCompanyId());
-        if (company != null && company.getCheckInLongitude() != null && company.getCheckInLatitude() != null) {
-            double distance = calculateDistance(
-                    checkIn.getLatitude(), checkIn.getLongitude(),
-                    company.getCheckInLatitude(), company.getCheckInLongitude());
-            Integer radius = company.getCheckInRadius() != null ? company.getCheckInRadius() : 500;
+            FireCompany company = companyService.selectFireCompanyById(checkIn.getCompanyId());
+            if (company != null && company.getCheckInLongitude() != null && company.getCheckInLatitude() != null
+                    && checkIn.getLatitude() != null && checkIn.getLongitude() != null) {
+                double distance = calculateDistance(
+                        checkIn.getLatitude(), checkIn.getLongitude(),
+                        company.getCheckInLatitude(), company.getCheckInLongitude());
+                Integer radius = company.getCheckInRadius() != null ? company.getCheckInRadius() : 500;
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("isInRange", distance <= radius);
-            result.put("distance", distance);
+                Map<String, Object> result = new HashMap<>();
+                result.put("isInRange", distance <= radius);
+                result.put("distance", distance);
+
+                int rows = checkInService.insertFireCheckIn(checkIn);
+                if (rows > 0) {
+                    result.put("checkInId", checkIn.getCheckInId());
+                    result.put("checkInTime", checkIn.getCheckInTime());
+                    return AjaxResult.success("签到成功", result);
+                }
+                return AjaxResult.error("签到失败");
+            }
 
             int rows = checkInService.insertFireCheckIn(checkIn);
-            if (rows > 0) {
-                result.put("checkInId", checkIn.getCheckInId());
-                result.put("checkInTime", checkIn.getCheckInTime());
-                return AjaxResult.success("签到成功", result);
-            }
+            return toAjax(rows);
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
         }
-
-        int rows = checkInService.insertFireCheckIn(checkIn);
-        return toAjax(rows);
     }
 
     /**
@@ -202,7 +209,15 @@ public class FireMiniAppController extends BaseController {
     @GetMapping("/checkIn/detail/{checkInId}")
     public AjaxResult checkInDetail(@PathVariable("checkInId") Long checkInId) {
         FireCheckIn checkIn = checkInService.selectFireCheckInById(checkInId);
-        return AjaxResult.success(checkIn);
+        if (checkIn == null) {
+            return AjaxResult.error("签到记录不存在");
+        }
+        AjaxResult ajax = AjaxResult.success(checkIn);
+        Map<String, FireCheckIn> pair = checkInService.resolvePairRecords(checkIn);
+        ajax.put("checkInRecord", pair.get("checkInRecord"));
+        ajax.put("checkOutRecord", pair.get("checkOutRecord"));
+        ajax.put("historyUnlinkedTask", checkIn.getTaskId() == null);
+        return ajax;
     }
 
     /**
@@ -890,6 +905,9 @@ public class FireMiniAppController extends BaseController {
         if (validateMessage != null) {
             return AjaxResult.error(validateMessage);
         }
+        if (StringUtils.isEmpty(repair.getUrgencyLevel()) || !UrgencyLevel.isValid(repair.getUrgencyLevel())) {
+            return AjaxResult.error("紧急程度参数无效");
+        }
 
         repair.setReporterId(userId);
         repair.setReporterName(ShiroUtils.getSysUser().getUserName());
@@ -941,6 +959,9 @@ public class FireMiniAppController extends BaseController {
         }
 
         FireFaultRepair update = buildEditableRepair(repair, existingRepair);
+        if (StringUtils.isEmpty(update.getUrgencyLevel()) || !UrgencyLevel.isValid(update.getUrgencyLevel())) {
+            return AjaxResult.error("紧急程度参数无效");
+        }
         if (!hasCompanyAccess(update.getCompanyId(), userId)) {
             return AjaxResult.error("您无权修改该单位的报修");
         }

@@ -1,6 +1,5 @@
 package com.ruoyi.web.controller.fire;
 
-import java.util.Collections;
 import java.util.List;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,10 +17,10 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.enums.RepairStatus;
 import com.ruoyi.common.enums.UrgencyLevel;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.ShiroUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.fire.domain.FireFaultRepair;
-import com.ruoyi.fire.domain.FireUserCompany;
 import com.ruoyi.fire.service.IFireCompanyService;
 import com.ruoyi.fire.service.IFireEquipmentService;
 import com.ruoyi.fire.service.IFireFaultRepairService;
@@ -89,8 +88,12 @@ public class FireFaultRepairController extends BaseController {
     @PostMapping("/add")
     @ResponseBody
     public AjaxResult addSave(FireFaultRepair fireFaultRepair) {
-        fireFaultRepair.setCreateBy(ShiroUtils.getLoginName());
-        return toAjax(fireFaultRepairService.insertFireFaultRepair(fireFaultRepair));
+        try {
+            fireFaultRepair.setCreateBy(ShiroUtils.getLoginName());
+            return toAjax(fireFaultRepairService.insertFireFaultRepair(fireFaultRepair));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
     @GetMapping("/edit/{repairId}")
@@ -109,8 +112,12 @@ public class FireFaultRepairController extends BaseController {
     @PostMapping("/edit")
     @ResponseBody
     public AjaxResult editSave(FireFaultRepair fireFaultRepair) {
-        fireFaultRepair.setUpdateBy(ShiroUtils.getLoginName());
-        return toAjax(fireFaultRepairService.updateFireFaultRepair(fireFaultRepair));
+        try {
+            fireFaultRepair.setUpdateBy(ShiroUtils.getLoginName());
+            return toAjax(fireFaultRepairService.updateFireFaultRepair(fireFaultRepair));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
     @RequiresPermissions("fire:repair:remove")
@@ -135,7 +142,6 @@ public class FireFaultRepairController extends BaseController {
     public String dispatch(@PathVariable("repairId") Long repairId, ModelMap mmap) {
         FireFaultRepair repair = getRepair(repairId);
         mmap.put("repair", repair);
-        mmap.put("dispatchUsers", repair == null ? Collections.emptyList() : getDispatchUsers(repair.getCompanyId()));
         return prefix + "/dispatch";
     }
 
@@ -143,8 +149,12 @@ public class FireFaultRepairController extends BaseController {
     @Log(title = "派发报修", businessType = BusinessType.UPDATE)
     @PostMapping("/dispatch")
     @ResponseBody
-    public AjaxResult dispatchSave(Long repairId, Long repairUserId) {
-        return toAjax(fireFaultRepairService.dispatchRepair(repairId, repairUserId, ShiroUtils.getLoginName()));
+    public AjaxResult dispatchSave(Long repairId) {
+        try {
+            return toAjax(fireFaultRepairService.dispatchRepairToCurrentUser(repairId));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
     @RequiresPermissions("fire:repair:accept")
@@ -186,9 +196,5 @@ public class FireFaultRepairController extends BaseController {
 
     private FireFaultRepair getRepair(Long repairId) {
         return fireFaultRepairService.selectFireFaultRepairById(repairId);
-    }
-
-    private List<FireUserCompany> getDispatchUsers(Long companyId) {
-        return companyId == null ? Collections.emptyList() : companyService.selectUserListByCompanyId(companyId);
     }
 }

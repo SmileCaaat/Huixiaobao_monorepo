@@ -70,13 +70,13 @@
   font-size: 28rpx;
   color: #333;
 }
-.urgency-1.data-v-20d3ee06 {
+.urgency-0.data-v-20d3ee06 {
   color: #1890ff;
 }
-.urgency-2.data-v-20d3ee06 {
+.urgency-1.data-v-20d3ee06 {
   color: #fa8c16;
 }
-.urgency-3.data-v-20d3ee06 {
+.urgency-2.data-v-20d3ee06 {
   color: #f5222d;
   font-weight: bold;
 }

@@ -39,7 +39,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectFireCheckInVo">
         select c.check_in_id, c.company_id, c.company_name, c.task_id, t.task_name, c.user_id,
-               IFNULL(c.user_name, u.user_name) as user_name, c.check_in_time,
+               COALESCE(NULLIF(u.user_name, ''), c.user_name) as user_name, c.check_in_time,
                c.longitude, c.latitude, c.address, c.check_in_type, c.remark,
                c.create_by, c.create_time, c.update_by, c.update_time, c.del_flag
         from fire_check_in c
@@ -62,7 +62,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             and c.user_id = #{userId}
         </if>
         <if test="userName != null and userName != ''">
-            and c.user_name like concat('%', #{userName}, '%')
+            and COALESCE(NULLIF(u.user_name, ''), c.user_name) like concat('%', #{userName}, '%')
         </if>
         <if test="checkInType != null and checkInType != ''">
             and c.check_in_type = #{checkInType}
@@ -93,11 +93,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         update fire_check_in
         <set>
             <if test="taskId != null">task_id = #{taskId},</if>
+            <if test="companyId != null">company_id = #{companyId},</if>
+            <if test="companyName != null">company_name = #{companyName},</if>
             <if test="userId != null">user_id = #{userId},</if>
             <if test="userName != null">user_name = #{userName},</if>
             <if test="checkInTime != null">check_in_time = #{checkInTime},</if>
-            <if test="longitude != null">longitude = #{longitude},</if>
-            <if test="latitude != null">latitude = #{latitude},</if>
+            longitude = #{longitude},
+            latitude = #{latitude},
             <if test="address != null">address = #{address},</if>
             <if test="checkInType != null">check_in_type = #{checkInType},</if>
             <if test="remark != null">remark = #{remark},</if>
@@ -137,9 +139,52 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectPairCheckIns" resultMap="FireCheckInResult">
         <include refid="selectFireCheckInVo"/>
         where c.del_flag = '0'
+          and c.task_id = #{taskId}
           and c.user_id = #{userId}
-          and DATE(c.check_in_time) = #{checkInDate}
           and c.check_in_id != #{excludeId}
         order by c.check_in_time asc
+    </select>
+
+    <select id="selectOpenCheckIn" resultMap="FireCheckInResult">
+        <include refid="selectFireCheckInVo"/>
+        where c.del_flag = '0'
+          and c.task_id = #{taskId}
+          and c.user_id = #{userId}
+          and c.check_in_type = '0'
+          and not exists (
+              select 1
+              from fire_check_in o
+              where o.del_flag = '0'
+                and o.task_id = c.task_id
+                and o.user_id = c.user_id
+                and o.check_in_type = '1'
+                and o.check_in_time &gt; c.check_in_time
+          )
+        order by c.check_in_time desc
+        limit 1
+    </select>
+
+    <select id="selectNearestCheckOut" resultMap="FireCheckInResult">
+        <include refid="selectFireCheckInVo"/>
+        where c.del_flag = '0'
+          and c.task_id = #{taskId}
+          and c.user_id = #{userId}
+          and c.check_in_type = '1'
+          and c.check_in_time &gt;= #{checkInTime}
+          and c.check_in_id != #{excludeId}
+        order by c.check_in_time asc
+        limit 1
+    </select>
+
+    <select id="selectNearestCheckIn" resultMap="FireCheckInResult">
+        <include refid="selectFireCheckInVo"/>
+        where c.del_flag = '0'
+          and c.task_id = #{taskId}
+          and c.user_id = #{userId}
+          and c.check_in_type = '0'
+          and c.check_in_time &lt;= #{checkInTime}
+          and c.check_in_id != #{excludeId}
+        order by c.check_in_time desc
+        limit 1
     </select>
 </mapper>

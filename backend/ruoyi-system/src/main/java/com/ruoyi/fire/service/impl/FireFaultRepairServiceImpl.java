@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.enums.RepairStatus;
+import com.ruoyi.common.enums.UrgencyLevel;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.ShiroUtils;
 import com.ruoyi.common.utils.StringUtils;
@@ -44,6 +45,7 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
 
     @Override
     public int insertFireFaultRepair(FireFaultRepair fireFaultRepair) {
+        validateUrgencyLevel(fireFaultRepair.getUrgencyLevel());
         fireFaultRepair.setRepairNo(fireFaultRepairMapper.generateRepairNo());
         if (StringUtils.isEmpty(fireFaultRepair.getRepairStatus())) {
             fireFaultRepair.setRepairStatus(RepairStatus.PENDING.getCode());
@@ -67,6 +69,7 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         if (!RepairStatus.PENDING.getCode().equals(existing.getRepairStatus())) {
             throw new ServiceException("只有待处理状态的报修单才能编辑");
         }
+        validateUrgencyLevel(fireFaultRepair.getUrgencyLevel());
         fillCompanyInfo(fireFaultRepair);
         return fireFaultRepairMapper.updateFireFaultRepair(fireFaultRepair);
     }
@@ -87,16 +90,35 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
     }
 
     @Override
+    public int dispatchRepairToCurrentUser(Long repairId) {
+        Long currentUserId = ShiroUtils.getUserId();
+        if (currentUserId == null) {
+            throw new ServiceException("未登录，无法派发");
+        }
+        return dispatchRepair(repairId, currentUserId, ShiroUtils.getLoginName());
+    }
+
+    @Override
     public int dispatchRepair(Long repairId, Long repairUserId, String dispatchBy) {
         FireFaultRepair repair = getRequiredRepair(repairId);
         ensureNotCompleted(repair);
         if (repairUserId == null) {
-            throw new ServiceException("请选择处理人");
+            throw new ServiceException("处理人不能为空");
+        }
+
+        // 已派发给其他人时拒绝静默覆盖
+        if (repair.getRepairUserId() != null
+                && !repairUserId.equals(repair.getRepairUserId())
+                && RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())) {
+            throw new ServiceException("该报修单已派发给其他人，不能重复派发");
         }
 
         SysUser repairUser = userService.selectUserById(repairUserId);
-        if (repairUser == null) {
-            throw new ServiceException("处理人不存在");
+        if (repairUser == null || "2".equals(repairUser.getDelFlag())) {
+            throw new ServiceException("处理人不存在或已删除");
+        }
+        if ("1".equals(repairUser.getStatus())) {
+            throw new ServiceException("处理人账号已停用");
         }
 
         validateDispatchUser(repair, repairUserId);
@@ -217,7 +239,21 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         }
     }
 
+    private void validateUrgencyLevel(String urgencyLevel) {
+        if (StringUtils.isEmpty(urgencyLevel) || !UrgencyLevel.isValid(urgencyLevel)) {
+            throw new ServiceException("紧急程度参数无效");
+        }
+    }
+
     private void validateDispatchUser(FireFaultRepair repair, Long repairUserId) {
+        SysUser current = ShiroUtils.getSysUser();
+        if (current != null && current.isAdmin()) {
+            return;
+        }
+        SysUser assignee = userService.selectUserById(repairUserId);
+        if (assignee != null && assignee.isAdmin()) {
+            return;
+        }
         if (repair.getCompanyId() == null) {
             return;
         }
@@ -229,7 +265,7 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
 
         boolean matched = companyUsers.stream().anyMatch(item -> repairUserId.equals(item.getUserId()));
         if (!matched) {
-            throw new ServiceException("只能派发给该单位已分配的用户");
+            throw new ServiceException("当前用户无权处理该单位工单");
         }
     }
 }

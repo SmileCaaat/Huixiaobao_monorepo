@@ -228,39 +228,85 @@
         }
 
         function submitHandler() {
-            if ($.validate.form()) {
-                // select[multiple] 序列化时会生成多个同名参数（operatorIds=1&operatorIds=2），
-                // 后端 String 类型只能接收单个值，需手动合并成逗号分隔字符串
-                var formData = $('#form-task-edit').serializeArray();
-                var operatorIdList = [];
-                var filteredData = [];
-                $.each(formData, function(i, field) {
-                    if (field.name === 'operatorIds') {
-                        operatorIdList.push(field.value);
-                    } else {
-                        filteredData.push(field);
-                    }
-                });
-                filteredData.push({ name: 'operatorIds', value: operatorIdList.join(',') });
-                var params = $.param(filteredData);
-                $.operate.save(prefix + "/edit", params);
+            if ($('#form-task-edit').data('submitting')) {
+                return;
             }
+            if (!$.validate.form()) {
+                return;
+            }
+            // 提交前显式同步选择与展示字段
+            $('#selectedSystemIds').val(selectedSystems.join(','));
+            $('#selectedFireTestIds').val(selectedFireTests.join(','));
+            setBuildingName(document.getElementById('buildingId'));
+            setManagerName(document.getElementById('managerId'));
+            setOperatorNames();
+
+            // select[multiple] 序列化时会生成多个同名参数（operatorIds=1&operatorIds=2），
+            // 后端 String 类型只能接收单个值，需手动合并成逗号分隔字符串
+            var formData = $('#form-task-edit').serializeArray();
+            var operatorIdList = [];
+            var filteredData = [];
+            $.each(formData, function(i, field) {
+                if (field.name === 'operatorIds') {
+                    operatorIdList.push(field.value);
+                } else {
+                    filteredData.push(field);
+                }
+            });
+            filteredData.push({ name: 'operatorIds', value: operatorIdList.join(',') });
+            var params = $.param(filteredData);
+            $('#form-task-edit').data('submitting', true);
+            $.ajax({
+                url: prefix + "/edit",
+                type: "post",
+                dataType: "json",
+                data: params,
+                beforeSend: function () {
+                    $.modal.loading("正在处理中，请稍候...");
+                },
+                success: function (result) {
+                    $.modal.closeLoading();
+                    if (result.code == web_status.SUCCESS) {
+                        $.modal.msgSuccess(result.msg);
+                        $.modal.close();
+                        $.table.refresh();
+                    } else {
+                        $.modal.alertError(result.msg || "保存失败");
+                        $('#form-task-edit').data('submitting', false);
+                    }
+                },
+                error: function () {
+                    $.modal.closeLoading();
+                    $.modal.alertError("保存失败，请稍后重试");
+                    $('#form-task-edit').data('submitting', false);
+                }
+            });
         }
 
         // 选择系统
         var allSystems = [];
         var selectedSystems = [];
-        var initialSelectedSystemIds = [[${ task.selectedSystemIds }]] || '';
+        var initialSelectedSystemIds = /*[[${task.selectedSystemIds}]]*/ '';
+        var selectedFireTests = [];
+        var initialSelectedFireTestIds = /*[[${task.selectedFireTestIds}]]*/ '';
 
         $(function () {
             // 初始化选中的系统
             if (initialSelectedSystemIds) {
-                var ids = initialSelectedSystemIds.split(',');
+                var ids = String(initialSelectedSystemIds).split(',');
                 ids.forEach(function (id) {
                     if (id) {
                         selectedSystems.push(parseInt(id.trim()));
                     }
                 });
+            }
+            if (initialSelectedFireTestIds) {
+                selectedFireTests = String(initialSelectedFireTestIds).split(',').map(function (id) {
+                    return parseInt(id.trim());
+                }).filter(function (id) {
+                    return !isNaN(id);
+                });
+                $('#selectedFireTestIds').val(selectedFireTests.join(','));
             }
 
             // 加载系统列表并更新显示
@@ -359,7 +405,6 @@
 
         // 选择消防设施测试
         var allFireTests = [];
-        var selectedFireTests = [];
 
         function selectFireTests() {
             // 加载消防设施测试列表

@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.fire;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
@@ -18,6 +19,8 @@ import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
+import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.domain.FireMaintenanceTemplate;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
@@ -216,7 +219,31 @@ public class FireMaintenanceTaskController extends BaseController {
     @PostMapping("/edit")
     @ResponseBody
     public AjaxResult edit(FireMaintenanceTask fireMaintenanceTask) {
-        return toAjax(fireMaintenanceTaskService.updateFireMaintenanceTask(fireMaintenanceTask));
+        try {
+            if (fireMaintenanceTask.getTaskId() == null) {
+                return error("任务ID不能为空");
+            }
+            FireMaintenanceTask existing = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(fireMaintenanceTask.getTaskId());
+            if (existing == null) {
+                return error("维保任务不存在");
+            }
+            if (StringUtils.isEmpty(fireMaintenanceTask.getTaskName())) {
+                return error("任务名称不能为空");
+            }
+            if (fireMaintenanceTask.getManagerId() == null) {
+                return error("请选择项目负责人");
+            }
+            if (fireMaintenanceTask.getPlanStartTime() != null && fireMaintenanceTask.getPlanEndTime() != null
+                    && fireMaintenanceTask.getPlanStartTime().after(fireMaintenanceTask.getPlanEndTime())) {
+                return error("计划开始时间不能晚于计划结束时间");
+            }
+            // 仅保存选择配置，不触发生成/删除检查记录
+            fireMaintenanceTask.setUpdateBy(ShiroUtils.getLoginName());
+            fireMaintenanceTask.setUpdateTime(new Date());
+            return toAjax(fireMaintenanceTaskService.updateFireMaintenanceTask(fireMaintenanceTask));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
     /**

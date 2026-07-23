@@ -20,9 +20,9 @@ const _sfc_main = {
     const systemTypeCategoriesLabels = common_vendor.ref([]);
     const systemTypeCategoriesMap = common_vendor.ref([]);
     const urgencyOptions = [
-      { label: "一般", value: "1" },
-      { label: "紧急", value: "2" },
-      { label: "特急", value: "3" }
+      { label: "一般", value: "0" },
+      { label: "紧急", value: "1" },
+      { label: "特急", value: "2" }
     ];
     const formData = common_vendor.ref({
       companyId: null,
@@ -33,7 +33,7 @@ const _sfc_main = {
       equipmentName: "",
       customerAddress: "",
       foundTime: "",
-      urgencyLevel: "1",
+      urgencyLevel: "0",
       faultDescription: "",
       faultImages: ""
     });

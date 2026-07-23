@@ -41,12 +41,12 @@ public interface FireBuildingMapper {
     public FireBuilding checkBuildingCodeUnique(String buildingCode);
 
     /**
-     * 校验建筑名称是否唯一
+     * 校验建筑名称是否在同一客户下唯一
      * 
-     * @param buildingName 建筑名称
+     * @param building 建筑信息（需含 companyId、buildingName，编辑时含 buildingId）
      * @return 建筑信息
      */
-    public FireBuilding checkBuildingNameUnique(String buildingName);
+    public FireBuilding checkBuildingNameUnique(FireBuilding building);
 
     /**
      * 新增建筑信息

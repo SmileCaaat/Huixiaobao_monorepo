@@ -68,6 +68,15 @@ public class FireCheckIn extends BaseEntity {
     /** 签到图片列表 */
     private List<FireCheckInImage> images;
 
+    /** 地址录入方式（auto/manual），仅请求校验用，不入库 */
+    private String addressMode;
+
+    /** 自动定位展示地址（不入库） */
+    private String locatedAddress;
+
+    /** 手动输入地址（不入库） */
+    private String manualAddress;
+
     public Long getCheckInId() {
         return checkInId;
     }
@@ -178,6 +187,30 @@ public class FireCheckIn extends BaseEntity {
 
     public void setImages(List<FireCheckInImage> images) {
         this.images = images;
+    }
+
+    public String getAddressMode() {
+        return addressMode;
+    }
+
+    public void setAddressMode(String addressMode) {
+        this.addressMode = addressMode;
+    }
+
+    public String getLocatedAddress() {
+        return locatedAddress;
+    }
+
+    public void setLocatedAddress(String locatedAddress) {
+        this.locatedAddress = locatedAddress;
+    }
+
+    public String getManualAddress() {
+        return manualAddress;
+    }
+
+    public void setManualAddress(String manualAddress) {
+        this.manualAddress = manualAddress;
     }
 
     @Override

@@ -83,19 +83,18 @@ public class FireBuildingServiceImpl implements IFireBuildingService {
     }
 
     /**
-     * 校验建筑名称是否唯一
+     * 校验建筑名称是否在同一客户下唯一
      * 
      * @param building 建筑信息
      * @return 结果
      */
     @Override
     public boolean checkBuildingNameUnique(FireBuilding building) {
-        Long buildingId = StringUtils.isNull(building.getBuildingId()) ? -1L : building.getBuildingId();
-        FireBuilding info = buildingMapper.checkBuildingNameUnique(building.getBuildingName());
-        if (StringUtils.isNotNull(info) && info.getBuildingId().longValue() != buildingId.longValue()) {
+        if (StringUtils.isNull(building.getCompanyId())) {
             return false;
         }
-        return true;
+        FireBuilding info = buildingMapper.checkBuildingNameUnique(building);
+        return StringUtils.isNull(info);
     }
 
     /**

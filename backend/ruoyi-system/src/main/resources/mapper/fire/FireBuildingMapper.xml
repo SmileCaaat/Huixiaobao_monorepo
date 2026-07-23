@@ -86,9 +86,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where building_code = #{buildingCode} and del_flag = '0' limit 1
     </select>
     
-    <select id="checkBuildingNameUnique" parameterType="String" resultMap="FireBuildingResult">
+    <select id="checkBuildingNameUnique" parameterType="com.ruoyi.fire.domain.FireBuilding" resultMap="FireBuildingResult">
         <include refid="selectBuildingVo"/>
-        where building_name = #{buildingName} and del_flag = '0' limit 1
+        where company_id = #{companyId}
+          and building_name = #{buildingName}
+          and del_flag = '0'
+        <if test="buildingId != null">
+            and building_id != #{buildingId}
+        </if>
+        limit 1
     </select>
     
     <select id="countBuilding" resultType="int">

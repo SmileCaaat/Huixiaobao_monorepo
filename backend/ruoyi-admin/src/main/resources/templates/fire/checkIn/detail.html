@@ -234,6 +234,7 @@
                 <span><i class="fa fa-building"></i> <span th:text="${checkIn.companyName}">公司名称</span></span>
                 <span th:if="${checkIn.taskName != null}"><i class="fa fa-tasks"></i> <span
                         th:text="${checkIn.taskName}">任务名称</span></span>
+                <span th:if="${checkIn.taskId == null}" class="text-warning"><i class="fa fa-warning"></i> 历史未关联任务</span>
             </div>
         </div>
 

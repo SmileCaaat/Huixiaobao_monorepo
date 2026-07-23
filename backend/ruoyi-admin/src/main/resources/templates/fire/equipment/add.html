@@ -45,10 +45,8 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label">所在建筑：</label>
                 <div class="col-sm-8">
-                    <select name="buildingId" id="buildingId" class="form-control m-b">
-                        <option value="">请选择</option>
-                        <option th:each="building : ${buildings}" th:text="${building.buildingName}"
-                            th:value="${building.buildingId}"></option>
+                    <select name="buildingId" id="buildingId" class="form-control m-b" disabled>
+                        <option value="">请先选择所属客户</option>
                     </select>
                 </div>
             </div>
@@ -158,6 +156,8 @@
         // 从URL获取公司参数
         var urlParams = new URLSearchParams(window.location.search);
         var filterCompanyId = urlParams.get('companyId');
+        var buildingListRequest = null;
+        var buildingListToken = 0;
 
         $(function () {
             $("#form-equipment-add").validate({
@@ -170,14 +170,20 @@
                 autoclose: true
             });
 
-            // 加载客户下拉列表
-            loadCompanyList();
+            $('#companyId').on('change', function () {
+                loadBuildingList($(this).val());
+            });
 
-            // 如果有公司参数，重新加载建筑列表
-            if (filterCompanyId) {
-                loadBuildingList();
-            }
+            // 先加载客户，预选后再加载建筑，避免并行串状态
+            loadCompanyList();
+            loadProjectCategories();
         });
+
+        function resetBuildingSelect(message, disabled) {
+            $('#buildingId').prop('disabled', !!disabled)
+                .html('<option value="">' + message + '</option>')
+                .val('');
+        }
 
         // 加载客户列表
         function loadCompanyList() {
@@ -193,29 +199,70 @@
                         $('#companyId').html(html);
                         if (filterCompanyId) {
                             $('#companyId').val(filterCompanyId);
+                            loadBuildingList(filterCompanyId);
+                        } else {
+                            resetBuildingSelect('请先选择所属客户', true);
                         }
                     }
                 }
             });
         }
 
-        // 加载建筑列表（按公司过滤）
-        function loadBuildingList() {
-            var url = ctx + 'fire/building/all';
-            if (filterCompanyId) {
-                url += '?companyId=' + filterCompanyId;
+        // 按当前客户加载建筑列表
+        function loadBuildingList(companyId) {
+            if (buildingListRequest && buildingListRequest.readyState !== 4) {
+                buildingListRequest.abort();
             }
-            $.ajax({
-                url: url,
+
+            if (!companyId) {
+                resetBuildingSelect('请先选择所属客户', true);
+                return;
+            }
+
+            resetBuildingSelect('建筑加载中……', true);
+            var requestToken = ++buildingListToken;
+            buildingListRequest = $.ajax({
+                url: ctx + 'fire/building/all',
                 type: 'GET',
+                data: { companyId: companyId },
                 success: function (res) {
-                    if (res.code == 0 && res.data) {
-                        var html = '<option value="">请选择建筑</option>';
-                        res.data.forEach(function (building) {
-                            html += '<option value="' + building.buildingId + '">' + building.buildingName + '</option>';
-                        });
-                        $('#buildingId').html(html);
+                    if (requestToken !== buildingListToken) {
+                        return;
                     }
+                    if (String($('#companyId').val()) !== String(companyId)) {
+                        return;
+                    }
+                    if (res.code != 0) {
+                        resetBuildingSelect('建筑加载失败，请重试', true);
+                        $.modal.alertError(res.msg || '建筑加载失败，请重试');
+                        return;
+                    }
+                    var list = res.data || [];
+                    var matched = list.filter(function (building) {
+                        return String(building.companyId) === String(companyId);
+                    });
+                    if (matched.length === 0) {
+                        resetBuildingSelect('该客户暂无建筑', true);
+                        return;
+                    }
+                    var html = '<option value="">请选择建筑</option>';
+                    matched.forEach(function (building) {
+                        html += '<option value="' + building.buildingId + '">' + building.buildingName + '</option>';
+                    });
+                    $('#buildingId').prop('disabled', false).html(html).val('');
+                },
+                error: function (xhr, status) {
+                    if (status === 'abort') {
+                        return;
+                    }
+                    if (requestToken !== buildingListToken) {
+                        return;
+                    }
+                    if (String($('#companyId').val()) !== String(companyId)) {
+                        return;
+                    }
+                    resetBuildingSelect('建筑加载失败，请重试', true);
+                    $.modal.alertError('建筑加载失败，请重试');
                 }
             });
         }
@@ -274,8 +321,6 @@
                 }
             });
         }
-        // 页面加载时初始化
-        loadProjectCategories();
 
         function submitHandler() {
             if ($.validate.form()) {

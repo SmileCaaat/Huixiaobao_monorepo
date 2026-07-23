@@ -34,26 +34,11 @@
                     <p class="form-control-static" th:text="${repair.faultDescription}"></p>
                 </div>
             </div>
-            <hr>
             <div class="form-group">
-                <label class="col-sm-4 control-label is-required">派发给：</label>
-                <div class="col-sm-7">
-                    <select name="repairUserId" id="repairUserId" class="form-control" required>
-                        <option value="">请选择处理人</option>
-                        <option th:each="user : ${dispatchUsers}"
-                                th:value="${user.userId}"
-                                th:text="${user.userName}"
-                                th:attr="data-phone=${user.phonenumber},data-login=${user.loginName}"></option>
-                    </select>
-                    <span class="help-block m-b-none">
-                        <i class="fa fa-info-circle"></i> 仅能派发给该单位已分配的用户
-                    </span>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-4 control-label">联系电话：</label>
-                <div class="col-sm-7">
-                    <input id="dispatchUserPhone" class="form-control" type="text" readonly placeholder="选择处理人后自动带出">
+                <div class="col-sm-offset-4 col-sm-7">
+                    <div class="alert alert-info" style="margin-bottom:0;">
+                        <i class="fa fa-info-circle"></i> 确认后将由当前登录账号处理
+                    </div>
                 </div>
             </div>
         </form>
@@ -62,19 +47,8 @@
     <script th:inline="javascript">
         var prefix = ctx + "fire/repair";
 
-        $("#form-repair-dispatch").validate({
-            focusCleanup: true
-        });
-
-        $("#repairUserId").on("change", function() {
-            var selected = $(this).find("option:selected");
-            $("#dispatchUserPhone").val(selected.attr("data-phone") || "");
-        });
-
         function submitHandler() {
-            if ($.validate.form()) {
-                $.operate.save(prefix + "/dispatch", $('#form-repair-dispatch').serialize());
-            }
+            $.operate.save(prefix + "/dispatch", $('#form-repair-dispatch').serialize());
         }
     </script>
 </body>

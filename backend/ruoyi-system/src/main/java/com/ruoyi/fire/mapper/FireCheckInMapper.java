@@ -57,8 +57,25 @@ public interface FireCheckInMapper {
     public int deleteCheckInImagesByCheckInId(Long checkInId);
 
     /**
-     * 查询同一用户同一天的配对签到/签退记录
+     * 查询同一任务同一人员的配对签到/签退记录
      */
-    public List<FireCheckIn> selectPairCheckIns(@Param("userId") Long userId, @Param("checkInDate") String checkInDate,
+    public List<FireCheckIn> selectPairCheckIns(@Param("taskId") Long taskId, @Param("userId") Long userId,
             @Param("excludeId") Long excludeId);
+
+    /**
+     * 查询尚未签退的签到记录
+     */
+    public FireCheckIn selectOpenCheckIn(@Param("taskId") Long taskId, @Param("userId") Long userId);
+
+    /**
+     * 查询时间上最近的后续签退
+     */
+    public FireCheckIn selectNearestCheckOut(@Param("taskId") Long taskId, @Param("userId") Long userId,
+            @Param("checkInTime") java.util.Date checkInTime, @Param("excludeId") Long excludeId);
+
+    /**
+     * 查询时间上最近的前序签到
+     */
+    public FireCheckIn selectNearestCheckIn(@Param("taskId") Long taskId, @Param("userId") Long userId,
+            @Param("checkInTime") java.util.Date checkInTime, @Param("excludeId") Long excludeId);
 }

@@ -100,8 +100,6 @@ public class FireEquipmentController extends BaseController {
     @RequiresPermissions("fire:equipment:add")
     @GetMapping("/add")
     public String add(ModelMap mmap) {
-        List<FireBuilding> buildings = buildingService.selectBuildingAll();
-        mmap.put("buildings", buildings);
         mmap.put("systemNames", com.ruoyi.fire.enums.FireEquipmentCategory.allLabels());
         return prefix + "/add";
     }
@@ -121,6 +119,19 @@ public class FireEquipmentController extends BaseController {
         if (StringUtils.isNotEmpty(equipment.getEquipmentCode())
                 && !equipmentService.checkEquipmentCodeUnique(equipment)) {
             return error("新增设备'" + equipment.getEquipmentName() + "'失败，设备编码已存在");
+        }
+        if (equipment.getBuildingId() != null) {
+            if (equipment.getCompanyId() == null) {
+                return error("请选择所属客户");
+            }
+            FireBuilding building = buildingService.selectBuildingById(equipment.getBuildingId());
+            if (building == null) {
+                return error("所选建筑不存在或已删除");
+            }
+            if (building.getCompanyId() == null
+                    || !building.getCompanyId().equals(equipment.getCompanyId())) {
+                return error("所选建筑不属于当前客户，请重新选择");
+            }
         }
         equipment.setCreateBy(getLoginName());
         return toAjax(equipmentService.insertEquipment(equipment));

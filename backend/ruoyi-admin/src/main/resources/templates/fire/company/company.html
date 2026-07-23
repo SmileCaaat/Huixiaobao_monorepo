@@ -32,6 +32,15 @@
             display: inline-block;
         }
 
+        .search-bottom .region-select {
+            width: 150px;
+            margin-right: 6px;
+        }
+
+        .search-bottom .region-select:last-child {
+            margin-right: 0;
+        }
+
         .search-bottom .date-range {
             width: 130px;
         }
@@ -89,9 +98,17 @@
                 <form id="searchForm">
                     <div class="search-inline">
                         <label>所属区域</label>
-                        <input type="text" class="form-control" name="province" placeholder="省">
-                        <input type="text" class="form-control" name="city" placeholder="市">
-                        <input type="text" class="form-control" name="district" placeholder="区县">
+                        <div id="regionSelector" style="display:inline-block;vertical-align:middle;">
+                            <select name="province" class="province form-control region-select" data-first-title="请选择省">
+                                <option value="">请选择省</option>
+                            </select>
+                            <select name="city" class="city form-control region-select" data-first-title="请选择市">
+                                <option value="">请选择市</option>
+                            </select>
+                            <select name="district" class="district form-control region-select" data-first-title="请选择区县">
+                                <option value="">请选择区县</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="search-inline">
                         <label>录入单位</label>
@@ -137,16 +154,26 @@
 
     <th:block th:include="include :: footer" />
     <th:block th:include="include :: datetimepicker-js" />
+    <th:block th:include="include :: jquery-cxselect-js" />
     <script th:inline="javascript">
         var editFlag = [[${@permission.hasPermi('fire:company:edit')}]];
         var removeFlag = [[${@permission.hasPermi('fire:company:remove')}]];
         var prefix = ctx + "fire/company";
+        var regionSelectApi = null;
 
         $(function () {
             $(".time-input").datetimepicker({
                 format: "yyyy-mm-dd",
                 minView: "month",
                 autoclose: true
+            });
+
+            regionSelectApi = $.cxSelect($("#regionSelector"), {
+                url: ctx + "ajax/libs/cxselect/china-region-data.json",
+                selects: ["province", "city", "district"],
+                jsonName: "n",
+                jsonValue: "n",
+                jsonSub: "s"
             });
 
             var options = {
@@ -259,6 +286,11 @@
 
         function resetSearch() {
             $.form.reset("searchForm");
+            if (regionSelectApi && typeof regionSelectApi.clear === "function") {
+                regionSelectApi.clear(1);
+            }
+            $("#regionSelector select.province").prop("disabled", false).val("").trigger("change");
+            $("#regionSelector select.city, #regionSelector select.district").prop("disabled", true).val("");
             $.table.search("searchForm");
         }
 

@@ -41,7 +41,7 @@ const _sfc_main = {
       return map[status] || "info";
     };
     const getUrgencyText = (level) => {
-      const map = { 1: "一般", 2: "紧急", 3: "特急" };
+      const map = { 0: "一般", 1: "紧急", 2: "特急" };
       return map[level] || "一般";
     };
     const isAdmin = common_vendor.computed(

@@ -104,15 +104,15 @@
   padding: 4rpx 16rpx;
   border-radius: 4rpx;
 }
-.level-1.data-v-3ef94d39 {
+.level-0.data-v-3ef94d39 {
   background: #e6f7ff;
   color: #1890ff;
 }
-.level-2.data-v-3ef94d39 {
+.level-1.data-v-3ef94d39 {
   background: #fff7e6;
   color: #fa8c16;
 }
-.level-3.data-v-3ef94d39 {
+.level-2.data-v-3ef94d39 {
   background: #fff1f0;
   color: #f5222d;
 }

@@ -58,7 +58,7 @@ public interface IFireFaultRepairService {
     int deleteFireFaultRepairById(Long repairId);
 
     /**
-     * 派发报修单
+     * 派发报修单（指定处理人，供小程序自助受理等场景）
      *
      * @param repairId 报修ID
      * @param repairUserId 处理人用户ID
@@ -66,6 +66,14 @@ public interface IFireFaultRepairService {
      * @return 结果
      */
     int dispatchRepair(Long repairId, Long repairUserId, String dispatchBy);
+
+    /**
+     * 后台派发：由当前登录账号作为处理人
+     *
+     * @param repairId 报修ID
+     * @return 结果
+     */
+    int dispatchRepairToCurrentUser(Long repairId);
 
     /**
      * 接受报修
