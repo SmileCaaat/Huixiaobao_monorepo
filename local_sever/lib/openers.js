@@ -142,6 +142,79 @@ function refreshWindowsEnv() {
   } catch (_) {}
 }
 
+function javaBinName() {
+  return process.platform === "win32" ? "java.exe" : "java";
+}
+
+/**
+ * Parse major version from `java -version` output.
+ * Handles both "21.0.11" and legacy "1.8.0_xxx".
+ */
+function readJavaMajor(javaCmd) {
+  try {
+    const out = execSync(`"${javaCmd}" -version 2>&1`, {
+      encoding: "utf8",
+      shell: true,
+      windowsHide: true
+    });
+    const m = String(out).match(/version "(\d+)(?:\.(\d+))?/);
+    if (!m) return 0;
+    let major = Number(m[1]);
+    if (major === 1 && m[2]) major = Number(m[2]);
+    return major || 0;
+  } catch (_) {
+    return 0;
+  }
+}
+
+/**
+ * Prefer an absolute JDK 21+ java.exe.
+ * On Windows, Oracle's java8path shim often sits ahead of JAVA_HOME on PATH,
+ * so spawn("java") would pick Java 8 and crash the JDK21-built jar.
+ */
+function resolveJavaCmd() {
+  refreshWindowsEnv();
+  const bin = javaBinName();
+  const candidates = [];
+
+  if (process.env.JAVA_HOME) {
+    candidates.push(path.join(process.env.JAVA_HOME, "bin", bin));
+  }
+
+  if (process.platform === "win32") {
+    const roots = [
+      "C:\\Program Files\\Microsoft",
+      "C:\\Program Files\\Eclipse Adoptium",
+      "C:\\Program Files\\Java",
+      "C:\\Program Files\\Amazon Corretto",
+      "C:\\Program Files\\Zulu"
+    ];
+    for (const root of roots) {
+      if (!fs.existsSync(root)) continue;
+      let entries = [];
+      try {
+        entries = fs.readdirSync(root, { withFileTypes: true });
+      } catch (_) {
+        continue;
+      }
+      for (const ent of entries) {
+        if (!ent.isDirectory()) continue;
+        const javaPath = path.join(root, ent.name, "bin", bin);
+        if (fs.existsSync(javaPath)) candidates.push(javaPath);
+      }
+    }
+  }
+
+  for (const javaPath of uniqueExisting(candidates)) {
+    if (readJavaMajor(javaPath) >= 21) {
+      return javaPath;
+    }
+  }
+
+  const fallback = uniqueExisting(candidates)[0];
+  return fallback || "java";
+}
+
 function commandExists(cmd) {
   try {
     if (process.platform === "win32") {
@@ -425,22 +498,36 @@ async function ensureBackendRunning(ctx) {
     }
   }
 
+  const javaCmd = resolveJavaCmd();
+  const javaMajor = readJavaMajor(javaCmd);
+  if (javaMajor > 0 && javaMajor < 21) {
+    const err = new Error(
+      `Backend needs JDK 21+, but resolved java is version ${javaMajor}: ${javaCmd}. ` +
+        `Set JAVA_HOME to a JDK 21 install (Oracle Java 8 on PATH is ignored once JAVA_HOME is correct).`
+    );
+    err.code = "JAVA_TOO_OLD";
+    throw err;
+  }
+
   fs.mkdirSync(path.dirname(outLog), { recursive: true });
   fs.appendFileSync(outLog, `\n===== start ${new Date().toISOString()} =====\n`, "utf8");
   fs.appendFileSync(errLog, `\n===== start ${new Date().toISOString()} =====\n`, "utf8");
   const outFd = fs.openSync(outLog, "a");
   const errFd = fs.openSync(errLog, "a");
 
-  // Keep attached so we can detect early crash (do not detach/unref until ready)
-  const child = spawn("java", ["-jar", jarPath, `--server.port=${backendPort}`], {
+  // detached:true so backend survives gateway restart / short-lived callers.
+  // Still listen for early 'exit' while waiting for /login.
+  const child = spawn(javaCmd, ["-jar", jarPath, `--server.port=${backendPort}`], {
     cwd: backendWorkDir,
-    detached: false,
+    detached: true,
     stdio: ["ignore", outFd, errFd],
     env: Object.assign({}, process.env, dbEnv || {}),
     windowsHide: true
   });
   writePid(pidFile, child.pid);
-  process.stdout.write(`[local_sever] starting backend pid=${child.pid} port=${backendPort}\n`);
+  process.stdout.write(
+    `[local_sever] starting backend pid=${child.pid} port=${backendPort} java=${javaCmd}\n`
+  );
 
   let exitCode = null;
   child.on("exit", (code) => {
@@ -452,11 +539,22 @@ async function ensureBackendRunning(ctx) {
     if (exitCode !== null) {
       let tail = "";
       try {
-        const text = fs.readFileSync(errLog, "utf8");
+        const text = fs.readFileSync(outLog, "utf8");
         tail = text.slice(-1200);
-      } catch (_) {}
+      } catch (_) {
+        try {
+          const text = fs.readFileSync(errLog, "utf8");
+          tail = text.slice(-1200);
+        } catch (_) {}
+      }
+      let hint =
+        "Check DB_PASS in config.env and logs/backend.out.log / backend.err.log";
+      if (/UnsupportedClassVersionError/i.test(tail)) {
+        hint =
+          "Java too old for this jar (need JDK 21+). JAVA_HOME should point to JDK 21; avoid Oracle Java 8 on PATH";
+      }
       const err = new Error(
-        `Backend process exited early (code ${exitCode}). Check DB_PASS in config.env and logs/backend.err.log\n${tail}`
+        `Backend process exited early (code ${exitCode}). ${hint}\n${tail}`
       );
       err.code = "BACKEND_EXITED";
       throw err;
@@ -575,6 +673,7 @@ async function openMiniprogramUi(ctx) {
 module.exports = {
   probeUrl,
   findWechatCli,
+  resolveJavaCmd,
   openBackendUi,
   openMiniprogramUi,
   openInBrowser,
