@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -237,10 +238,18 @@ public class FireMaintenanceTaskController extends BaseController {
                     && fireMaintenanceTask.getPlanStartTime().after(fireMaintenanceTask.getPlanEndTime())) {
                 return error("计划开始时间不能晚于计划结束时间");
             }
-            // 仅保存选择配置，不触发生成/删除检查记录
+            // 完整编辑：允许清空可选字段，并按选择差异同步检查记录
+            // 空串=清空；null/未传=不修改（由 Service.resolveSelectedLevel1Ids 处理）
+            fireMaintenanceTask.getParams().put("fullEdit", true);
             fireMaintenanceTask.setUpdateBy(ShiroUtils.getLoginName());
             fireMaintenanceTask.setUpdateTime(new Date());
-            return toAjax(fireMaintenanceTaskService.updateFireMaintenanceTask(fireMaintenanceTask));
+            int rows = fireMaintenanceTaskService.updateFireMaintenanceTask(fireMaintenanceTask);
+            AjaxResult ajax = toAjax(rows);
+            Object syncMessage = fireMaintenanceTask.getParams().get("syncMessage");
+            if (rows > 0 && syncMessage != null) {
+                ajax.put("msg", "修改成功。" + syncMessage);
+            }
+            return ajax;
         } catch (ServiceException e) {
             return error(e.getMessage());
         }
@@ -505,6 +514,26 @@ public class FireMaintenanceTaskController extends BaseController {
             }
         }
         return AjaxResult.success(fireTestLevel1Templates);
+    }
+
+    /**
+     * 编辑选择器使用的完整三级模板。前端只提交一级类目ID，二、三级用于明确展示选择范围。
+     */
+    @RequiresPermissions("fire:task:view")
+    @GetMapping("/templates/tree")
+    @ResponseBody
+    public AjaxResult getTemplateTree(@RequestParam("templateType") String templateType) {
+        if (!"0".equals(templateType) && !"1".equals(templateType)) {
+            return error("模板类型无效");
+        }
+        List<FireMaintenanceTemplate> result = new ArrayList<>();
+        for (FireMaintenanceTemplate template : fireMaintenanceTaskService.getAllTemplatesWithCache()) {
+            String actualType = template.getTemplateType() == null ? "0" : template.getTemplateType();
+            if (templateType.equals(actualType)) {
+                result.add(template);
+            }
+        }
+        return AjaxResult.success(result);
     }
 
     private Long[] convertStrToLongArray(String ids) {

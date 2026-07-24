@@ -2,11 +2,13 @@
 <html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
     <th:block th:include="include :: header('派发报修')" />
+    <th:block th:include="include :: select2-css" />
 </head>
 <body class="white-bg">
     <div class="wrapper wrapper-content animated fadeInRight ibox-content">
         <form class="form-horizontal m" id="form-repair-dispatch">
-            <input name="repairId" th:value="${repair.repairId}" type="hidden">
+            <input name="repairId" id="repairId" th:value="${repair.repairId}" type="hidden">
+            <input type="hidden" id="companyId" th:value="${repair.companyId}">
             <div class="form-group">
                 <label class="col-sm-4 control-label">报修单号：</label>
                 <div class="col-sm-7">
@@ -35,20 +37,166 @@
                 </div>
             </div>
             <div class="form-group">
+                <label class="col-sm-4 control-label is-required">报修处理人：</label>
+                <div class="col-sm-7">
+                    <select name="repairUserId" id="repairUserId" class="form-control" required disabled>
+                        <option value="">加载中...</option>
+                    </select>
+                    <span id="dispatchUserHint" class="help-block" style="display:none;color:#c9302c;margin-top:6px;"></span>
+                </div>
+            </div>
+            <div class="form-group">
                 <div class="col-sm-offset-4 col-sm-7">
                     <div class="alert alert-info" style="margin-bottom:0;">
-                        <i class="fa fa-info-circle"></i> 确认后将由当前登录账号处理
+                        <i class="fa fa-info-circle"></i> 确认后，该故障报修任务将派发给所选报修处理人。
                     </div>
                 </div>
             </div>
         </form>
     </div>
     <th:block th:include="include :: footer" />
+    <th:block th:include="include :: select2-js" />
     <script th:inline="javascript">
         var prefix = ctx + "fire/repair";
+        var repairId = /*[[${repair.repairId}]]*/ 0;
+        var companyId = /*[[${repair.companyId}]]*/ null;
+        var currentRepairUserId = /*[[${repair.repairUserId}]]*/ null;
+        var usersLoaded = false;
+
+        $(function () {
+            initRepairUserSelect();
+            loadDispatchUsers();
+        });
+
+        function initRepairUserSelect() {
+            if ($('#repairUserId').hasClass('select2-hidden-accessible')) {
+                $('#repairUserId').select2('destroy');
+            }
+            $('#repairUserId').select2({
+                width: '100%',
+                placeholder: '请选择报修处理人',
+                allowClear: false,
+                dropdownParent: $(document.body),
+                language: {
+                    noResults: function () {
+                        return '当前单位暂无可派发的员工账号';
+                    }
+                }
+            });
+        }
+
+        function setDispatchHint(message, isError) {
+            var $hint = $('#dispatchUserHint');
+            if (!message) {
+                $hint.hide().text('');
+                return;
+            }
+            $hint.css('color', isError ? '#c9302c' : '#8a6d3b').text(message).show();
+        }
+
+        function renderDispatchUsers(users) {
+            var $select = $('#repairUserId');
+            $select.empty();
+            if (!users || !users.length) {
+                $select.append('<option value="" selected disabled>当前单位暂无可派发的员工账号</option>');
+                $select.prop('disabled', true);
+                usersLoaded = false;
+                setDispatchHint('当前单位暂无可派发的员工账号（请先在客户管理中为该单位分配员工）', true);
+                initRepairUserSelect();
+                return;
+            }
+            $select.append('<option value="">请选择报修处理人</option>');
+            $.each(users, function (i, user) {
+                var userId = user.userId;
+                var userName = user.userName || '';
+                var loginName = user.loginName || '';
+                var phone = user.phonenumber || '';
+                var label = userName;
+                if (loginName) {
+                    label += '（' + loginName;
+                    if (phone) {
+                        label += ' / ' + phone;
+                    }
+                    label += '）';
+                } else if (phone) {
+                    label += '（' + phone + '）';
+                }
+                var selected = currentRepairUserId != null && String(currentRepairUserId) === String(userId);
+                $select.append($('<option></option>')
+                    .attr('value', userId)
+                    .prop('selected', selected)
+                    .text(label));
+            });
+            $select.prop('disabled', false);
+            usersLoaded = true;
+            setDispatchHint('', false);
+            initRepairUserSelect();
+        }
+
+        function loadDispatchUsers() {
+            usersLoaded = false;
+            $('#repairUserId').prop('disabled', true).html('<option value="">加载中...</option>');
+            setDispatchHint('', false);
+            if (!repairId) {
+                renderDispatchUsers([]);
+                setDispatchHint('报修处理人加载失败，请稍后重试', true);
+                return;
+            }
+            if (companyId === null || companyId === undefined || companyId === '') {
+                renderDispatchUsers([]);
+                setDispatchHint('报修单未关联单位，无法加载处理人', true);
+                return;
+            }
+            $.ajax({
+                url: prefix + '/dispatchUsers/' + repairId,
+                type: 'GET',
+                dataType: 'json',
+                success: function (res) {
+                    if (res.code != web_status.SUCCESS) {
+                        renderDispatchUsers([]);
+                        setDispatchHint(res.msg || '报修处理人加载失败，请稍后重试', true);
+                        $.modal.alertError(res.msg || '报修处理人加载失败，请稍后重试');
+                        return;
+                    }
+                    // RuoYi AjaxResult：列表在 data 字段
+                    var users = res.data;
+                    if (!$.isArray(users)) {
+                        users = [];
+                    }
+                    renderDispatchUsers(users);
+                },
+                error: function (xhr) {
+                    renderDispatchUsers([]);
+                    var msg = '报修处理人加载失败，请稍后重试';
+                    if (xhr && (xhr.status === 401 || xhr.status === 403)) {
+                        msg = '无权加载报修处理人，请确认账号权限';
+                    }
+                    setDispatchHint(msg, true);
+                    $.modal.alertError(msg);
+                }
+            });
+        }
 
         function submitHandler() {
-            $.operate.save(prefix + "/dispatch", $('#form-repair-dispatch').serialize());
+            if ($('#form-repair-dispatch').data('submitting')) {
+                return;
+            }
+            if (!usersLoaded || $('#repairUserId').prop('disabled')) {
+                $.modal.alertWarning('当前单位暂无可派发的员工账号');
+                return;
+            }
+            var repairUserId = $('#repairUserId').val();
+            if (!repairUserId) {
+                $.modal.alertWarning('请选择报修处理人');
+                return;
+            }
+            $('#form-repair-dispatch').data('submitting', true);
+            // 真实字段：repairId + repairUserId
+            $.operate.save(prefix + '/dispatch', $('#form-repair-dispatch').serialize(), function (result) {
+                if (result.code != web_status.SUCCESS) {
+                    $('#form-repair-dispatch').data('submitting', false);
+                }
+            });
         }
     </script>
 </body>

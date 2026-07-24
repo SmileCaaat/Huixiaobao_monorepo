@@ -1,14 +1,14 @@
--- �� fire_check_in.user_name ������ sys_user.user_name ����
--- ִ��ǰ���ȱ��������⣻���ű�Ĭ�ϲ��Զ�ִ�С�
+-- 将 fire_check_in.user_name 快照与 sys_user.user_name 对齐
+-- 执行前请先备份生产库；本脚本默认不自动执行。
 --
--- Ԥ�죺��������
+-- 预检：差异数量
 -- SELECT COUNT(*) AS mismatch_count
 -- FROM fire_check_in c
 -- LEFT JOIN sys_user u ON u.user_id = c.user_id
 -- WHERE c.del_flag = '0'
 --   AND COALESCE(c.user_name, '') <> COALESCE(u.user_name, '');
 --
--- Ԥ�죺������ϸ
+-- 预检：差异明细
 -- SELECT
 --     c.check_in_id,
 --     c.user_id,

@@ -220,23 +220,42 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="managerId != null">manager_id = #{managerId},</if>
             <if test="managerName != null">manager_name = #{managerName},</if>
             <if test="managerPhone != null">manager_phone = #{managerPhone},</if>
-            <!-- 可清空字段：即使为空也更新，避免旧值残留 -->
-            period_type = #{periodType},
-            period_year = #{periodYear,jdbcType=INTEGER},
-            period_num = #{periodNum,jdbcType=INTEGER},
-            operator_ids = #{operatorIds},
-            operator_names = #{operatorNames},
-            building_id = #{buildingId,jdbcType=BIGINT},
-            building_name = #{buildingName},
-            selected_system_ids = #{selectedSystemIds},
-            selected_fire_test_ids = #{selectedFireTestIds},
-            remark = #{remark},
+            <choose>
+                <!-- 完整编辑：允许将可清空字段更新为 NULL/空串 -->
+                <when test="params != null and params.fullEdit != null and params.fullEdit == true">
+                    period_type = #{periodType},
+                    period_year = #{periodYear,jdbcType=INTEGER},
+                    period_num = #{periodNum,jdbcType=INTEGER},
+                    operator_ids = #{operatorIds},
+                    operator_names = #{operatorNames},
+                    building_id = #{buildingId,jdbcType=BIGINT},
+                    building_name = #{buildingName},
+                    <!-- null/未传=不修改；空串=清空 -->
+                    <if test="selectedSystemIds != null">selected_system_ids = #{selectedSystemIds},</if>
+                    <if test="selectedFireTestIds != null">selected_fire_test_ids = #{selectedFireTestIds},</if>
+                    remark = #{remark},
+                </when>
+                <otherwise>
+                    <if test="periodType != null">period_type = #{periodType},</if>
+                    <if test="periodYear != null">period_year = #{periodYear},</if>
+                    <if test="periodNum != null">period_num = #{periodNum},</if>
+                    <if test="operatorIds != null">operator_ids = #{operatorIds},</if>
+                    <if test="operatorNames != null">operator_names = #{operatorNames},</if>
+                    <if test="buildingId != null">building_id = #{buildingId},</if>
+                    <if test="buildingName != null">building_name = #{buildingName},</if>
+                    <!-- null=不修改；空串=清空选择 -->
+                    <if test="selectedSystemIds != null">selected_system_ids = #{selectedSystemIds},</if>
+                    <if test="selectedFireTestIds != null">selected_fire_test_ids = #{selectedFireTestIds},</if>
+                    <if test="remark != null">remark = #{remark},</if>
+                </otherwise>
+            </choose>
             <if test="maintenanceSummary != null">maintenance_summary = #{maintenanceSummary},</if>
             <if test="maintenanceTime != null">maintenance_time = #{maintenanceTime},</if>
             <if test="createBy != null">create_by = #{createBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
-            update_time = sysdate(),
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="updateTime == null">update_time = sysdate(),</if>
         </trim>
         where task_id = #{taskId}
     </update>

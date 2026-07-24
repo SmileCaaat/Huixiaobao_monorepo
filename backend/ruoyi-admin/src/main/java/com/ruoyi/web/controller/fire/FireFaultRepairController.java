@@ -136,6 +136,7 @@ public class FireFaultRepairController extends BaseController {
 
     /**
      * 复用 fire:repair:accept 权限，避免额外权限初始化。
+     * 页面仅渲染报修信息；处理人列表由 /dispatchUsers/{repairId} 异步加载。
      */
     @RequiresPermissions("fire:repair:accept")
     @GetMapping("/dispatch/{repairId}")
@@ -145,13 +146,31 @@ public class FireFaultRepairController extends BaseController {
         return prefix + "/dispatch";
     }
 
+    /**
+     * 按报修单所属公司加载可派发处理人（已注册、正常、未删除、且已关联该公司）。
+     */
+    @RequiresPermissions("fire:repair:accept")
+    @GetMapping("/dispatchUsers/{repairId}")
+    @ResponseBody
+    public AjaxResult dispatchUsers(@PathVariable("repairId") Long repairId) {
+        try {
+            return success(fireFaultRepairService.selectDispatchUsers(repairId));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
+    }
+
     @RequiresPermissions("fire:repair:accept")
     @Log(title = "派发报修", businessType = BusinessType.UPDATE)
     @PostMapping("/dispatch")
     @ResponseBody
-    public AjaxResult dispatchSave(Long repairId) {
+    public AjaxResult dispatchSave(Long repairId, Long repairUserId) {
         try {
-            return toAjax(fireFaultRepairService.dispatchRepairToCurrentUser(repairId));
+            if (repairUserId == null) {
+                return error("请选择报修处理人");
+            }
+            return toAjax(fireFaultRepairService.dispatchRepair(
+                    repairId, repairUserId, ShiroUtils.getLoginName()));
         } catch (ServiceException e) {
             return error(e.getMessage());
         }

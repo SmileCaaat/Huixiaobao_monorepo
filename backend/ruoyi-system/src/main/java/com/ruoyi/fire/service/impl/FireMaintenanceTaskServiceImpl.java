@@ -1,15 +1,19 @@
 package com.ruoyi.fire.service.impl;
 
-import java.util.List;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.ruoyi.common.exception.ServiceException;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.fire.mapper.FireMaintenanceTaskMapper;
 import com.ruoyi.fire.mapper.FireMaintenanceTemplateMapper;
 import com.ruoyi.fire.mapper.FireMaintenanceRecordMapper;
@@ -21,12 +25,14 @@ import com.ruoyi.fire.service.IFireMaintenanceTaskService;
 
 /**
  * 维保任务Service业务层处理
- * 
+ *
  * @author ruoyi
  * @date 2024-01-01
  */
 @Service
 public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskService {
+    private static final Logger log = LoggerFactory.getLogger(FireMaintenanceTaskServiceImpl.class);
+
     @Autowired
     private FireMaintenanceTaskMapper fireMaintenanceTaskMapper;
 
@@ -36,28 +42,22 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
     @Autowired
     private FireMaintenanceRecordMapper fireMaintenanceRecordMapper;
 
-    /**
-     * 查询维保任务
-     * 
-     * @param taskId 维保任务主键
-     * @return 维保任务
-     */
     @Override
     public FireMaintenanceTask selectFireMaintenanceTaskByTaskId(Long taskId) {
         return selectFireMaintenanceTaskByTaskId(taskId, null);
     }
 
-    /**
-     * 查询维保任务（按记录类型过滤系统列表）
-     * 
-     * @param taskId     任务ID
-     * @param recordType 记录类型（0=常规维保 1=消防设施测试，null=全部）
-     */
     @Override
     public FireMaintenanceTask selectFireMaintenanceTaskByTaskId(Long taskId, String recordType) {
         FireMaintenanceTask task = fireMaintenanceTaskMapper.selectFireMaintenanceTaskByTaskId(taskId);
         if (task != null) {
-            // 查询一级记录（系统列表）
+            List<FireMaintenanceTemplate> templates = getAllTemplatesWithCache();
+            if (task.getSelectedSystemIds() == null) {
+                task.setSelectedSystemIds(toCsv(resolveSelectedLevel1Ids(null, templates, false, taskId, "0")));
+            }
+            if (task.getSelectedFireTestIds() == null) {
+                task.setSelectedFireTestIds(toCsv(resolveSelectedLevel1Ids(null, templates, true, taskId, "1")));
+            }
             FireMaintenanceRecord query = new FireMaintenanceRecord();
             query.setTaskId(taskId);
             query.setLevel(1);
@@ -65,29 +65,19 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                 query.setRecordType(recordType);
             }
             List<FireMaintenanceRecord> systems = fireMaintenanceRecordMapper.selectFireMaintenanceRecordList(query);
-
-            // 为每个系统统计检查项数据
             for (FireMaintenanceRecord system : systems) {
                 calculateSystemStats(system, taskId);
             }
-
             task.setSystems(systems);
         }
         return task;
     }
 
-    /**
-     * 计算系统的统计数据
-     */
     private void calculateSystemStats(FireMaintenanceRecord system, Long taskId) {
-        // 查询该系统下的所有三级检查项
         List<FireMaintenanceRecord> allRecords = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
-
         int totalItems = 0;
         int completedItems = 0;
         int uncompletedItems = 0;
-
-        // 找出该系统下的所有三级检查项
         for (FireMaintenanceRecord record : allRecords) {
             if (record.getLevel() == 3 && isUnderSystem(record, system.getRecordId(), allRecords)) {
                 totalItems++;
@@ -98,306 +88,66 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                 }
             }
         }
-
         system.setTotalItems(totalItems);
         system.setCompletedItems(completedItems);
         system.setUncompletedItems(uncompletedItems);
         system.setSystemStatus(uncompletedItems == 0 && totalItems > 0 ? "1" : "0");
     }
 
-    /**
-     * 判断记录是否属于指定系统
-     */
     private boolean isUnderSystem(FireMaintenanceRecord record, Long systemRecordId,
             List<FireMaintenanceRecord> allRecords) {
         if (record.getParentRecordId() == null) {
             return false;
         }
-
-        // 查找父记录
         for (FireMaintenanceRecord parent : allRecords) {
             if (parent.getRecordId().equals(record.getParentRecordId())) {
                 if (parent.getLevel() == 1) {
-                    // 父记录是一级，判断是否是目标系统
                     return parent.getRecordId().equals(systemRecordId);
-                } else {
-                    // 父记录不是一级，继续向上查找
-                    return isUnderSystem(parent, systemRecordId, allRecords);
                 }
+                return isUnderSystem(parent, systemRecordId, allRecords);
             }
         }
-
         return false;
     }
 
-    /**
-     * 查询维保任务列表
-     * 
-     * @param fireMaintenanceTask 维保任务
-     * @return 维保任务
-     */
     @Override
     public List<FireMaintenanceTask> selectFireMaintenanceTaskList(FireMaintenanceTask fireMaintenanceTask) {
         return fireMaintenanceTaskMapper.selectFireMaintenanceTaskList(fireMaintenanceTask);
     }
 
-    /**
-     * 新增维保任务（自动生成检查记录）- 优化版
-     * 
-     * @param fireMaintenanceTask 维保任务
-     * @return 结果
-     */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int insertFireMaintenanceTask(FireMaintenanceTask fireMaintenanceTask) {
-        // 1. 插入任务基本信息
         int rows = fireMaintenanceTaskMapper.insertFireMaintenanceTask(fireMaintenanceTask);
+        Long taskId = fireMaintenanceTask.getTaskId();
 
-        // 2. 查询所有模板数据（使用缓存）
         List<FireMaintenanceTemplate> templates = getAllTemplatesWithCache();
+        Set<Long> selectedSystemIds = parseIdSet(fireMaintenanceTask.getSelectedSystemIds());
+        Set<Long> selectedFireTestIds = parseIdSet(fireMaintenanceTask.getSelectedFireTestIds());
 
-        // 3. 获取选中的系统ID列表
-        Set<Long> selectedSystemIds = new HashSet<>();
-        if (fireMaintenanceTask.getSelectedSystemIds() != null
-                && !fireMaintenanceTask.getSelectedSystemIds().isEmpty()) {
-            String[] ids = fireMaintenanceTask.getSelectedSystemIds().split(",");
-            for (String id : ids) {
-                try {
-                    selectedSystemIds.add(Long.parseLong(id.trim()));
-                } catch (NumberFormatException e) {
-                    // 忽略无效ID
-                }
-            }
+        // 空选择：与历史新增语义一致，默认全部一级模板
+        if (selectedSystemIds.isEmpty()) {
+            selectedSystemIds = collectLevel1Ids(templates, false);
+        }
+        if (selectedFireTestIds.isEmpty()) {
+            selectedFireTestIds = collectLevel1Ids(templates, true);
         }
 
-        // 获取选中的消防设施测试ID列表
-        Set<Long> selectedFireTestIds = new HashSet<>();
-        if (fireMaintenanceTask.getSelectedFireTestIds() != null
-                && !fireMaintenanceTask.getSelectedFireTestIds().isEmpty()) {
-            String[] ids = fireMaintenanceTask.getSelectedFireTestIds().split(",");
-            for (String id : ids) {
-                try {
-                    selectedFireTestIds.add(Long.parseLong(id.trim()));
-                } catch (NumberFormatException e) {
-                    // 忽略无效ID
-                }
-            }
-        }
+        Set<Long> existingTemplateIds = new HashSet<>();
+        int added = generateMissingRecordsForLevel1Ids(taskId, selectedSystemIds, "0", templates, existingTemplateIds);
+        added += generateMissingRecordsForLevel1Ids(taskId, selectedFireTestIds, "1", templates, existingTemplateIds);
 
-        // 4. 按层级和类型分组
-        List<FireMaintenanceTemplate> level1Templates = new ArrayList<>();
-        List<FireMaintenanceTemplate> level2Templates = new ArrayList<>();
-        List<FireMaintenanceTemplate> level3Templates = new ArrayList<>();
-
-        // 消防设施测试的模板
-        List<FireMaintenanceTemplate> fireTestLevel1Templates = new ArrayList<>();
-        List<FireMaintenanceTemplate> fireTestLevel2Templates = new ArrayList<>();
-        List<FireMaintenanceTemplate> fireTestLevel3Templates = new ArrayList<>();
-
-        int totalLevel3 = 0;
-
-        for (FireMaintenanceTemplate template : templates) {
-            // 区分常规维保和消防设施测试
-            boolean isFireTest = "1".equals(template.getTemplateType());
-
-            if (isFireTest) {
-                // 消防设施测试模板
-                if (template.getLevel() == 1) {
-                    // 如果指定了选中的消防设施测试系统，只添加选中的
-                    if (selectedFireTestIds.isEmpty() || selectedFireTestIds.contains(template.getId())) {
-                        fireTestLevel1Templates.add(template);
-                    }
-                } else if (template.getLevel() == 2) {
-                    fireTestLevel2Templates.add(template);
-                } else if (template.getLevel() == 3) {
-                    fireTestLevel3Templates.add(template);
-                }
-            } else {
-                // 常规维保模板
-                if (template.getLevel() == 1) {
-                    // 如果指定了选中的系统，只添加选中的
-                    if (selectedSystemIds.isEmpty() || selectedSystemIds.contains(template.getId())) {
-                        level1Templates.add(template);
-                    }
-                } else if (template.getLevel() == 2) {
-                    level2Templates.add(template);
-                } else if (template.getLevel() == 3) {
-                    level3Templates.add(template);
-                }
-            }
-        }
-
-        // 5. 批量生成检查记录
-        Map<Long, Long> templateToRecordMap = new HashMap<>();
-        Set<Long> selectedLevel1TemplateIds = new HashSet<>();
-
-        // 批量处理一级（使用批量插入）
-        List<FireMaintenanceRecord> level1Records = new ArrayList<>();
-        for (FireMaintenanceTemplate template : level1Templates) {
-            FireMaintenanceRecord record = createRecordFromTemplate(template, fireMaintenanceTask.getTaskId(), null,
-                    "0");
-            level1Records.add(record);
-            selectedLevel1TemplateIds.add(template.getId());
-        }
-        if (!level1Records.isEmpty()) {
-            fireMaintenanceRecordMapper.batchInsertFireMaintenanceRecord(level1Records);
-            // 批量插入后需要查询回来获取生成的ID
-            FireMaintenanceRecord query = new FireMaintenanceRecord();
-            query.setTaskId(fireMaintenanceTask.getTaskId());
-            query.setLevel(1);
-            List<FireMaintenanceRecord> insertedLevel1 = fireMaintenanceRecordMapper
-                    .selectFireMaintenanceRecordList(query);
-            for (FireMaintenanceRecord record : insertedLevel1) {
-                templateToRecordMap.put(record.getTemplateId(), record.getRecordId());
-            }
-        }
-
-        // 批量处理二级（只处理选中的一级系统下的二级）
-        List<FireMaintenanceRecord> level2Records = new ArrayList<>();
-        Set<Long> selectedLevel2TemplateIds = new HashSet<>();
-
-        for (FireMaintenanceTemplate template : level2Templates) {
-            // 检查父级是否在选中的一级系统中
-            if (selectedLevel1TemplateIds.contains(template.getParentId())) {
-                Long parentRecordId = templateToRecordMap.get(template.getParentId());
-                if (parentRecordId != null) {
-                    FireMaintenanceRecord record = createRecordFromTemplate(template, fireMaintenanceTask.getTaskId(),
-                            parentRecordId, "0");
-                    level2Records.add(record);
-                    selectedLevel2TemplateIds.add(template.getId());
-                }
-            }
-        }
-        if (!level2Records.isEmpty()) {
-            fireMaintenanceRecordMapper.batchInsertFireMaintenanceRecord(level2Records);
-            // 批量插入后需要查询回来获取生成的ID
-            FireMaintenanceRecord query = new FireMaintenanceRecord();
-            query.setTaskId(fireMaintenanceTask.getTaskId());
-            query.setLevel(2);
-            List<FireMaintenanceRecord> insertedLevel2 = fireMaintenanceRecordMapper
-                    .selectFireMaintenanceRecordList(query);
-            for (FireMaintenanceRecord record : insertedLevel2) {
-                templateToRecordMap.put(record.getTemplateId(), record.getRecordId());
-            }
-        }
-
-        // 批量处理三级（只处理选中的系统下的三级）
-        List<FireMaintenanceRecord> level3Records = new ArrayList<>();
-        for (FireMaintenanceTemplate template : level3Templates) {
-            // 检查父级（二级）是否在已生成的二级记录中
-            if (selectedLevel2TemplateIds.contains(template.getParentId())) {
-                Long parentRecordId = templateToRecordMap.get(template.getParentId());
-                if (parentRecordId != null) {
-                    FireMaintenanceRecord record = createRecordFromTemplate(template, fireMaintenanceTask.getTaskId(),
-                            parentRecordId, "0");
-                    level3Records.add(record);
-                    totalLevel3++;
-                }
-            }
-        }
-        if (!level3Records.isEmpty()) {
-            fireMaintenanceRecordMapper.batchInsertFireMaintenanceRecord(level3Records);
-        }
-
-        // 生成消防设施测试的检查记录（不选默认全部，与常规维保一致）
-        if (!fireTestLevel1Templates.isEmpty()) {
-            // 处理消防设施测试的一级
-            List<FireMaintenanceRecord> fireTestL1Records = new ArrayList<>();
-            for (FireMaintenanceTemplate template : fireTestLevel1Templates) {
-                FireMaintenanceRecord record = createRecordFromTemplate(template, fireMaintenanceTask.getTaskId(),
-                        null, "1");
-                fireTestL1Records.add(record);
-            }
-            if (!fireTestL1Records.isEmpty()) {
-                fireMaintenanceRecordMapper.batchInsertFireMaintenanceRecord(fireTestL1Records);
-                // 查询回来获取生成的ID
-                FireMaintenanceRecord query = new FireMaintenanceRecord();
-                query.setTaskId(fireMaintenanceTask.getTaskId());
-                query.setLevel(1);
-                List<FireMaintenanceRecord> insertedFireTestL1 = fireMaintenanceRecordMapper
-                        .selectFireMaintenanceRecordList(query);
-                for (FireMaintenanceRecord record : insertedFireTestL1) {
-                    // 只处理消防设施测试的记录
-                    if (fireTestLevel1Templates.stream().anyMatch(t -> t.getId().equals(record.getTemplateId()))) {
-                        templateToRecordMap.put(record.getTemplateId(), record.getRecordId());
-                    }
-                }
-            }
-
-            // 处理消防设施测试的二级（只处理选中的一级系统下的二级）
-            List<FireMaintenanceRecord> fireTestL2Records = new ArrayList<>();
-            Set<Long> selectedFireTestL2TemplateIds = new HashSet<>();
-
-            for (FireMaintenanceTemplate template : fireTestLevel2Templates) {
-                // 检查父级是否在选中的消防设施测试一级系统中
-                if (fireTestLevel1Templates.stream().anyMatch(t -> t.getId().equals(template.getParentId()))) {
-                    Long parentRecordId = templateToRecordMap.get(template.getParentId());
-                    if (parentRecordId != null) {
-                        FireMaintenanceRecord record = createRecordFromTemplate(template,
-                                fireMaintenanceTask.getTaskId(), parentRecordId, "1");
-                        fireTestL2Records.add(record);
-                        selectedFireTestL2TemplateIds.add(template.getId());
-                    }
-                }
-            }
-            if (!fireTestL2Records.isEmpty()) {
-                fireMaintenanceRecordMapper.batchInsertFireMaintenanceRecord(fireTestL2Records);
-                // 查询回来获取生成的ID
-                FireMaintenanceRecord query = new FireMaintenanceRecord();
-                query.setTaskId(fireMaintenanceTask.getTaskId());
-                query.setLevel(2);
-                List<FireMaintenanceRecord> insertedFireTestL2 = fireMaintenanceRecordMapper
-                        .selectFireMaintenanceRecordList(query);
-                for (FireMaintenanceRecord record : insertedFireTestL2) {
-                    // 只处理消防设施测试的记录
-                    if (selectedFireTestL2TemplateIds.contains(record.getTemplateId())) {
-                        templateToRecordMap.put(record.getTemplateId(), record.getRecordId());
-                    }
-                }
-            }
-
-            // 处理消防设施测试的三级（只处理选中的系统下的三级）
-            List<FireMaintenanceRecord> fireTestL3Records = new ArrayList<>();
-            for (FireMaintenanceTemplate template : fireTestLevel3Templates) {
-                // 检查父级（二级）是否在已生成的二级记录中
-                if (selectedFireTestL2TemplateIds.contains(template.getParentId())) {
-                    Long parentRecordId = templateToRecordMap.get(template.getParentId());
-                    if (parentRecordId != null) {
-                        FireMaintenanceRecord record = createRecordFromTemplate(template,
-                                fireMaintenanceTask.getTaskId(), parentRecordId, "1");
-                        fireTestL3Records.add(record);
-                        totalLevel3++;
-                    }
-                }
-            }
-            if (!fireTestL3Records.isEmpty()) {
-                fireMaintenanceRecordMapper.batchInsertFireMaintenanceRecord(fireTestL3Records);
-            }
-        }
-
-        // 6. 更新任务的总项数
-        fireMaintenanceTask.setTotalItems(totalLevel3);
-        fireMaintenanceTask.setCompletedItems(0);
-        fireMaintenanceTask.setNormalItems(0);
-        fireMaintenanceTask.setFaultItems(0);
-        fireMaintenanceTask.setNoDeviceItems(0);
-        fireMaintenanceTaskMapper.updateFireMaintenanceTask(fireMaintenanceTask);
-
+        int[] counts = refreshTaskStatistics(taskId);
+        log.info("创建维保任务 taskId={}, systems={}, fireTests={}, addedRecords={}, completed={}/{}",
+                taskId, selectedSystemIds, selectedFireTestIds, added, counts[0], counts[1]);
         return rows;
     }
 
-    /**
-     * 获取所有模板数据（带缓存）
-     * 模板数据不会变化，使用永久缓存
-     */
     @Cacheable(value = "maintenanceTemplates", key = "'all'")
     public List<FireMaintenanceTemplate> getAllTemplatesWithCache() {
         return fireMaintenanceTemplateMapper.selectAllTemplates();
     }
 
-    /**
-     * 从模板创建检查记录
-     */
     private FireMaintenanceRecord createRecordFromTemplate(FireMaintenanceTemplate template, Long taskId,
             Long parentRecordId, String recordType) {
         FireMaintenanceRecord record = new FireMaintenanceRecord();
@@ -407,64 +157,416 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
         record.setParentRecordId(parentRecordId);
         record.setItemName(template.getItemName());
         record.setItemCode(template.getItemCode());
-        record.setCheckResult("0"); // 默认待检查
+        record.setCheckResult("0");
         record.setSortOrder(template.getSortOrder());
         record.setRecordType(recordType);
         return record;
     }
 
     /**
-     * 修改维保任务
-     * 
-     * @param fireMaintenanceTask 维保任务
-     * @return 结果
+     * 修改维保任务：保存主表选择，并按差异增量同步检查记录与完成度
      */
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int updateFireMaintenanceTask(FireMaintenanceTask fireMaintenanceTask) {
-        return fireMaintenanceTaskMapper.updateFireMaintenanceTask(fireMaintenanceTask);
+        if (fireMaintenanceTask == null || fireMaintenanceTask.getTaskId() == null) {
+            throw new ServiceException("任务ID不能为空");
+        }
+        FireMaintenanceTask existing = fireMaintenanceTaskMapper
+                .selectFireMaintenanceTaskByTaskId(fireMaintenanceTask.getTaskId());
+        if (existing == null) {
+            throw new ServiceException("维保任务不存在");
+        }
+
+        boolean syncSelection = fireMaintenanceTask.getParams() != null
+                && Boolean.TRUE.equals(fireMaintenanceTask.getParams().get("fullEdit"));
+
+        Long taskId = fireMaintenanceTask.getTaskId();
+        if (!syncSelection) {
+            return fireMaintenanceTaskMapper.updateFireMaintenanceTask(fireMaintenanceTask);
+        }
+
+        List<FireMaintenanceTemplate> templates = getAllTemplatesWithCache();
+
+        Set<Long> oldSystemIds = resolveSelectedLevel1Ids(existing.getSelectedSystemIds(), templates, false, taskId,
+                "0");
+        Set<Long> oldFireIds = resolveSelectedLevel1Ids(existing.getSelectedFireTestIds(), templates, true, taskId,
+                "1");
+        Set<Long> newSystemIds = resolveSelectedLevel1Ids(fireMaintenanceTask.getSelectedSystemIds(), templates, false,
+                taskId, "0");
+        Set<Long> newFireIds = resolveSelectedLevel1Ids(fireMaintenanceTask.getSelectedFireTestIds(), templates, true,
+                taskId, "1");
+
+        Set<Long> addSystems = diff(newSystemIds, oldSystemIds);
+        Set<Long> removeSystems = diff(oldSystemIds, newSystemIds);
+        Set<Long> addFires = diff(newFireIds, oldFireIds);
+        Set<Long> removeFires = diff(oldFireIds, newFireIds);
+
+        validateSelectedLevel1Ids(newSystemIds, templates, false, "维保系统");
+        validateSelectedLevel1Ids(newFireIds, templates, true, "消防设施测试");
+        assertRemovableLevel1Trees(taskId, removeSystems, "0");
+        assertRemovableLevel1Trees(taskId, removeFires, "1");
+
+        int rows = fireMaintenanceTaskMapper.updateFireMaintenanceTask(fireMaintenanceTask);
+        int normalized = normalizeHistoricalRecordTypes(taskId, templates);
+
+        List<FireMaintenanceRecord> existingRecords = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
+        Set<Long> existingTemplateIds = existingRecords.stream()
+                .map(FireMaintenanceRecord::getTemplateId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        int added = generateMissingRecordsForLevel1Ids(taskId, addSystems, "0", templates, existingTemplateIds);
+        added += generateMissingRecordsForLevel1Ids(taskId, addFires, "1", templates, existingTemplateIds);
+
+        int removed = removeEmptyLevel1Trees(taskId, removeSystems, "0");
+        removed += removeEmptyLevel1Trees(taskId, removeFires, "1");
+
+        int[] counts = refreshTaskStatistics(taskId);
+        String syncMessage = String.format("新增检查记录%d条，清理未填写记录%d条，完成度%d/%d",
+                added, removed, counts[0], counts[1]);
+        if (normalized > 0) {
+            syncMessage += "；修正历史记录类型" + normalized + "条";
+        }
+        fireMaintenanceTask.getParams().put("syncMessage", syncMessage);
+
+        log.info(
+                "编辑维保任务 taskId={}, oldSystems={}, newSystems={}, addSystems={}, removeSystems={}, oldFires={}, newFires={}, addFires={}, removeFires={}, added={}, removed={}, completed={}/{}",
+                taskId, oldSystemIds, newSystemIds, addSystems, removeSystems, oldFireIds, newFireIds, addFires,
+                removeFires, added, removed, counts[0], counts[1]);
+        return rows;
     }
 
     /**
-     * 批量删除维保任务
-     * 
-     * @param taskIds 需要删除的维保任务主键
-     * @return 结果
+     * 旧版单条插入曾漏写 record_type；按模板类型修正当前任务的历史记录。
      */
+    private int normalizeHistoricalRecordTypes(Long taskId, List<FireMaintenanceTemplate> templates) {
+        Map<Long, FireMaintenanceTemplate> templateMap = templates.stream()
+                .collect(Collectors.toMap(FireMaintenanceTemplate::getId, t -> t, (a, b) -> a));
+        int normalized = 0;
+        for (FireMaintenanceRecord record : fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId)) {
+            FireMaintenanceTemplate template = templateMap.get(record.getTemplateId());
+            if (template == null) {
+                continue;
+            }
+            String expected = isFireTestTemplate(template) ? "1" : "0";
+            if (!expected.equals(record.getRecordType())) {
+                FireMaintenanceRecord update = new FireMaintenanceRecord();
+                update.setRecordId(record.getRecordId());
+                update.setRecordType(expected);
+                fireMaintenanceRecordMapper.updateFireMaintenanceRecord(update);
+                normalized++;
+            }
+        }
+        return normalized;
+    }
+
+    private Set<Long> parseIdSet(String csv) {
+        Set<Long> ids = new HashSet<>();
+        if (StringUtils.isEmpty(csv)) {
+            return ids;
+        }
+        for (String part : csv.split(",")) {
+            if (StringUtils.isEmpty(part)) {
+                continue;
+            }
+            try {
+                ids.add(Long.parseLong(part.trim()));
+            } catch (NumberFormatException ignored) {
+                // ignore
+            }
+        }
+        return ids;
+    }
+
+    private String toCsv(Set<Long> ids) {
+        return ids.stream().sorted().map(String::valueOf).collect(Collectors.joining(","));
+    }
+
+    private Set<Long> diff(Set<Long> left, Set<Long> right) {
+        Set<Long> result = new HashSet<>(left);
+        result.removeAll(right);
+        return result;
+    }
+
+    private Set<Long> collectLevel1Ids(List<FireMaintenanceTemplate> templates, boolean fireTest) {
+        Set<Long> ids = new HashSet<>();
+        for (FireMaintenanceTemplate template : templates) {
+            if (template.getLevel() != null && template.getLevel() == 1 && isFireTestTemplate(template) == fireTest) {
+                ids.add(template.getId());
+            }
+        }
+        return ids;
+    }
+
+    private boolean isFireTestTemplate(FireMaintenanceTemplate template) {
+        return "1".equals(template.getTemplateType());
+    }
+
+    /**
+     * 空串=清空；有值=解析；null=按现有记录推断，无记录则默认全部
+     */
+    private Set<Long> resolveSelectedLevel1Ids(String csv, List<FireMaintenanceTemplate> templates, boolean fireTest,
+            Long taskId, String recordType) {
+        if (csv != null && csv.trim().isEmpty()) {
+            return new HashSet<>();
+        }
+        if (StringUtils.isNotEmpty(csv)) {
+            return parseIdSet(csv);
+        }
+        List<FireMaintenanceRecord> records = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
+        Map<Long, FireMaintenanceTemplate> templateMap = templates.stream()
+                .collect(Collectors.toMap(FireMaintenanceTemplate::getId, t -> t, (a, b) -> a));
+        Set<Long> fromRecords = records.stream()
+                .filter(r -> r.getLevel() != null && r.getLevel() == 1)
+                // 历史消防测试一级记录曾因插入 SQL 漏写 record_type 被标成 0，
+                // 因此回显以模板真实类型为准，不能只信记录上的旧值。
+                .filter(r -> {
+                    FireMaintenanceTemplate template = templateMap.get(r.getTemplateId());
+                    return template != null && isFireTestTemplate(template) == fireTest;
+                })
+                .map(FireMaintenanceRecord::getTemplateId)
+                .collect(Collectors.toSet());
+        if (!fromRecords.isEmpty()) {
+            return fromRecords;
+        }
+        return collectLevel1Ids(templates, fireTest);
+    }
+
+    private void validateSelectedLevel1Ids(Set<Long> ids, List<FireMaintenanceTemplate> templates,
+            boolean fireTest, String moduleName) {
+        Map<Long, FireMaintenanceTemplate> templateMap = templates.stream()
+                .collect(Collectors.toMap(FireMaintenanceTemplate::getId, t -> t, (a, b) -> a));
+        List<Long> invalidIds = ids.stream().filter(id -> {
+            FireMaintenanceTemplate template = templateMap.get(id);
+            return template == null || template.getLevel() == null || template.getLevel() != 1
+                    || isFireTestTemplate(template) != fireTest;
+        }).collect(Collectors.toList());
+        if (!invalidIds.isEmpty()) {
+            throw new ServiceException(moduleName + "包含无效类目ID：" + invalidIds);
+        }
+    }
+
+    /**
+     * 为指定一级模板增量生成检查记录（幂等：已存在 templateId 则跳过）
+     */
+    private int generateMissingRecordsForLevel1Ids(Long taskId, Set<Long> level1Ids, String recordType,
+            List<FireMaintenanceTemplate> templates, Set<Long> existingTemplateIds) {
+        if (level1Ids == null || level1Ids.isEmpty()) {
+            return 0;
+        }
+        int added = 0;
+        Map<Long, FireMaintenanceTemplate> templateMap = templates.stream()
+                .collect(Collectors.toMap(FireMaintenanceTemplate::getId, t -> t, (a, b) -> a));
+
+        for (Long level1Id : level1Ids) {
+            if (existingTemplateIds.contains(level1Id)) {
+                continue;
+            }
+            FireMaintenanceTemplate level1 = templateMap.get(level1Id);
+            if (level1 == null || level1.getLevel() == null || level1.getLevel() != 1) {
+                continue;
+            }
+            if (isFireTestTemplate(level1) != "1".equals(recordType)) {
+                continue;
+            }
+
+            FireMaintenanceRecord l1Record = createRecordFromTemplate(level1, taskId, null, recordType);
+            fireMaintenanceRecordMapper.insertFireMaintenanceRecord(l1Record);
+            existingTemplateIds.add(level1Id);
+            added++;
+
+            List<FireMaintenanceTemplate> level2List = templates.stream()
+                    .filter(t -> t.getLevel() != null && t.getLevel() == 2)
+                    .filter(t -> level1Id.equals(t.getParentId()))
+                    .collect(Collectors.toList());
+
+            for (FireMaintenanceTemplate level2 : level2List) {
+                if (existingTemplateIds.contains(level2.getId())) {
+                    continue;
+                }
+                FireMaintenanceRecord l2Record = createRecordFromTemplate(level2, taskId, l1Record.getRecordId(),
+                        recordType);
+                fireMaintenanceRecordMapper.insertFireMaintenanceRecord(l2Record);
+                existingTemplateIds.add(level2.getId());
+                added++;
+
+                List<FireMaintenanceTemplate> level3List = templates.stream()
+                        .filter(t -> t.getLevel() != null && t.getLevel() == 3)
+                        .filter(t -> level2.getId().equals(t.getParentId()))
+                        .collect(Collectors.toList());
+                List<FireMaintenanceRecord> l3Records = new ArrayList<>();
+                for (FireMaintenanceTemplate level3 : level3List) {
+                    if (existingTemplateIds.contains(level3.getId())) {
+                        continue;
+                    }
+                    l3Records.add(createRecordFromTemplate(level3, taskId, l2Record.getRecordId(), recordType));
+                    existingTemplateIds.add(level3.getId());
+                }
+                if (!l3Records.isEmpty()) {
+                    fireMaintenanceRecordMapper.batchInsertFireMaintenanceRecord(l3Records);
+                    added += l3Records.size();
+                }
+            }
+        }
+        return added;
+    }
+
+    /**
+     * 移除未填写内容的一级系统整棵检查树；已有结果则保留
+     */
+    private int removeEmptyLevel1Trees(Long taskId, Set<Long> removeLevel1Ids, String recordType) {
+        if (removeLevel1Ids == null || removeLevel1Ids.isEmpty()) {
+            return 0;
+        }
+        List<FireMaintenanceRecord> all = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
+        int removed = 0;
+        for (Long level1TemplateId : removeLevel1Ids) {
+            FireMaintenanceRecord l1 = all.stream()
+                    .filter(r -> level1TemplateId.equals(r.getTemplateId()))
+                    .filter(r -> r.getLevel() != null && r.getLevel() == 1)
+                    .findFirst()
+                    .orElse(null);
+            if (l1 == null) {
+                continue;
+            }
+            List<FireMaintenanceRecord> subtree = new ArrayList<>();
+            subtree.add(l1);
+            List<FireMaintenanceRecord> l2s = all.stream()
+                    .filter(r -> l1.getRecordId().equals(r.getParentRecordId()))
+                    .collect(Collectors.toList());
+            subtree.addAll(l2s);
+            for (FireMaintenanceRecord l2 : l2s) {
+                subtree.addAll(all.stream()
+                        .filter(r -> l2.getRecordId().equals(r.getParentRecordId()))
+                        .collect(Collectors.toList()));
+            }
+
+            Long[] ids = subtree.stream().map(FireMaintenanceRecord::getRecordId).toArray(Long[]::new);
+            if (ids.length > 0) {
+                fireMaintenanceRecordMapper.deleteFireMaintenanceRecordByRecordIds(ids);
+                removed += ids.length;
+            }
+        }
+        return removed;
+    }
+
+    /**
+     * 当前表没有“停用”字段，因此对已有业务数据的类目采用阻止取消策略。
+     * 校验在主表更新和新增记录之前执行，异常会让整个编辑事务保持原状。
+     */
+    private void assertRemovableLevel1Trees(Long taskId, Set<Long> removeLevel1Ids, String recordType) {
+        if (removeLevel1Ids == null || removeLevel1Ids.isEmpty()) {
+            return;
+        }
+        List<FireMaintenanceRecord> all = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
+        List<String> protectedNames = new ArrayList<>();
+        for (Long level1TemplateId : removeLevel1Ids) {
+            FireMaintenanceRecord l1 = all.stream()
+                    .filter(r -> level1TemplateId.equals(r.getTemplateId()))
+                    .filter(r -> r.getLevel() != null && r.getLevel() == 1)
+                    .findFirst().orElse(null);
+            if (l1 == null) {
+                continue;
+            }
+            Set<Long> subtreeIds = new HashSet<>();
+            subtreeIds.add(l1.getRecordId());
+            boolean changed;
+            do {
+                changed = false;
+                for (FireMaintenanceRecord record : all) {
+                    if (record.getParentRecordId() != null && subtreeIds.contains(record.getParentRecordId())
+                            && subtreeIds.add(record.getRecordId())) {
+                        changed = true;
+                    }
+                }
+            } while (changed);
+            if (all.stream().filter(r -> subtreeIds.contains(r.getRecordId())).anyMatch(this::hasWorkContent)) {
+                protectedNames.add(l1.getItemName());
+            }
+        }
+        if (!protectedNames.isEmpty()) {
+            throw new ServiceException("以下类目已有检查结果、附件或填写内容，不能取消："
+                    + String.join("、", protectedNames) + "。请保留选择后重试。");
+        }
+    }
+
+    private boolean hasWorkContent(FireMaintenanceRecord record) {
+        if (record == null) {
+            return false;
+        }
+        if (StringUtils.isNotEmpty(record.getCheckResult()) && !"0".equals(record.getCheckResult())) {
+            return true;
+        }
+        return StringUtils.isNotEmpty(record.getFaultDescription())
+                || StringUtils.isNotEmpty(record.getFaultImages())
+                || StringUtils.isNotEmpty(record.getRepairSuggestion())
+                || StringUtils.isNotEmpty(record.getOtherNotes())
+                || StringUtils.isNotEmpty(record.getDeviceLocation())
+                || StringUtils.isNotEmpty(record.getTestSituation())
+                || StringUtils.isNotEmpty(record.getTestResult())
+                || StringUtils.isNotEmpty(record.getSitePhotos())
+                || record.getTestTime() != null
+                || record.getCheckTime() != null
+                || record.getCheckerId() != null;
+    }
+
+    /** @return [completedCount, totalCount] */
+    private int[] refreshTaskStatistics(Long taskId) {
+        List<FireMaintenanceRecord> level3 = fireMaintenanceRecordMapper.selectLevel3ByTaskId(taskId);
+        int total = level3.size();
+        int completed = 0;
+        int normal = 0;
+        int fault = 0;
+        int noDevice = 0;
+        for (FireMaintenanceRecord record : level3) {
+            if (record.getCheckResult() != null && !"0".equals(record.getCheckResult())) {
+                completed++;
+            }
+            if ("1".equals(record.getCheckResult())) {
+                normal++;
+            } else if ("2".equals(record.getCheckResult())) {
+                fault++;
+            } else if ("3".equals(record.getCheckResult())) {
+                noDevice++;
+            }
+        }
+        FireMaintenanceTask update = new FireMaintenanceTask();
+        update.setTaskId(taskId);
+        update.setTotalItems(total);
+        update.setCompletedItems(completed);
+        update.setNormalItems(normal);
+        update.setFaultItems(fault);
+        update.setNoDeviceItems(noDevice);
+        if (total > 0 && completed == total) {
+            update.setTaskStatus("2");
+        } else if (completed > 0) {
+            update.setTaskStatus("1");
+        } else {
+            update.setTaskStatus("0");
+        }
+        fireMaintenanceTaskMapper.updateFireMaintenanceTask(update);
+        return new int[] { completed, total };
+    }
+
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int deleteFireMaintenanceTaskByTaskIds(Long[] taskIds) {
-        // 先删除关联的检查记录
         for (Long taskId : taskIds) {
             fireMaintenanceRecordMapper.deleteFireMaintenanceRecordByTaskId(taskId);
         }
-        // 再删除任务
         return fireMaintenanceTaskMapper.deleteFireMaintenanceTaskByTaskIds(taskIds);
     }
 
-    /**
-     * 删除维保任务信息
-     * 
-     * @param taskId 维保任务主键
-     * @return 结果
-     */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int deleteFireMaintenanceTaskByTaskId(Long taskId) {
-        // 先删除关联的检查记录
         fireMaintenanceRecordMapper.deleteFireMaintenanceRecordByTaskId(taskId);
-        // 再删除任务
         return fireMaintenanceTaskMapper.deleteFireMaintenanceTaskByTaskId(taskId);
     }
 
-    /**
-     * 查询用户作为负责人或操作员参与的任务所关联的公司列表（去重）
-     *
-     * @param userId 用户ID
-     * @return 公司列表
-     */
     @Override
     public List<FireCompany> selectCompanyListByTaskUserId(Long userId) {
         return fireMaintenanceTaskMapper.selectCompanyListByTaskUserId(userId);
     }
 }
-

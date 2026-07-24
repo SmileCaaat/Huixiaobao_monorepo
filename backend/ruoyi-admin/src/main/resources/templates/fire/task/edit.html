@@ -4,6 +4,16 @@
 <head>
     <th:block th:include="include :: header('修改维保任务')" />
     <th:block th:include="include :: select2-css" />
+    <style>
+        .selection-summary { display: inline-flex; flex-wrap: wrap; gap: 5px; margin-left: 10px; vertical-align: middle; }
+        .selection-summary .label { font-size: 12px; }
+        .template-tree { max-height: 430px; overflow-y: auto; padding: 12px 18px; }
+        .template-node { margin: 5px 0; line-height: 24px; }
+        .state-original { color: #17823b; }
+        .state-added { color: #1677c8; }
+        .state-removed { color: #c9302c; text-decoration: line-through; }
+        .state-badge { margin-left: 6px; font-size: 11px; text-decoration: none; display: inline-block; }
+    </style>
 </head>
 
 <body class="white-bg">
@@ -53,11 +63,11 @@
                     <button type="button" class="btn btn-info btn-sm" onclick="selectSystems()">
                         <i class="fa fa-check-square-o"></i> 选择需要的系统
                     </button>
-                    <span id="selectedSystemsText" style="margin-left: 10px; color: #999;">未选择（默认全部）</span>
+                    <span id="selectedSystemsText" class="selection-summary">加载中...</span>
                     <input type="hidden" name="selectedSystemIds" id="selectedSystemIds"
                         th:value="${task.selectedSystemIds}" />
                     <p class="help-block" style="margin-top: 5px; color: #f39c12;">
-                        <i class="fa fa-warning"></i> 注意：修改系统选择不会影响已生成的检查记录
+                        <i class="fa fa-warning"></i> 修改系统选择后，将按差异同步检查记录：新增范围会生成检查项并计入完成度；已填写结果的历史记录不会删除
                     </p>
                 </div>
             </div>
@@ -67,14 +77,14 @@
                     <button type="button" class="btn btn-warning btn-sm" onclick="selectFireTests()">
                         <i class="fa fa-check-square-o"></i> 选择消防设施测试项
                     </button>
-                    <span id="selectedFireTestsText" style="margin-left: 10px; color: #999;">未选择（默认全部）</span>
+                    <span id="selectedFireTestsText" class="selection-summary">加载中...</span>
                     <input type="hidden" name="selectedFireTestIds" id="selectedFireTestIds"
                         th:value="${task.selectedFireTestIds}" />
                     <span class="help-block m-b-none">
                         <i class="fa fa-info-circle"></i> 可选择需要的消防设施测试系统
                     </span>
                     <p class="help-block" style="margin-top: 5px; color: #f39c12;">
-                        <i class="fa fa-warning"></i> 注意：修改此选项不会影响已生成的检查记录
+                        <i class="fa fa-warning"></i> 修改测试项选择后，将按差异同步检查记录并更新完成度；已填写结果的历史记录不会删除
                     </p>
                 </div>
             </div>
@@ -235,8 +245,8 @@
                 return;
             }
             // 提交前显式同步选择与展示字段
-            $('#selectedSystemIds').val(selectedSystems.join(','));
-            $('#selectedFireTestIds').val(selectedFireTests.join(','));
+            $('#selectedSystemIds').val(currentSystemIds.join(','));
+            $('#selectedFireTestIds').val(currentTestIds.join(','));
             setBuildingName(document.getElementById('buildingId'));
             setManagerName(document.getElementById('managerId'));
             setOperatorNames();
@@ -255,275 +265,240 @@
             });
             filteredData.push({ name: 'operatorIds', value: operatorIdList.join(',') });
             var params = $.param(filteredData);
+
+            // 使用项目公共封装，自动携带 X-CSRF-Token，并禁用弹窗确定按钮防重复提交
             $('#form-task-edit').data('submitting', true);
-            $.ajax({
-                url: prefix + "/edit",
-                type: "post",
-                dataType: "json",
-                data: params,
-                beforeSend: function () {
-                    $.modal.loading("正在处理中，请稍候...");
-                },
-                success: function (result) {
-                    $.modal.closeLoading();
-                    if (result.code == web_status.SUCCESS) {
-                        $.modal.msgSuccess(result.msg);
-                        $.modal.close();
-                        $.table.refresh();
-                    } else {
-                        $.modal.alertError(result.msg || "保存失败");
-                        $('#form-task-edit').data('submitting', false);
-                    }
-                },
-                error: function () {
-                    $.modal.closeLoading();
-                    $.modal.alertError("保存失败，请稍后重试");
+            $.operate.save(prefix + "/edit", params, function (result) {
+                if (result.code != web_status.SUCCESS) {
                     $('#form-task-edit').data('submitting', false);
                 }
             });
         }
 
-        // 选择系统
-        var allSystems = [];
-        var selectedSystems = [];
+        // 两个模块分别维护“数据库原值”和“本次编辑值”，所有标签与提交参数都由集合差异计算。
+        var allSystemTemplates = [];
+        var originalSystemIds = [];
+        var currentSystemIds = [];
         var initialSelectedSystemIds = /*[[${task.selectedSystemIds}]]*/ '';
-        var selectedFireTests = [];
+        var allTestTemplates = [];
+        var originalTestIds = [];
+        var currentTestIds = [];
         var initialSelectedFireTestIds = /*[[${task.selectedFireTestIds}]]*/ '';
 
         $(function () {
-            // 初始化选中的系统
-            if (initialSelectedSystemIds) {
-                var ids = String(initialSelectedSystemIds).split(',');
-                ids.forEach(function (id) {
-                    if (id) {
-                        selectedSystems.push(parseInt(id.trim()));
-                    }
-                });
-            }
-            if (initialSelectedFireTestIds) {
-                selectedFireTests = String(initialSelectedFireTestIds).split(',').map(function (id) {
-                    return parseInt(id.trim());
-                }).filter(function (id) {
-                    return !isNaN(id);
-                });
-                $('#selectedFireTestIds').val(selectedFireTests.join(','));
-            }
-
-            // 加载系统列表并更新显示
-            loadSystemsAndUpdateDisplay();
+            originalSystemIds = parseIds(initialSelectedSystemIds);
+            currentSystemIds = originalSystemIds.slice();
+            originalTestIds = parseIds(initialSelectedFireTestIds);
+            currentTestIds = originalTestIds.slice();
+            $('#selectedSystemIds').val(currentSystemIds.join(','));
+            $('#selectedFireTestIds').val(currentTestIds.join(','));
+            loadTemplateTree('0');
+            loadTemplateTree('1');
         });
 
-        function loadSystemsAndUpdateDisplay() {
+        function parseIds(value) {
+            if (value === null || value === undefined || String(value).trim() === '') {
+                return [];
+            }
+            var seen = {};
+            return String(value).split(',').map(function (id) {
+                return parseInt(String(id).trim(), 10);
+            }).filter(function (id) {
+                if (isNaN(id) || seen[id]) {
+                    return false;
+                }
+                seen[id] = true;
+                return true;
+            });
+        }
+
+        function loadTemplateTree(templateType) {
             $.ajax({
-                url: prefix + '/templates/level1',
+                url: prefix + '/templates/tree',
                 type: 'GET',
+                data: { templateType: templateType },
                 success: function (res) {
                     if (res.code == 0 && res.data) {
-                        allSystems = res.data;
-                        updateSelectedSystemsDisplay();
+                        if (templateType === '0') {
+                            allSystemTemplates = res.data;
+                            updateSelectionSummary('system');
+                        } else {
+                            allTestTemplates = res.data;
+                            updateSelectionSummary('test');
+                        }
+                    } else {
+                        $.modal.alertError(res.msg || '类目加载失败');
                     }
+                },
+                error: function () {
+                    $.modal.alertError('类目加载失败，请刷新后重试');
                 }
             });
         }
 
-        function updateSelectedSystemsDisplay() {
-            if (selectedSystems.length === 0) {
-                $('#selectedSystemsText').text('未选择（默认全部）').css('color', '#999');
-            } else if (selectedSystems.length === allSystems.length) {
-                $('#selectedSystemsText').text('已选择全部 ' + selectedSystems.length + ' 个系统').css('color', '#28a745');
+        function difference(left, right) {
+            return left.filter(function (id) { return right.indexOf(id) < 0; });
+        }
+
+        function getPickerState(key) {
+            if (key === 'system') {
+                return {
+                    original: originalSystemIds,
+                    current: currentSystemIds,
+                    templates: allSystemTemplates,
+                    textSelector: '#selectedSystemsText',
+                    hiddenSelector: '#selectedSystemIds',
+                    title: '选择维保系统'
+                };
             } else {
-                var selectedNames = [];
-                selectedSystems.forEach(function (id) {
-                    var system = allSystems.find(function (s) { return s.id === id; });
-                    if (system) {
-                        selectedNames.push(system.itemName);
-                    }
-                });
-                $('#selectedSystemsText').text('已选择 ' + selectedSystems.length + ' 个系统：' + selectedNames.join('、')).css('color', '#007bff');
+                return {
+                    original: originalTestIds,
+                    current: currentTestIds,
+                    templates: allTestTemplates,
+                    textSelector: '#selectedFireTestsText',
+                    hiddenSelector: '#selectedFireTestIds',
+                    title: '选择消防设施测试'
+                };
             }
+        }
+
+        function updateSelectionSummary(key) {
+            var state = getPickerState(key);
+            var added = difference(state.current, state.original);
+            var removed = difference(state.original, state.current);
+            var html = '<span class="label label-success">原有 ' + state.original.length + ' 项</span>'
+                + '<span class="label label-primary">本次新增 ' + added.length + ' 项</span>'
+                + '<span class="label label-danger">本次取消 ' + removed.length + ' 项</span>'
+                + '<span class="label label-default">保存后 ' + state.current.length + ' 项</span>';
+            $(state.textSelector).html(html);
         }
 
         function selectSystems() {
-            // 构建复选框列表
-            var html = '<div style="padding: 20px; max-height: 400px; overflow-y: auto;">';
-            html += '<div style="margin-bottom: 15px;">';
-            html += '<label style="cursor: pointer; font-weight: normal;"><input type="checkbox" id="selectAllSystems" onchange="toggleAllSystems(this)"> 全选</label>';
-            html += '</div>';
-            html += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">';
-
-            allSystems.forEach(function (system) {
-                var checked = selectedSystems.indexOf(system.id) >= 0 ? 'checked' : '';
-                html += '<label style="cursor: pointer; font-weight: normal;">';
-                html += '<input type="checkbox" class="system-checkbox" value="' + system.id + '" ' + checked + '> ';
-                html += system.itemName;
-                html += '</label>';
-            });
-
-            html += '</div></div>';
-
-            layer.open({
-                type: 1,
-                title: '选择需要的系统',
-                area: ['600px', '500px'],
-                content: html,
-                btn: ['确定', '取消'],
-                yes: function (index) {
-                    // 获取选中的系统
-                    selectedSystems = [];
-                    $('.system-checkbox:checked').each(function () {
-                        selectedSystems.push(parseInt($(this).val()));
-                    });
-
-                    // 更新隐藏字段和显示文本
-                    $('#selectedSystemIds').val(selectedSystems.join(','));
-                    updateSelectedSystemsDisplay();
-
-                    layer.close(index);
-                }
-            });
-
-            // 更新全选状态
-            updateSelectAllState();
+            openTemplatePicker('system');
         }
-
-        function toggleAllSystems(checkbox) {
-            $('.system-checkbox').prop('checked', checkbox.checked);
-        }
-
-        function updateSelectAllState() {
-            setTimeout(function () {
-                var total = $('.system-checkbox').length;
-                var checked = $('.system-checkbox:checked').length;
-                $('#selectAllSystems').prop('checked', total > 0 && total === checked);
-            }, 100);
-        }
-
-        // 监听复选框变化
-        $(document).on('change', '.system-checkbox', function () {
-            updateSelectAllState();
-        });
-
-        // 选择消防设施测试
-        var allFireTests = [];
 
         function selectFireTests() {
-            // 加载消防设施测试列表
-            if (allFireTests.length === 0) {
-                $.ajax({
-                    url: prefix + '/templates/firetest/level1',
-                    type: 'GET',
-                    async: false,
-                    success: function (res) {
-                        if (res.code == 0 && res.data) {
-                            allFireTests = res.data;
-                        }
-                    }
-                });
+            openTemplatePicker('test');
+        }
+
+        function escapeHtml(value) {
+            return $('<div>').text(value == null ? '' : String(value)).html();
+        }
+
+        function stateMeta(topId, original, current) {
+            var was = original.indexOf(topId) >= 0;
+            var now = current.indexOf(topId) >= 0;
+            if (was && now) {
+                return { css: 'state-original', badge: '<span class="label label-success state-badge">原有已选</span>' };
             }
+            if (!was && now) {
+                return { css: 'state-added', badge: '<span class="label label-primary state-badge">本次新增</span>' };
+            }
+            if (was && !now) {
+                return { css: 'state-removed', badge: '<span class="label label-danger state-badge">本次取消</span>' };
+            }
+            return { css: '', badge: '' };
+        }
 
-            // 构建复选框列表
-            var html = '<div style="padding: 20px; max-height: 400px; overflow-y: auto;">';
-            html += '<div style="margin-bottom: 15px;">';
-            html += '<label style="cursor: pointer; font-weight: normal;"><input type="checkbox" id="selectAllFireTests" onchange="toggleAllFireTests(this)"> 全选</label>';
-            html += '</div>';
-            html += '<div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">';
-
-            allFireTests.forEach(function (fireTest) {
-                var checked = selectedFireTests.indexOf(fireTest.id) >= 0 ? 'checked' : '';
-                html += '<label style="cursor: pointer; font-weight: normal;">';
-                html += '<input type="checkbox" class="firetest-checkbox" value="' + fireTest.id + '" ' + checked + '> ';
-                html += fireTest.itemName;
-                html += '</label>';
+        function openTemplatePicker(key) {
+            var state = getPickerState(key);
+            if (!state.templates.length) {
+                $.modal.alertWarning('类目尚未加载完成，请稍后重试');
+                return;
+            }
+            // 接口仍返回完整模板树，前端只渲染一级类目
+            var roots = state.templates.filter(function (item) {
+                return Number(item.level) === 1;
+            }).map(function (item) {
+                return $.extend({}, item, { id: Number(item.id), parentId: Number(item.parentId) });
             });
-
-            html += '</div></div>';
-
+            var allChecked = roots.length > 0 && roots.every(function (root) {
+                return state.current.indexOf(root.id) >= 0;
+            });
+            var anyChecked = roots.some(function (root) {
+                return state.current.indexOf(root.id) >= 0;
+            });
+            var html = '<div class="template-tree">'
+                + '<label><input type="checkbox" id="pickerSelectAll" '
+                + (allChecked ? 'checked ' : '')
+                + 'onchange="togglePickerAll(this.checked)"> 全选</label><hr>';
+            roots.forEach(function (root) {
+                var meta = stateMeta(root.id, state.original, state.current);
+                var checked = state.current.indexOf(root.id) >= 0 ? ' checked' : '';
+                html += '<div class="template-node ' + meta.css + '">'
+                    + '<label><input type="checkbox" class="picker-root" value="' + root.id + '"' + checked + '> '
+                    + escapeHtml(root.itemName) + meta.badge + '</label>'
+                    + '</div>';
+            });
+            html += '</div>';
             layer.open({
                 type: 1,
-                title: '选择消防设施测试项',
-                area: ['600px', '500px'],
+                title: state.title,
+                area: ['760px', '560px'],
                 content: html,
                 btn: ['确定', '取消'],
-                yes: function (index) {
-                    // 获取选中的消防设施测试
-                    selectedFireTests = [];
-                    var selectedNames = [];
-                    $('.firetest-checkbox:checked').each(function () {
-                        var id = parseInt($(this).val());
-                        selectedFireTests.push(id);
-                        var fireTest = allFireTests.find(function (f) { return f.id === id; });
-                        if (fireTest) {
-                            selectedNames.push(fireTest.itemName);
-                        }
-                    });
-
-                    // 更新隐藏字段和显示文本
-                    $('#selectedFireTestIds').val(selectedFireTests.join(','));
-                    if (selectedFireTests.length === 0) {
-                        $('#selectedFireTestsText').text('未选择（默认全部）').css('color', '#999');
-                    } else if (selectedFireTests.length === allFireTests.length) {
-                        $('#selectedFireTestsText').text('已选择全部 ' + selectedFireTests.length + ' 个测试项').css('color', '#28a745');
-                    } else {
-                        $('#selectedFireTestsText').text('已选择 ' + selectedFireTests.length + ' 个测试项：' + selectedNames.join('、')).css('color', '#ff9800');
+                success: function () {
+                    // 部分选择时设置 indeterminate（需在 DOM 插入后设置）
+                    if (anyChecked && !allChecked) {
+                        document.getElementById('pickerSelectAll').indeterminate = true;
                     }
-
+                    updatePickerSelectAllState();
+                },
+                yes: function (index) {
+                    var ids = [];
+                    $('.picker-root:checked').each(function () {
+                        ids.push(parseInt($(this).val(), 10));
+                    });
+                    ids.sort(function (a, b) { return a - b; });
+                    if (key === 'system') {
+                        currentSystemIds = ids;
+                    } else {
+                        currentTestIds = ids;
+                    }
+                    $(state.hiddenSelector).val(ids.join(','));
+                    updateSelectionSummary(key);
                     layer.close(index);
                 }
             });
-
-            // 更新全选状态
-            updateFireTestSelectAllState();
         }
 
-        function toggleAllFireTests(checkbox) {
-            $('.firetest-checkbox').prop('checked', checkbox.checked);
-        }
-
-        function updateFireTestSelectAllState() {
-            setTimeout(function () {
-                var total = $('.firetest-checkbox').length;
-                var checked = $('.firetest-checkbox:checked').length;
-                $('#selectAllFireTests').prop('checked', total > 0 && total === checked);
-            }, 100);
-        }
-
-        // 监听消防设施测试复选框变化
-        $(document).on('change', '.firetest-checkbox', function () {
-            updateFireTestSelectAllState();
-        });
-
-        // 页面加载时初始化选中的消防设施测试
-        $(function () {
-            var selectedIds = $('#selectedFireTestIds').val();
-            if (selectedIds) {
-                selectedFireTests = selectedIds.split(',').map(function (id) {
-                    return parseInt(id);
-                });
-
-                // 加载消防设施测试列表以显示名称
-                $.ajax({
-                    url: prefix + '/templates/firetest/level1',
-                    type: 'GET',
-                    success: function (res) {
-                        if (res.code == 0 && res.data) {
-                            allFireTests = res.data;
-                            var selectedNames = [];
-                            selectedFireTests.forEach(function (id) {
-                                var fireTest = allFireTests.find(function (f) { return f.id === id; });
-                                if (fireTest) {
-                                    selectedNames.push(fireTest.itemName);
-                                }
-                            });
-
-                            if (selectedFireTests.length === allFireTests.length) {
-                                $('#selectedFireTestsText').text('已选择全部 ' + selectedFireTests.length + ' 个测试项').css('color', '#28a745');
-                            } else {
-                                $('#selectedFireTestsText').text('已选择 ' + selectedFireTests.length + ' 个测试项：' + selectedNames.join('、')).css('color', '#ff9800');
-                            }
-                        }
-                    }
-                });
+        function togglePickerAll(checked) {
+            $('.picker-root').prop('checked', checked);
+            var pickerSelectAll = document.getElementById('pickerSelectAll');
+            if (pickerSelectAll) {
+                pickerSelectAll.indeterminate = false;
             }
+            $('.picker-root').each(function () {
+                refreshPickerNodeVisual(this);
+            });
+        }
+
+        function refreshPickerNodeVisual(checkbox) {
+            var id = parseInt($(checkbox).val(), 10);
+            var state = getPickerState($('.template-tree').closest('.layui-layer-content').length
+                && allSystemTemplates.some(function (item) { return Number(item.id) === id && Number(item.level) === 1; })
+                ? 'system' : 'test');
+            var meta = stateMeta(id, state.original, $(checkbox).prop('checked') ? [id] : []);
+            var rootNode = $(checkbox).closest('.template-node');
+            rootNode.removeClass('state-original state-added state-removed').addClass(meta.css);
+            rootNode.children('label').find('.state-badge').remove();
+            rootNode.children('label').append(meta.badge);
+        }
+
+        function updatePickerSelectAllState() {
+            var total = $('.picker-root').length;
+            var checked = $('.picker-root:checked').length;
+            var pickerSelectAll = document.getElementById('pickerSelectAll');
+            if (!pickerSelectAll) {
+                return;
+            }
+            pickerSelectAll.checked = total > 0 && checked === total;
+            pickerSelectAll.indeterminate = checked > 0 && checked < total;
+        }
+
+        $(document).off('change.taskPicker', '.picker-root').on('change.taskPicker', '.picker-root', function () {
+            refreshPickerNodeVisual(this);
+            updatePickerSelectAllState();
         });
     </script>
 </body>

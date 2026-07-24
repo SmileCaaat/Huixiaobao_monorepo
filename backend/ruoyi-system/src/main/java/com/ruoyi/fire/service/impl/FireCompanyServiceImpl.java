@@ -165,6 +165,11 @@ public class FireCompanyServiceImpl implements IFireCompanyService {
     }
 
     @Override
+    public List<FireUserCompany> selectActiveUserListByCompanyId(Long companyId) {
+        return companyMapper.selectActiveUserListByCompanyId(companyId);
+    }
+
+    @Override
     @Transactional
     public int assignUsers(Long companyId, Long[] userIds, String roleType, String createBy) {
         // 先删除原有关联

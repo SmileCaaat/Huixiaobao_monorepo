@@ -1,7 +1,9 @@
 package com.ruoyi.fire.service.impl;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -149,7 +151,7 @@ public class FireMaintenanceRecordServiceImpl implements IFireMaintenanceRecordS
 
         for (FireMaintenanceRecord record : level3Records) {
             String result = record.getCheckResult();
-            if (!"0".equals(result)) {
+            if (result != null && !"0".equals(result)) {
                 completed++;
             }
             if ("1".equals(result)) {
@@ -164,6 +166,7 @@ public class FireMaintenanceRecordServiceImpl implements IFireMaintenanceRecordS
         // 更新任务统计
         FireMaintenanceTask task = new FireMaintenanceTask();
         task.setTaskId(taskId);
+        task.setTotalItems(level3Records.size());
         task.setCompletedItems(completed);
         task.setNormalItems(normal);
         task.setFaultItems(fault);
@@ -180,6 +183,8 @@ public class FireMaintenanceRecordServiceImpl implements IFireMaintenanceRecordS
             if (existingTask != null && existingTask.getActualStartTime() == null) {
                 task.setActualStartTime(new Date());
             }
+        } else {
+            task.setTaskStatus("0");
         }
 
         fireMaintenanceTaskMapper.updateFireMaintenanceTask(task);
@@ -192,8 +197,24 @@ public class FireMaintenanceRecordServiceImpl implements IFireMaintenanceRecordS
      * @return 结果
      */
     @Override
+    @Transactional
     public int deleteFireMaintenanceRecordByRecordIds(Long[] recordIds) {
-        return fireMaintenanceRecordMapper.deleteFireMaintenanceRecordByRecordIds(recordIds);
+        if (recordIds == null || recordIds.length == 0) {
+            return 0;
+        }
+        Set<Long> taskIds = new HashSet<>();
+        for (Long recordId : recordIds) {
+            FireMaintenanceRecord existing = fireMaintenanceRecordMapper
+                    .selectFireMaintenanceRecordByRecordId(recordId);
+            if (existing != null && existing.getTaskId() != null) {
+                taskIds.add(existing.getTaskId());
+            }
+        }
+        int rows = fireMaintenanceRecordMapper.deleteFireMaintenanceRecordByRecordIds(recordIds);
+        for (Long taskId : taskIds) {
+            updateTaskStatistics(taskId);
+        }
+        return rows;
     }
 
     /**
@@ -203,8 +224,14 @@ public class FireMaintenanceRecordServiceImpl implements IFireMaintenanceRecordS
      * @return 结果
      */
     @Override
+    @Transactional
     public int deleteFireMaintenanceRecordByRecordId(Long recordId) {
-        return fireMaintenanceRecordMapper.deleteFireMaintenanceRecordByRecordId(recordId);
+        FireMaintenanceRecord existing = fireMaintenanceRecordMapper.selectFireMaintenanceRecordByRecordId(recordId);
+        int rows = fireMaintenanceRecordMapper.deleteFireMaintenanceRecordByRecordId(recordId);
+        if (existing != null && existing.getTaskId() != null) {
+            updateTaskStatistics(existing.getTaskId());
+        }
+        return rows;
     }
 
     /**

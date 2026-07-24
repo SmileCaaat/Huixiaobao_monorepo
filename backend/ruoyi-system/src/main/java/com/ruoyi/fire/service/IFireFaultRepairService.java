@@ -2,6 +2,7 @@ package com.ruoyi.fire.service;
 
 import java.util.List;
 import com.ruoyi.fire.domain.FireFaultRepair;
+import com.ruoyi.fire.domain.FireUserCompany;
 
 /**
  * 故障报修Service接口
@@ -68,12 +69,9 @@ public interface IFireFaultRepairService {
     int dispatchRepair(Long repairId, Long repairUserId, String dispatchBy);
 
     /**
-     * 后台派发：由当前登录账号作为处理人
-     *
-     * @param repairId 报修ID
-     * @return 结果
+     * 查询指定报修单可派发的公司员工
      */
-    int dispatchRepairToCurrentUser(Long repairId);
+    List<FireUserCompany> selectDispatchUsers(Long repairId);
 
     /**
      * 接受报修

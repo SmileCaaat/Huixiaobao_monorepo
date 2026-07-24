@@ -1000,7 +1000,7 @@ public class FireMiniAppController extends BaseController {
         if (!isCompanyRepairAdmin(companyId, userId)) {
             return AjaxResult.error("只有管理员或项目负责人可以查看派发人员");
         }
-        return AjaxResult.success(companyService.selectUserListByCompanyId(companyId));
+        return AjaxResult.success(companyService.selectActiveUserListByCompanyId(companyId));
     }
 
     /**

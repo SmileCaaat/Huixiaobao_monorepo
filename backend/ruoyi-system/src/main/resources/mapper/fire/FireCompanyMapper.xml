@@ -464,6 +464,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         order by uc.create_time desc
     </select>
 
+    <select id="selectActiveUserListByCompanyId" parameterType="Long" resultMap="FireUserCompanyResult">
+        select uc.id, uc.user_id, uc.company_id, uc.role_type, uc.create_time,
+               u.user_name, u.login_name, u.phonenumber
+        from fire_user_company uc
+        inner join sys_user u on uc.user_id = u.user_id
+        where uc.company_id = #{companyId}
+          and u.del_flag = '0'
+          and u.status = '0'
+        order by u.user_name, u.login_name
+    </select>
+
     <insert id="insertUserCompany" parameterType="com.ruoyi.fire.domain.FireUserCompany">
         insert into fire_user_company (user_id, company_id, role_type, create_by, create_time)
         values (#{userId}, #{companyId}, #{roleType}, #{createBy}, sysdate())

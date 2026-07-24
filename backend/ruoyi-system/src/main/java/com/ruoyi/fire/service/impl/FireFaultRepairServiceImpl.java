@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.text.Convert;
 import com.ruoyi.common.enums.RepairStatus;
@@ -90,18 +91,23 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
     }
 
     @Override
-    public int dispatchRepairToCurrentUser(Long repairId) {
-        Long currentUserId = ShiroUtils.getUserId();
-        if (currentUserId == null) {
-            throw new ServiceException("未登录，无法派发");
+    public List<FireUserCompany> selectDispatchUsers(Long repairId) {
+        FireFaultRepair repair = getRequiredRepair(repairId);
+        validateDispatchAuthority(repair);
+        if (repair.getCompanyId() == null) {
+            throw new ServiceException("报修单未关联单位，无法加载处理人");
         }
-        return dispatchRepair(repairId, currentUserId, ShiroUtils.getLoginName());
+        // 仅返回该公司下：已注册、status=0、del_flag=0 的关联员工（见 selectActiveUserListByCompanyId）
+        List<FireUserCompany> users = companyService.selectActiveUserListByCompanyId(repair.getCompanyId());
+        return users != null ? users : java.util.Collections.emptyList();
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int dispatchRepair(Long repairId, Long repairUserId, String dispatchBy) {
         FireFaultRepair repair = getRequiredRepair(repairId);
         ensureNotCompleted(repair);
+        validateDispatchAuthority(repair);
         if (repairUserId == null) {
             throw new ServiceException("处理人不能为空");
         }
@@ -246,19 +252,11 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
     }
 
     private void validateDispatchUser(FireFaultRepair repair, Long repairUserId) {
-        SysUser current = ShiroUtils.getSysUser();
-        if (current != null && current.isAdmin()) {
-            return;
-        }
-        SysUser assignee = userService.selectUserById(repairUserId);
-        if (assignee != null && assignee.isAdmin()) {
-            return;
-        }
         if (repair.getCompanyId() == null) {
-            return;
+            throw new ServiceException("报修单未关联单位，无法派发");
         }
 
-        List<FireUserCompany> companyUsers = companyService.selectUserListByCompanyId(repair.getCompanyId());
+        List<FireUserCompany> companyUsers = companyService.selectActiveUserListByCompanyId(repair.getCompanyId());
         if (companyUsers == null || companyUsers.isEmpty()) {
             throw new ServiceException("该单位还没有配置可派发的处理人员");
         }
@@ -266,6 +264,27 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         boolean matched = companyUsers.stream().anyMatch(item -> repairUserId.equals(item.getUserId()));
         if (!matched) {
             throw new ServiceException("当前用户无权处理该单位工单");
+        }
+    }
+
+    private void validateDispatchAuthority(FireFaultRepair repair) {
+        SysUser current = ShiroUtils.getSysUser();
+        if (current == null) {
+            throw new ServiceException("未登录或登录状态已失效");
+        }
+        if (current.isAdmin()) {
+            return;
+        }
+        if (repair.getCompanyId() == null) {
+            throw new ServiceException("报修单未关联单位，无法派发");
+        }
+        List<FireUserCompany> companyUsers = companyService
+                .selectActiveUserListByCompanyId(repair.getCompanyId());
+        boolean allowed = companyUsers != null && companyUsers.stream()
+                .anyMatch(item -> current.getUserId().equals(item.getUserId())
+                        && ("1".equals(item.getRoleType()) || "2".equals(item.getRoleType())));
+        if (!allowed) {
+            throw new ServiceException("您无权派发该单位的报修任务");
         }
     }
 }

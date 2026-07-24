@@ -572,13 +572,16 @@ function _stopIt(e) {
 }
 
 /** 设置全局ajax处理 */
-$.ajaxSetup({
-    beforeSend: function (xhr, settings) {
-        var csrftoken = $('meta[name=csrf-token]').attr('content')
-        if (($.common.equalsIgnoreCase(settings.type, "POST"))) {
-            xhr.setRequestHeader("X-CSRF-Token", csrftoken)
+// 使用 ajaxPrefilter，确保即使局部 beforeSend 覆盖 ajaxSetup，POST 仍能携带 CSRF Token
+$.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+    if ($.common.equalsIgnoreCase(options.type, "POST")) {
+        var csrftoken = $('meta[name=csrf-token]').attr('content');
+        if (csrftoken) {
+            jqXHR.setRequestHeader("X-CSRF-Token", csrftoken);
         }
-    },
+    }
+});
+$.ajaxSetup({
     complete: function(XMLHttpRequest, textStatus) {
         if (textStatus == 'timeout') {
             $.modal.alertWarning("服务器超时，请稍后再试！");

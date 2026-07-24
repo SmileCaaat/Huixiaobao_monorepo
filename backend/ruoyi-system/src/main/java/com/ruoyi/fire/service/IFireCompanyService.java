@@ -77,6 +77,11 @@ public interface IFireCompanyService {
     List<FireUserCompany> selectUserListByCompanyId(Long companyId);
 
     /**
+     * 查询公司下账号正常、未删除的已注册用户
+     */
+    List<FireUserCompany> selectActiveUserListByCompanyId(Long companyId);
+
+    /**
      * 分配用户到公司
      */
     int assignUsers(Long companyId, Long[] userIds, String roleType, String createBy);

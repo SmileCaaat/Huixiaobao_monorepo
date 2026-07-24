@@ -82,6 +82,11 @@ public interface FireCompanyMapper {
     List<FireUserCompany> selectUserListByCompanyId(Long companyId);
 
     /**
+     * 查询公司下账号正常、未删除的已注册用户
+     */
+    List<FireUserCompany> selectActiveUserListByCompanyId(Long companyId);
+
+    /**
      * 新增用户公司关联
      */
     int insertUserCompany(FireUserCompany userCompany);
