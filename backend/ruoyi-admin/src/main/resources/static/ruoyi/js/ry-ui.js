@@ -1016,6 +1016,14 @@ var table = {
             closeTab: function (dataId) {
                 closeItem(dataId);
             },
+            // 安全返回上一层（弹层/页签），不使用浏览器历史
+            back: function (fallbackUrl) {
+                if (typeof goBackPage === 'function') {
+                    goBackPage(fallbackUrl);
+                } else if (typeof closeItem === 'function') {
+                    closeItem();
+                }
+            },
             // 禁用按钮
             disable: function() {
                 var doc = window.top == window.parent ? top.window.document : window.parent.document;

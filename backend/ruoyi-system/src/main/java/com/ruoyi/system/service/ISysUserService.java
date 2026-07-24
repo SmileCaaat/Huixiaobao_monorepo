@@ -21,6 +21,13 @@ public interface ISysUserService
     public List<SysUser> selectUserList(SysUser user);
 
     /**
+     * 查询全部已注册且正常的用户（不受数据权限过滤，供派发等业务选人）
+     *
+     * @return 用户列表
+     */
+    public List<SysUser> selectActiveRegisteredUserList();
+
+    /**
      * 根据条件分页查询已分配用户角色列表
      * 
      * @param user 用户信息

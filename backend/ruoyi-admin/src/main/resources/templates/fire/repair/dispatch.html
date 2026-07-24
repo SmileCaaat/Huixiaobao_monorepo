@@ -79,7 +79,7 @@
                 dropdownParent: $(document.body),
                 language: {
                     noResults: function () {
-                        return '当前单位暂无可派发的员工账号';
+                        return '暂无可派发的系统用户';
                     }
                 }
             });
@@ -98,10 +98,10 @@
             var $select = $('#repairUserId');
             $select.empty();
             if (!users || !users.length) {
-                $select.append('<option value="" selected disabled>当前单位暂无可派发的员工账号</option>');
+                $select.append('<option value="" selected disabled>暂无可派发的系统用户</option>');
                 $select.prop('disabled', true);
                 usersLoaded = false;
-                setDispatchHint('当前单位暂无可派发的员工账号（请先在客户管理中为该单位分配员工）', true);
+                setDispatchHint('暂无可派发的系统用户', true);
                 initRepairUserSelect();
                 return;
             }
@@ -109,17 +109,14 @@
             $.each(users, function (i, user) {
                 var userId = user.userId;
                 var userName = user.userName || '';
-                var loginName = user.loginName || '';
                 var phone = user.phonenumber || '';
+                // 显示：用户名称 + 手机号
                 var label = userName;
-                if (loginName) {
-                    label += '（' + loginName;
-                    if (phone) {
-                        label += ' / ' + phone;
-                    }
-                    label += '）';
-                } else if (phone) {
-                    label += '（' + phone + '）';
+                if (phone) {
+                    label = userName ? (userName + '（' + phone + '）') : phone;
+                }
+                if (!label) {
+                    label = '用户' + userId;
                 }
                 var selected = currentRepairUserId != null && String(currentRepairUserId) === String(userId);
                 $select.append($('<option></option>')
@@ -142,11 +139,6 @@
                 setDispatchHint('报修处理人加载失败，请稍后重试', true);
                 return;
             }
-            if (companyId === null || companyId === undefined || companyId === '') {
-                renderDispatchUsers([]);
-                setDispatchHint('报修单未关联单位，无法加载处理人', true);
-                return;
-            }
             $.ajax({
                 url: prefix + '/dispatchUsers/' + repairId,
                 type: 'GET',
@@ -158,7 +150,6 @@
                         $.modal.alertError(res.msg || '报修处理人加载失败，请稍后重试');
                         return;
                     }
-                    // RuoYi AjaxResult：列表在 data 字段
                     var users = res.data;
                     if (!$.isArray(users)) {
                         users = [];
@@ -182,7 +173,7 @@
                 return;
             }
             if (!usersLoaded || $('#repairUserId').prop('disabled')) {
-                $.modal.alertWarning('当前单位暂无可派发的员工账号');
+                $.modal.alertWarning('暂无可派发的系统用户');
                 return;
             }
             var repairUserId = $('#repairUserId').val();

@@ -18,15 +18,19 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ResourceUtils;
 
+import com.ruoyi.common.config.RuoYiConfig;
 import com.ruoyi.common.core.text.Convert;
+import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.DateUtils;
 import com.ruoyi.common.utils.ShiroUtils;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
 import com.ruoyi.system.domain.FireReportRecord;
 import com.ruoyi.system.mapper.FireReportRecordMapper;
 import com.ruoyi.system.service.IFireReportRecordService;
 import com.ruoyi.system.service.IMaintenanceReportService;
+import com.ruoyi.system.service.report.DocxToPdfConverter;
 
 /**
  * 维保报告记录Service业务层处理
@@ -44,16 +48,14 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
      */
     private static final String TEMPLATE_CLASSPATH = "template/空白模板维保报告.docx";
 
-    /**
-     * 报告输出目录（相对于classpath:static）
-     */
-    private static final String REPORT_OUTPUT_DIR = "static/report";
-
     @Autowired
     private FireReportRecordMapper fireReportRecordMapper;
 
     @Autowired
     private IMaintenanceReportService maintenanceReportService;
+
+    @Autowired
+    private DocxToPdfConverter docxToPdfConverter;
 
     @Autowired
     private com.ruoyi.fire.service.IFireBuildingService fireBuildingService;
@@ -141,9 +143,11 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
             FireReportRecord record = selectFireReportRecordById(Long.parseLong(id));
             if (record != null && record.getFilePath() != null) {
                 try {
-                    Path filePath = getReportOutputDir().resolve(record.getFilePath());
-                    Files.deleteIfExists(filePath);
-                    log.info("删除报告文件: {}", filePath);
+                    Path filePath = resolveReportFile(record);
+                    if (filePath != null) {
+                        Files.deleteIfExists(filePath);
+                        log.info("删除报告文件: {}", filePath);
+                    }
                 } catch (Exception e) {
                     log.warn("删除报告文件失败: {}", e.getMessage());
                 }
@@ -163,9 +167,11 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         FireReportRecord record = selectFireReportRecordById(reportId);
         if (record != null && record.getFilePath() != null) {
             try {
-                Path filePath = getReportOutputDir().resolve(record.getFilePath());
-                Files.deleteIfExists(filePath);
-                log.info("删除报告文件: {}", filePath);
+                Path filePath = resolveReportFile(record);
+                if (filePath != null) {
+                    Files.deleteIfExists(filePath);
+                    log.info("删除报告文件: {}", filePath);
+                }
             } catch (Exception e) {
                 log.warn("删除报告文件失败: {}", e.getMessage());
             }
@@ -181,6 +187,73 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
      */
     @Override
     public FireReportRecord generateReportForTask(Long taskId) {
+        return doGenerateReportForTask(taskId);
+    }
+
+    /**
+     * 按客户校验后根据维保任务生成报告（手动生成）
+     */
+    @Override
+    public FireReportRecord generateReportForTask(Long companyId, Long taskId) {
+        if (companyId == null) {
+            throw new com.ruoyi.common.exception.ServiceException("请选择客户");
+        }
+        if (taskId == null) {
+            throw new com.ruoyi.common.exception.ServiceException("请选择维保任务");
+        }
+
+        com.ruoyi.fire.domain.FireCompany company = fireCompanyService.selectFireCompanyById(companyId);
+        if (company == null || !"0".equals(company.getStatus())) {
+            throw new com.ruoyi.common.exception.ServiceException("客户不存在或无权访问");
+        }
+        assertCurrentUserCanAccessCompany(companyId);
+
+        FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null) {
+            throw new com.ruoyi.common.exception.ServiceException("维保任务不存在");
+        }
+        if (task.getCompanyId() == null || !companyId.equals(task.getCompanyId())) {
+            throw new com.ruoyi.common.exception.ServiceException("维保任务不属于所选客户，无法生成报告");
+        }
+
+        return doGenerateReportForTask(taskId);
+    }
+
+    /**
+     * 当前用户是否可访问该客户：
+     * 管理员放行；已绑定客户的用户仅可访问绑定客户；未绑定的后台账号与 company/all 一致可访问全部有效客户。
+     */
+    private void assertCurrentUserCanAccessCompany(Long companyId) {
+        try {
+            if (ShiroUtils.getSysUser() != null && ShiroUtils.getSysUser().isAdmin()) {
+                return;
+            }
+            Long userId = ShiroUtils.getUserId();
+            java.util.List<com.ruoyi.fire.domain.FireCompany> bound =
+                    fireCompanyService.selectCompanyListByUserId(userId);
+            if (bound != null && !bound.isEmpty()) {
+                boolean allowed = bound.stream()
+                        .anyMatch(item -> companyId.equals(item.getCompanyId()));
+                if (!allowed) {
+                    throw new com.ruoyi.common.exception.ServiceException("客户不存在或无权访问");
+                }
+                return;
+            }
+            java.util.List<com.ruoyi.fire.domain.FireCompany> all =
+                    fireCompanyService.selectCompanyAll();
+            boolean allowed = all != null && all.stream()
+                    .anyMatch(item -> companyId.equals(item.getCompanyId()));
+            if (!allowed) {
+                throw new com.ruoyi.common.exception.ServiceException("客户不存在或无权访问");
+            }
+        } catch (com.ruoyi.common.exception.ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new com.ruoyi.common.exception.ServiceException("客户不存在或无权访问");
+        }
+    }
+
+    private FireReportRecord doGenerateReportForTask(Long taskId) {
         // 1. 获取任务信息
         FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
         if (task == null) {
@@ -585,43 +658,57 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
             data.put("maintenanceRecordTable", null);
         }
 
-        // 3. 确定文件路径
+        // 3. 生成临时 DOCX → 转换为 PDF → 落盘到统一报告目录
         String templatePath = getTemplatePath();
-        String fileName = "维保报告_" + sanitizeFileName(task.getTaskName()) + "_" + DateUtils.dateTimeNow() + ".docx";
-        Path outputDir = getReportOutputDir();
-        Path outputPath = outputDir.resolve(fileName);
+        String companyPart = sanitizeFileName(company != null ? company.getCompanyName() : task.getCompanyName());
+        String taskPart = sanitizeFileName(task.getTaskName());
+        String stamp = DateUtils.dateTimeNow();
+        String pdfFileName = companyPart + "_" + taskPart + "_" + stamp + ".pdf";
+        String unique = java.util.UUID.randomUUID().toString().replace("-", "");
 
-        // 4. 确保输出目录存在
+        Path outputDir = getReportOutputDir();
+        Path pdfPath = outputDir.resolve(pdfFileName);
+        Path tempDir = null;
+        Path tempDocx = null;
+
         try {
             Files.createDirectories(outputDir);
-        } catch (Exception e) {
-            throw new RuntimeException("创建报告输出目录失败: " + outputDir, e);
-        }
+            tempDir = Files.createTempDirectory("fire-report-" + unique + "-");
+            tempDocx = tempDir.resolve("report-" + unique + ".docx");
 
-        // 5. 生成报告
-        try {
-            log.info("开始生成报告, 模板: {}, 输出: {}", templatePath, outputPath);
-            maintenanceReportService.generateReport(data, templatePath, outputPath.toString());
-            log.info("报告生成成功: {}", outputPath);
+            log.info("开始生成报告 DOCX, 模板: {}, 临时: {}", templatePath, tempDocx);
+            maintenanceReportService.generateReport(data, templatePath, tempDocx.toString());
+
+            log.info("开始转换为 PDF: {}", pdfPath);
+            docxToPdfConverter.convert(tempDocx, pdfPath);
+            DocxToPdfConverter.assertValidPdf(pdfPath);
+            log.info("报告 PDF 生成成功: {}", pdfPath);
+        } catch (ServiceException e) {
+            deleteQuietly(pdfPath);
+            throw e;
         } catch (Exception e) {
+            deleteQuietly(pdfPath);
             log.error("生成报告失败", e);
-            throw new RuntimeException("生成报告失败: " + e.getMessage(), e);
+            throw new ServiceException("生成报告失败: " + e.getMessage());
+        } finally {
+            deleteQuietly(tempDocx);
+            deleteDirectoryQuietly(tempDir);
         }
 
-        // 6. 获取文件大小
-        long fileSize = 0;
+        // 4. 获取文件大小并保存记录（仅 PDF 成功后落库）
+        long fileSize;
         try {
-            fileSize = Files.size(outputPath);
+            fileSize = Files.size(pdfPath);
         } catch (Exception e) {
-            log.warn("获取文件大小失败", e);
+            deleteQuietly(pdfPath);
+            throw new ServiceException("读取 PDF 文件大小失败");
         }
 
-        // 7. 保存记录
         FireReportRecord record = new FireReportRecord();
         record.setTaskId(taskId);
         record.setTaskName(task.getTaskName());
-        record.setReportName(fileName);
-        record.setFilePath(fileName); // 只存文件名，下载时拼接路径
+        record.setReportName(pdfFileName);
+        record.setFilePath(pdfFileName); // 只存文件名，下载/预览时拼接安全目录
         record.setFileSize(fileSize);
         record.setCreateTime(new Date());
 
@@ -631,9 +718,87 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
             record.setCreateBy("System");
         }
 
-        insertFireReportRecord(record);
+        try {
+            insertFireReportRecord(record);
+        } catch (Exception e) {
+            deleteQuietly(pdfPath);
+            throw new ServiceException("保存报告记录失败: " + e.getMessage());
+        }
 
         return record;
+    }
+
+    @Override
+    public Path resolveReportFile(FireReportRecord record) {
+        if (record == null || StringUtils.isEmpty(record.getFilePath())) {
+            return null;
+        }
+        String stored = record.getFilePath().replace("\\", "/");
+        // 禁止路径穿越：仅允许文件名
+        String fileName = Paths.get(stored).getFileName().toString();
+        if (StringUtils.isEmpty(fileName) || fileName.contains("..")) {
+            return null;
+        }
+
+        List<Path> candidates = new java.util.ArrayList<>();
+        candidates.add(getReportOutputDir().resolve(fileName));
+        candidates.add(Paths.get(System.getProperty("user.dir"), "report", fileName));
+        try {
+            File staticDir = ResourceUtils.getFile("classpath:static");
+            candidates.add(Paths.get(staticDir.getAbsolutePath(), "report", fileName));
+        } catch (Exception ignored) {
+            // jar 环境无解压 static 目录时忽略
+        }
+
+        Path reportRoot = getReportOutputDir().toAbsolutePath().normalize();
+        for (Path candidate : candidates) {
+            try {
+                Path normalized = candidate.toAbsolutePath().normalize();
+                if (!Files.isRegularFile(normalized)) {
+                    continue;
+                }
+                // 主目录必须在报告根下；兼容旧目录时允许 user.dir/report 与历史 static/report
+                if (normalized.startsWith(reportRoot)
+                        || normalized.toString().replace("\\", "/").contains("/report/" + fileName)
+                        || normalized.getFileName().toString().equals(fileName)
+                                && normalized.getParent() != null
+                                && "report".equalsIgnoreCase(normalized.getParent().getFileName().toString())) {
+                    return normalized;
+                }
+            } catch (Exception ignored) {
+                // continue
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public void assertReportFileReady(FireReportRecord record) {
+        if (record == null) {
+            throw new ServiceException("报告不存在");
+        }
+        if (StringUtils.isEmpty(record.getFilePath())) {
+            throw new ServiceException("报告尚未生成成功");
+        }
+        Path file = resolveReportFile(record);
+        if (file == null || !Files.isRegularFile(file)) {
+            throw new ServiceException("报告文件不存在或已被删除");
+        }
+        String name = file.getFileName().toString().toLowerCase();
+        if (name.endsWith(".pdf")) {
+            try {
+                DocxToPdfConverter.assertValidPdf(file);
+            } catch (ServiceException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new ServiceException("报告文件损坏，无法预览");
+            }
+            return;
+        }
+        if (name.endsWith(".docx")) {
+            throw new ServiceException("历史报告为 Word 格式，无法在线预览，请重新生成 PDF 报告");
+        }
+        throw new ServiceException("不支持的报告文件格式");
     }
 
     /**
@@ -669,18 +834,43 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
     }
 
     /**
-     * 获取报告输出目录
-     * 开发环境：项目 resources/static/report 目录
-     * 生产环境：应用运行目录下的 report 目录
+     * 报告输出目录：统一使用 ruoyi.profile/report，兼容本地与 JAR 部署
      */
     private Path getReportOutputDir() {
+        String profile = RuoYiConfig.getProfile();
+        if (StringUtils.isEmpty(profile)) {
+            profile = "./uploadPath";
+        }
+        return Paths.get(profile, "report").toAbsolutePath().normalize();
+    }
+
+    private void deleteQuietly(Path path) {
+        if (path == null) {
+            return;
+        }
         try {
-            // 尝试获取 classpath:static 目录（开发环境）
-            File staticDir = ResourceUtils.getFile("classpath:static");
-            return Paths.get(staticDir.getAbsolutePath(), "report");
-        } catch (Exception e) {
-            // 生产环境：使用应用运行目录
-            return Paths.get(System.getProperty("user.dir"), "report");
+            Files.deleteIfExists(path);
+        } catch (Exception ignored) {
+            // ignore
+        }
+    }
+
+    private void deleteDirectoryQuietly(Path dir) {
+        if (dir == null || !Files.exists(dir)) {
+            return;
+        }
+        try {
+            Files.walk(dir)
+                    .sorted(java.util.Comparator.reverseOrder())
+                    .forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (Exception ignored) {
+                            // ignore
+                        }
+                    });
+        } catch (Exception ignored) {
+            // ignore
         }
     }
 
@@ -688,11 +878,11 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
      * 清理文件名中的非法字符
      */
     private String sanitizeFileName(String fileName) {
-        if (fileName == null) {
+        if (fileName == null || fileName.trim().isEmpty()) {
             return "未命名";
         }
         // 移除文件名中的非法字符
-        return fileName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        return fileName.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
     }
 
     /**

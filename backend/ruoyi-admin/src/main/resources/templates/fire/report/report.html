@@ -126,7 +126,8 @@
         }
 
         function previewReport(reportId) {
-            window.open(prefix + "/preview/" + reportId);
+            // 使用相对路由（ctx），不写死域名/端口；在系统标签页打开预览页
+            $.modal.openTab("报告预览", prefix + "/view/" + reportId);
         }
     </script>
 </body>

@@ -108,8 +108,12 @@ Content-Type: application/json
 | 巡检 | `/api/fire/inspection/myList/detail/add/edit/delete` | `inspectionId,companyId,buildingId` | 已对应 |
 | 报修列表 | `/api/fire/repair/myReportedList`、`myAssignedList` | `repairId,reporterId,repairUserId` | 已对应 |
 | 报修操作 | `/api/fire/repair/add/edit/delete/dispatch/complete` | `repairId,companyId` | 已对应 |
+| 报修撤回（管理端） | `POST /fire/repair/recall` | `repairId` | 已对应；权限 `fire:repair:accept` |
 | 报修统计 | `GET /api/fire/repair/statistics` | `pending,processing,completed` | 已对应 |
-| 报告 | `/api/fire/report/list/detail/download/preview` | `reportId,companyId` | 已对应 |
+| 报告（小程序） | `/api/fire/report/list/detail/download/preview` | `reportId`；文件为 PDF | 已对应 |
+| 报告生成（管理端） | `POST /fire/report/generate` | `companyId,taskId` | 已对应；校验任务归属客户 |
+| 报告联动（管理端） | `GET /fire/report/companies`、`/fire/report/tasks` | `companyId` | 已对应 |
+| 报告预览页（管理端） | `GET /fire/report/view/{reportId}`、`/check/{reportId}`、`/preview/{reportId}` | PDF inline | 已对应 |
 | 上传 | `POST /api/common/upload` | multipart `file` | 已对应 |
 
 ## 3. 必须先修的契约问题

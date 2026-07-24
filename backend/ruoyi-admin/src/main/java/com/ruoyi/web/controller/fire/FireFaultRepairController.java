@@ -147,7 +147,7 @@ public class FireFaultRepairController extends BaseController {
     }
 
     /**
-     * 按报修单所属公司加载可派发处理人（已注册、正常、未删除、且已关联该公司）。
+     * 按报修单加载可派发处理人（全部已注册且正常的系统用户）。
      */
     @RequiresPermissions("fire:repair:accept")
     @GetMapping("/dispatchUsers/{repairId}")
@@ -171,6 +171,25 @@ public class FireFaultRepairController extends BaseController {
             }
             return toAjax(fireFaultRepairService.dispatchRepair(
                     repairId, repairUserId, ShiroUtils.getLoginName()));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
+    }
+
+    /**
+     * 撤回派发（复用 fire:repair:accept，与派发同权）。
+     */
+    @RequiresPermissions("fire:repair:accept")
+    @Log(title = "撤回报修派发", businessType = BusinessType.UPDATE)
+    @PostMapping("/recall")
+    @ResponseBody
+    public AjaxResult recall(Long repairId) {
+        try {
+            if (repairId == null) {
+                return error("repairId 不能为空");
+            }
+            fireFaultRepairService.recallDispatch(repairId, ShiroUtils.getLoginName());
+            return AjaxResult.success("撤回成功");
         } catch (ServiceException e) {
             return error(e.getMessage());
         }

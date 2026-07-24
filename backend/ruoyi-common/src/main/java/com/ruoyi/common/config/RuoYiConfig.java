@@ -121,4 +121,12 @@ public class RuoYiConfig
     {
         return getProfile() + "/upload";
     }
+
+    /**
+     * 维保报告存储目录（相对 profile）
+     */
+    public static String getReportPath()
+    {
+        return getProfile() + "/report";
+    }
 }

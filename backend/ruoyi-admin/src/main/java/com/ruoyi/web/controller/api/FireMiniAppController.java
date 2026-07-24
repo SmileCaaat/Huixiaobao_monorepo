@@ -1,6 +1,5 @@
 package com.ruoyi.web.controller.api;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
@@ -14,7 +13,6 @@ import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
 import com.github.pagehelper.PageHelper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.util.ResourceUtils;
 import org.springframework.web.bind.annotation.*;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
@@ -26,6 +24,7 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.fire.domain.*;
 import com.ruoyi.fire.service.*;
 import com.ruoyi.system.service.ISysDeptService;
+import com.ruoyi.system.service.ISysUserService;
 import com.ruoyi.common.core.domain.entity.SysDept;
 import com.ruoyi.fire.enums.FireEquipmentCategory;
 import com.ruoyi.system.domain.FireReportRecord;
@@ -66,6 +65,9 @@ public class FireMiniAppController extends BaseController {
 
     @Autowired
     private ISysDeptService deptService;
+
+    @Autowired
+    private ISysUserService userService;
 
     @Autowired
     private IFireFaultRepairService faultRepairService;
@@ -1000,7 +1002,7 @@ public class FireMiniAppController extends BaseController {
         if (!isCompanyRepairAdmin(companyId, userId)) {
             return AjaxResult.error("只有管理员或项目负责人可以查看派发人员");
         }
-        return AjaxResult.success(companyService.selectActiveUserListByCompanyId(companyId));
+        return AjaxResult.success(userService.selectActiveRegisteredUserList());
     }
 
     /**
@@ -1076,8 +1078,12 @@ public class FireMiniAppController extends BaseController {
         if (repair == null) {
             return AjaxResult.error("报修记录不存在");
         }
+        if (repair.getRepairUserId() == null
+                || !"1".equals(repair.getRepairStatus())) {
+            return AjaxResult.error("工单状态已发生变化，请刷新后重试。");
+        }
         if (!canCompleteRepair(repair, userId)) {
-            return AjaxResult.error("只有处理人或管理员可以完成报修");
+            return AjaxResult.error("只有当前处理人或管理员可以完成报修");
         }
 
         FireFaultRepair update = new FireFaultRepair();
@@ -1328,19 +1334,35 @@ public class FireMiniAppController extends BaseController {
             FireReportRecord record = fireReportRecordService.selectFireReportRecordById(reportId);
             if (record == null || StringUtils.isEmpty(record.getFilePath())) {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":404,\"msg\":\"报告不存在或尚未生成成功\"}");
                 return;
             }
 
-            Path filePath = getReportFilePath(record.getFilePath());
-            if (!Files.exists(filePath)) {
+            Path filePath = fireReportRecordService.resolveReportFile(record);
+            if (filePath == null || !Files.exists(filePath)) {
                 response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":404,\"msg\":\"报告文件不存在或已被删除\"}");
                 return;
             }
 
-            String encodedFileName = URLEncoder.encode(record.getReportName(), "UTF-8").replaceAll("\\+", "%20");
-            String dispositionType = attachment ? "attachment" : "inline";
+            String fileName = record.getReportName() != null ? record.getReportName() : filePath.getFileName().toString();
+            String lower = filePath.getFileName().toString().toLowerCase();
+            if (!attachment && !lower.endsWith(".pdf")) {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"code\":500,\"msg\":\"历史报告为 Word 格式，请重新生成 PDF\"}");
+                return;
+            }
 
-            response.setContentType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+            String encodedFileName = URLEncoder.encode(fileName, "UTF-8").replaceAll("\\+", "%20");
+            String dispositionType = attachment ? "attachment" : "inline";
+            String contentType = lower.endsWith(".pdf")
+                    ? "application/pdf"
+                    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+            response.setContentType(contentType);
             response.setHeader(
                     "Content-Disposition",
                     dispositionType + "; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
@@ -1348,7 +1370,7 @@ public class FireMiniAppController extends BaseController {
 
             try (FileInputStream fis = new FileInputStream(filePath.toFile());
                     OutputStream os = response.getOutputStream()) {
-                byte[] buffer = new byte[4096];
+                byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = fis.read(buffer)) != -1) {
                     os.write(buffer, 0, bytesRead);
@@ -1361,12 +1383,10 @@ public class FireMiniAppController extends BaseController {
     }
 
     private Path getReportFilePath(String fileName) {
-        try {
-            File staticDir = ResourceUtils.getFile("classpath:static");
-            return Paths.get(staticDir.getAbsolutePath(), "report", fileName);
-        } catch (Exception e) {
-            return Paths.get(System.getProperty("user.dir"), "report", fileName);
-        }
+        FireReportRecord probe = new FireReportRecord();
+        probe.setFilePath(fileName);
+        Path resolved = fireReportRecordService.resolveReportFile(probe);
+        return resolved != null ? resolved : Paths.get(System.getProperty("user.dir"), "report", fileName);
     }
 
     // ==================== 维保简报相关接口 ====================

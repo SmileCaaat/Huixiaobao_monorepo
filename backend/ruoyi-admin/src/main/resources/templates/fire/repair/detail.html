@@ -303,11 +303,18 @@
     <th:block th:include="include :: footer" />
     <script th:inline="javascript">
         function returnToRepairList() {
+            if (typeof goBackPage === 'function') {
+                goBackPage(ctx + 'fire/repair');
+                return;
+            }
             if (typeof closeItem === 'function' && window.frameElement) {
                 closeItem();
                 return;
             }
-            window.location.href = ctx + 'fire/repair';
+            // 禁止 history.back()，避免退到登录页
+            if (window.parent && window.parent.$) {
+                window.parent.$.modal.openTab('故障报修', ctx + 'fire/repair');
+            }
         }
     </script>
 </body>

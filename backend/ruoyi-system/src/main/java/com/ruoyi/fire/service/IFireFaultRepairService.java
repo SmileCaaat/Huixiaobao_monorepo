@@ -1,8 +1,8 @@
 package com.ruoyi.fire.service;
 
 import java.util.List;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.fire.domain.FireFaultRepair;
-import com.ruoyi.fire.domain.FireUserCompany;
 
 /**
  * 故障报修Service接口
@@ -69,9 +69,9 @@ public interface IFireFaultRepairService {
     int dispatchRepair(Long repairId, Long repairUserId, String dispatchBy);
 
     /**
-     * 查询指定报修单可派发的公司员工
+     * 查询可派发的处理人（全部已注册且正常的系统用户）
      */
-    List<FireUserCompany> selectDispatchUsers(Long repairId);
+    List<SysUser> selectDispatchUsers(Long repairId);
 
     /**
      * 接受报修
@@ -98,4 +98,13 @@ public interface IFireFaultRepairService {
      * @return 结果
      */
     int completeRepair(FireFaultRepair fireFaultRepair);
+
+    /**
+     * 撤回派发（仅已派发且尚未开始处理）
+     *
+     * @param repairId 报修ID
+     * @param recallBy 撤回操作人
+     * @return 结果
+     */
+    int recallDispatch(Long repairId, String recallBy);
 }

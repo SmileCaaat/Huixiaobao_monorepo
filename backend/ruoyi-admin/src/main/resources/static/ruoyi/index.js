@@ -111,14 +111,20 @@ function fixedSidebar() {
     }, 100);
 }
 
-// 设置锚点
+// 设置锚点（不污染浏览器历史，避免返回时落到登录页）
 function setIframeUrl(href) {
 	if ($.common.equals("history", mode)) {
 	    storage.set('publicPath', href);
 	} else {
 	    var nowUrl = window.location.href;
-	    var newUrl = nowUrl.substring(0, nowUrl.indexOf("#"));
-	    window.location.href = newUrl + "#" + href;
+	    var hashIndex = nowUrl.indexOf("#");
+	    var newUrl = hashIndex >= 0 ? nowUrl.substring(0, hashIndex) : nowUrl;
+	    var next = newUrl + "#" + href;
+	    if (window.history && typeof window.history.replaceState === 'function') {
+	        window.history.replaceState(null, document.title, next);
+	    } else {
+	        window.location.replace(next);
+	    }
 	}
 }
 
@@ -537,6 +543,49 @@ $(function() {
 
     // 右移按扭
     $('.tabRight').on('click', scrollTabRight);
+
+    // 顶部【返回】：关闭当前页签并回到来源页签（不用浏览器历史）
+    $('.tabBack').on('click', function() {
+        var $active = $('.page-tabs-content').find('.active');
+        if (!$active.length) {
+            return false;
+        }
+        var homeId = $('.page-tabs-content').children("[data-id]:first").data('id');
+        var currentId = $active.data('id');
+        if (currentId === homeId || !$active.find('i.fa-times-circle').length) {
+            $.modal.msg("已在首页，无法再返回");
+            return false;
+        }
+        var panelUrl = $active.data('panel');
+        var iframeWin = $('.mainContent .RuoYi_iframe[data-id="' + currentId + '"]')[0];
+        if (iframeWin && iframeWin.contentWindow && typeof iframeWin.contentWindow.goBackPage === 'function') {
+            iframeWin.contentWindow.goBackPage(panelUrl);
+            return false;
+        }
+        if ($.common.isNotEmpty(panelUrl)) {
+            $active.remove();
+            $('.mainContent .RuoYi_iframe[data-id="' + currentId + '"]').remove();
+            var $panel = $('.menuTab[data-id="' + panelUrl + '"]');
+            if ($panel.length) {
+                $panel.addClass('active').siblings('.menuTab').removeClass('active');
+                $('.mainContent .RuoYi_iframe').each(function() {
+                    if ($(this).data('id') == panelUrl) {
+                        openToCurrentTab(this);
+                        return false;
+                    }
+                });
+            } else {
+                var $menu = $('a.menuItem[href="' + panelUrl + '"], a.menuItem[href$="' + panelUrl + '"]').first();
+                if ($menu.length) {
+                    $menu.trigger('click');
+                }
+            }
+            syncMenuTab(panelUrl);
+            return false;
+        }
+        $active.find('i.fa-times-circle').trigger('click');
+        return false;
+    });
 
     // 关闭当前
     $('.tabCloseCurrent').on('click', tabCloseCurrent);

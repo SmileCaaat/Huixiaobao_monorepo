@@ -10,6 +10,9 @@ ruoyi:
   demoEnabled: false
   # 文件路径（相对路径，本地和线上通用）
   profile: ./uploadPath
+  # 维保报告 PDF 转换：LibreOffice soffice 路径（留空则自动探测常见安装位置）
+  report:
+    libreOfficePath:
   # 获取ip地址开关
   addressEnabled: false
 

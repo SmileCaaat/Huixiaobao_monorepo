@@ -31,7 +31,8 @@ function login() {
         },
         success: function(r) {
             if (r.code == web_status.SUCCESS) {
-                location.href = ctx + 'index';
+                // 使用 replace，避免登录页留在浏览器历史中导致“返回”直接回到登录页
+                location.replace(ctx + 'index');
             } else {
                 $('.imgcode').click();
                 $(".code").val("");

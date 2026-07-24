@@ -236,4 +236,26 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
     </delete>
 
+    <!-- 撤回派发：显式清空处理人/派发字段；条件保证并发下未开工才能成功 -->
+    <update id="recallFireFaultRepair">
+        UPDATE fire_fault_repair
+        SET repair_status = '0',
+            repair_user_id = NULL,
+            repair_person = NULL,
+            repair_phone = NULL,
+            dispatch_by = NULL,
+            dispatch_time = NULL,
+            accept_time = NULL,
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE repair_id = #{repairId}
+          AND del_flag = '0'
+          AND repair_status = '1'
+          AND repair_user_id IS NOT NULL
+          AND start_time IS NULL
+          AND (repair_description IS NULL OR repair_description = '')
+          AND (repair_images IS NULL OR repair_images = '')
+          AND complete_time IS NULL
+    </update>
+
 </mapper>

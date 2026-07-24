@@ -162,6 +162,11 @@
                             actions.push('<a class="btn btn-primary btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="dispatchRepair(' + row.repairId + ')"><i class="fa fa-share"></i>派发</a> ');
                         }
 
+                        // 已派发(处理中)且有处理人、尚未开始处理：显示撤回
+                        if (canRecallRepair(row)) {
+                            actions.push('<a class="btn btn-warning btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="recallRepair(' + row.repairId + ')"><i class="fa fa-undo"></i>撤回</a> ');
+                        }
+
                         if (row.repairStatus == '1') {
                             actions.push('<a class="btn btn-success btn-xs ' + completeFlag + '" href="javascript:void(0)" onclick="completeRepair(' + row.repairId + ')"><i class="fa fa-check-circle"></i>完成</a>');
                         }
@@ -173,6 +178,32 @@
             $.table.init(options);
         });
 
+        /** 是否可撤回：已派发 + 有处理人 + 未开始 + 未完成 */
+        function canRecallRepair(row) {
+            if (!row) {
+                return false;
+            }
+            if (row.repairStatus != '1') {
+                return false;
+            }
+            if (row.repairUserId == null || row.repairUserId === '') {
+                return false;
+            }
+            if (row.startTime) {
+                return false;
+            }
+            if (row.repairDescription) {
+                return false;
+            }
+            if (row.repairImages) {
+                return false;
+            }
+            if (row.completeTime) {
+                return false;
+            }
+            return true;
+        }
+
         $.operate.detail = function(repairId) {
             var url = prefix + '/detail/' + repairId;
             $.modal.openTab("报修详情", url);
@@ -181,6 +212,47 @@
         function dispatchRepair(repairId) {
             var url = prefix + '/dispatch/' + repairId;
             $.modal.open("派发报修", url, '700', '420');
+        }
+
+        function recallRepair(repairId) {
+            top.layer.open({
+                type: 0,
+                icon: 3,
+                title: '撤回',
+                content: '确定要撤回该故障报修工单吗？撤回后，原处理人将无法继续处理该工单。',
+                btn: ['取消', '确定撤回'],
+                yes: function (index) {
+                    top.layer.close(index);
+                },
+                btn2: function (index) {
+                    var $btn = top.$('#layui-layer' + index).find('.layui-layer-btn1');
+                    if ($btn.hasClass('layer-disabled')) {
+                        return false;
+                    }
+                    $btn.addClass('layer-disabled').text('撤回中');
+                    $.ajax({
+                        url: prefix + '/recall',
+                        type: 'post',
+                        dataType: 'json',
+                        data: { repairId: repairId },
+                        success: function (result) {
+                            if (result.code == web_status.SUCCESS) {
+                                top.layer.close(index);
+                                $.modal.msgSuccess(result.msg || '撤回成功');
+                                $.table.refresh();
+                            } else {
+                                $btn.removeClass('layer-disabled').text('确定撤回');
+                                $.modal.alertError(result.msg || '撤回失败');
+                            }
+                        },
+                        error: function () {
+                            $btn.removeClass('layer-disabled').text('确定撤回');
+                            $.modal.alertError('撤回失败，请稍后重试');
+                        }
+                    });
+                    return false;
+                }
+            });
         }
 
         function completeRepair(repairId) {

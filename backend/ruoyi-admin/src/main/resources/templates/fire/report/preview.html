@@ -1,0 +1,53 @@
+﻿<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('report preview')" />
+    <style>
+        html, body { height: 100%; margin: 0; background: #f5f5f5; }
+        .preview-wrap { height: 100%; display: flex; flex-direction: column; }
+        .preview-status {
+            padding: 12px 16px;
+            background: #fff;
+            border-bottom: 1px solid #e7eaec;
+            color: #666;
+            font-size: 14px;
+        }
+        .preview-status.error { color: #ed5565; }
+        .preview-frame { flex: 1; border: 0; width: 100%; background: #fff; }
+        .preview-frame.hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="preview-wrap">
+    <div id="status" class="preview-status"></div>
+    <iframe id="pdfFrame" class="preview-frame hidden" title="pdf"></iframe>
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+    var prefix = ctx + "fire/report";
+    var reportId = [[${reportId}]];
+    var MSG_LOADING = "\u6b63\u5728\u52a0\u8f7d\u62a5\u544a\u2026\u2026";
+    var MSG_DONE = "\u62a5\u544a\u52a0\u8f7d\u5b8c\u6210";
+    var MSG_FAIL = "\u62a5\u544a\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5";
+
+    $(function () {
+        $("#status").text(MSG_LOADING);
+        $.ajax({
+            url: prefix + "/check/" + reportId,
+            type: "get",
+            success: function (res) {
+                if (res.code == web_status.SUCCESS) {
+                    $("#status").text(MSG_DONE);
+                    $("#pdfFrame").removeClass("hidden").attr("src", prefix + "/preview/" + reportId);
+                } else {
+                    $("#status").addClass("error").text(res.msg || MSG_FAIL);
+                }
+            },
+            error: function () {
+                $("#status").addClass("error").text(MSG_FAIL);
+            }
+        });
+    });
+</script>
+</body>
+</html>

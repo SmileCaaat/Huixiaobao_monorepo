@@ -40,6 +40,16 @@ public class SysLoginController extends BaseController
     @GetMapping("/login")
     public String login(HttpServletRequest request, HttpServletResponse response, ModelMap mmap)
     {
+        Subject subject = SecurityUtils.getSubject();
+        // 已登录（含记住我）访问登录页：进入系统首页，避免浏览器返回误展示登录表单
+        if (subject.isAuthenticated() || subject.isRemembered())
+        {
+            if (ServletUtils.isAjaxRequest(request))
+            {
+                return ServletUtils.renderString(response, "{\"code\":\"0\",\"msg\":\"已登录\"}");
+            }
+            return "redirect:/index";
+        }
         // 如果是Ajax请求，返回Json字符串。
         if (ServletUtils.isAjaxRequest(request))
         {

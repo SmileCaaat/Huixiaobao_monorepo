@@ -91,14 +91,11 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
     }
 
     @Override
-    public List<FireUserCompany> selectDispatchUsers(Long repairId) {
+    public List<SysUser> selectDispatchUsers(Long repairId) {
         FireFaultRepair repair = getRequiredRepair(repairId);
         validateDispatchAuthority(repair);
-        if (repair.getCompanyId() == null) {
-            throw new ServiceException("报修单未关联单位，无法加载处理人");
-        }
-        // 仅返回该公司下：已注册、status=0、del_flag=0 的关联员工（见 selectActiveUserListByCompanyId）
-        List<FireUserCompany> users = companyService.selectActiveUserListByCompanyId(repair.getCompanyId());
+        // 全部已注册、状态正常、未删除的系统用户
+        List<SysUser> users = userService.selectActiveRegisteredUserList();
         return users != null ? users : java.util.Collections.emptyList();
     }
 
@@ -167,8 +164,9 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
     @Override
     public int startRepair(Long repairId) {
         FireFaultRepair repair = getRequiredRepair(repairId);
-        if (!RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())) {
-            throw new ServiceException("只有处理中状态的报修单才能开始处理");
+        if (!RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())
+                || repair.getRepairUserId() == null) {
+            throw new ServiceException("只有已派发且处理中的报修单才能开始处理");
         }
 
         FireFaultRepair update = new FireFaultRepair();
@@ -184,6 +182,9 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         if (!RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())) {
             throw new ServiceException("只有处理中状态的报修单才能完成");
         }
+        if (repair.getRepairUserId() == null) {
+            throw new ServiceException("工单尚未派发或已撤回，不能完成处理");
+        }
 
         FireFaultRepair update = new FireFaultRepair();
         update.setRepairId(fireFaultRepair.getRepairId());
@@ -196,6 +197,61 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         update.setRepairImages(fireFaultRepair.getRepairImages());
         update.setUpdateBy(fireFaultRepair.getUpdateBy());
         return fireFaultRepairMapper.updateFireFaultRepair(update);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int recallDispatch(Long repairId, String recallBy) {
+        FireFaultRepair repair = getRequiredRepair(repairId);
+        validateDispatchAuthority(repair);
+
+        if (RepairStatus.COMPLETED.getCode().equals(repair.getRepairStatus())
+                || repair.getCompleteTime() != null) {
+            throw new ServiceException("该工单已完成，不能撤回。");
+        }
+        if (RepairStatus.PENDING.getCode().equals(repair.getRepairStatus())
+                || repair.getRepairUserId() == null) {
+            throw new ServiceException("工单状态已发生变化，请刷新后重试。");
+        }
+        if (!RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())) {
+            throw new ServiceException("工单状态已发生变化，请刷新后重试。");
+        }
+        if (hasStartedWork(repair)) {
+            throw new ServiceException("该工单已开始处理，不能撤回。");
+        }
+
+        Long previousUserId = repair.getRepairUserId();
+        String previousPerson = repair.getRepairPerson();
+        String beforeStatus = repair.getRepairStatus();
+
+        int rows = fireFaultRepairMapper.recallFireFaultRepair(repairId, recallBy);
+        if (rows <= 0) {
+            throw new ServiceException("工单状态已发生变化，请刷新后重试。");
+        }
+
+        // 写入备注型审计信息（不新建业务表）；正式操作记录由 @Log 落库
+        org.slf4j.LoggerFactory.getLogger(getClass()).info(
+                "recallDispatch repairId={}, previousUserId={}, previousPerson={}, operator={}, beforeStatus={}, afterStatus={}",
+                repairId, previousUserId, previousPerson, recallBy, beforeStatus,
+                RepairStatus.PENDING.getCode());
+        return rows;
+    }
+
+    /** 是否已产生处理业务数据（开始维修/结果/附件等） */
+    private boolean hasStartedWork(FireFaultRepair repair) {
+        if (repair == null) {
+            return false;
+        }
+        if (repair.getStartTime() != null) {
+            return true;
+        }
+        if (StringUtils.isNotEmpty(repair.getRepairDescription())) {
+            return true;
+        }
+        if (StringUtils.isNotEmpty(repair.getRepairImages())) {
+            return true;
+        }
+        return false;
     }
 
     private void fillReporterInfo(FireFaultRepair fireFaultRepair) {
@@ -252,18 +308,12 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
     }
 
     private void validateDispatchUser(FireFaultRepair repair, Long repairUserId) {
-        if (repair.getCompanyId() == null) {
-            throw new ServiceException("报修单未关联单位，无法派发");
+        SysUser repairUser = userService.selectUserById(repairUserId);
+        if (repairUser == null || "2".equals(repairUser.getDelFlag())) {
+            throw new ServiceException("处理人不存在或已删除");
         }
-
-        List<FireUserCompany> companyUsers = companyService.selectActiveUserListByCompanyId(repair.getCompanyId());
-        if (companyUsers == null || companyUsers.isEmpty()) {
-            throw new ServiceException("该单位还没有配置可派发的处理人员");
-        }
-
-        boolean matched = companyUsers.stream().anyMatch(item -> repairUserId.equals(item.getUserId()));
-        if (!matched) {
-            throw new ServiceException("当前用户无权处理该单位工单");
+        if (!"0".equals(repairUser.getStatus())) {
+            throw new ServiceException("处理人账号已停用");
         }
     }
 

@@ -83,6 +83,16 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     /**
+     * 全部正常注册用户（无数据权限过滤）
+     */
+    @Override
+    public List<SysUser> selectActiveRegisteredUserList() {
+        SysUser query = new SysUser();
+        query.setStatus("0");
+        return userMapper.selectUserList(query);
+    }
+
+    /**
      * 根据条件分页查询已分配用户角色列表
      * 
      * @param user 用户信息

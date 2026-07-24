@@ -259,18 +259,19 @@
 				</nav>
 			</div>
 			<div class="row content-tabs" th:classappend="${#bools.isFalse(tagsView)} ? |hide|">
-				<button class="roll-nav roll-left tabLeft">
-					<i class="fa fa-backward"></i>
+				<button type="button" class="roll-nav roll-left tabLeft" title="向左滚动标签">
+					<i class="fa fa-angle-double-left"></i>
 				</button>
 				<nav class="page-tabs menuTabs">
 					<div class="page-tabs-content">
 						<a href="javascript:;" class="menuTab" th:data-id="@{/system/main}">首页</a>
 					</div>
 				</nav>
-				<button class="roll-nav roll-right tabRight">
-					<i class="fa fa-forward"></i>
+				<button type="button" class="roll-nav roll-right tabRight" title="向右滚动标签">
+					<i class="fa fa-angle-double-right"></i>
 				</button>
-				<a href="javascript:void(0);" class="roll-nav roll-right tabReload"><i class="fa fa-refresh"></i> 刷新</a>
+				<a href="javascript:void(0);" class="roll-nav roll-right tabBack" title="返回上一页签"><i class="fa fa-reply"></i> 返回</a>
+				<a href="javascript:void(0);" class="roll-nav roll-right tabReload" title="刷新当前页签"><i class="fa fa-refresh"></i> 刷新</a>
 			</div>
 
 			<a id="ax_close_max" class="ax_close_max" href="javascript:;" title="关闭全屏"> <i
@@ -301,9 +302,9 @@
 	<script th:src="@{/js/jquery.contextMenu.min.js}"></script>
 	<script th:src="@{/ajax/libs/blockUI/jquery.blockUI.js}"></script>
 	<script th:src="@{/ajax/libs/layer/layer.min.js}"></script>
-	<script th:src="@{/ruoyi/js/ry-ui.js?v=4.8.2}"></script>
-	<script th:src="@{/ruoyi/js/common.js?v=4.8.2}"></script>
-	<script th:src="@{/ruoyi/index.js?v=20201208}"></script>
+	<script th:src="@{/ruoyi/js/ry-ui.js?v=4.8.3}"></script>
+		<script th:src="@{/ruoyi/js/common.js?v=4.8.3}"></script>
+	<script th:src="@{/ruoyi/index.js?v=20260724}"></script>
 	<script th:src="@{/ajax/libs/fullscreen/jquery.fullscreen.js}"></script>
 	<script th:inline="javascript">
 		window.history.forward(1);

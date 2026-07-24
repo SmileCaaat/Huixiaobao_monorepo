@@ -65,4 +65,23 @@ public interface IFireReportRecordService {
      * @return 生成的报告记录
      */
     public FireReportRecord generateReportForTask(Long taskId);
+
+    /**
+     * 按客户校验后根据维保任务生成报告（手动生成）
+     *
+     * @param companyId 客户ID
+     * @param taskId 维保任务ID
+     * @return 生成的报告记录
+     */
+    public FireReportRecord generateReportForTask(Long companyId, Long taskId);
+
+    /**
+     * 解析报告真实文件路径（含历史目录兼容）
+     */
+    public java.nio.file.Path resolveReportFile(FireReportRecord record);
+
+    /**
+     * 校验报告是否可预览/下载，不可用时抛出业务异常
+     */
+    public void assertReportFileReady(FireReportRecord record);
 }

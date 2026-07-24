@@ -63,4 +63,14 @@ public interface FireFaultRepairMapper {
      * @return 报修单号
      */
     public String generateRepairNo();
+
+    /**
+     * 撤回派发：清除处理人/派发信息并恢复待处理（仅未开工单）
+     *
+     * @param repairId 报修ID
+     * @param updateBy 操作人
+     * @return 影响行数（0 表示状态已变化）
+     */
+    int recallFireFaultRepair(@org.apache.ibatis.annotations.Param("repairId") Long repairId,
+            @org.apache.ibatis.annotations.Param("updateBy") String updateBy);
 }

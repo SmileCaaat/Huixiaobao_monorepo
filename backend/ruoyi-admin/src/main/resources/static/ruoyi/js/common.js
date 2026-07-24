@@ -222,6 +222,132 @@ var refreshItem = function(){
     target.attr('src', url).ready();
 }
 
+/**
+ * 安全返回上一层（多标签 / 弹层），不使用 history.back()，避免退回登录页或外部站。
+ * 优先级：关闭弹层 > 关闭当前页签并激活来源页签(data-panel) > 激活相邻页签 > fallbackUrl > 首页
+ */
+var goBackPage = function(fallbackUrl) {
+    try {
+        if (window.name && top.layer && typeof top.layer.getFrameIndex === 'function') {
+            var layerIndex = top.layer.getFrameIndex(window.name);
+            if (layerIndex !== undefined && layerIndex !== null && layerIndex !== -1) {
+                top.layer.close(layerIndex);
+                return;
+            }
+        }
+        if (parent && parent.layer && window.name) {
+            var pIndex = parent.layer.getFrameIndex(window.name);
+            if (pIndex !== undefined && pIndex !== null && pIndex !== -1) {
+                parent.layer.close(pIndex);
+                return;
+            }
+        }
+    } catch (e) { /* ignore */ }
+
+    var topWindow = window.parent && window.parent.document ? $(window.parent.document) : $(document);
+    var $activeTab = $('.page-tabs-content .active', topWindow);
+    if (!$activeTab.length && window.frameElement) {
+        var selfId = window.frameElement.getAttribute('data-id');
+        $activeTab = $('.menuTab[data-id="' + selfId + '"]', topWindow);
+    }
+
+    var homeId = ctx + 'system/main';
+    if ($activeTab.length && $activeTab.data('id') === homeId) {
+        if ($.common.isNotEmpty(fallbackUrl) && !isUnsafeNavUrl(fallbackUrl)) {
+            activateOrOpenTab(fallbackUrl, topWindow);
+        }
+        return;
+    }
+
+    var panelUrl = null;
+    if (window.frameElement) {
+        panelUrl = window.frameElement.getAttribute('data-panel');
+    }
+    if ($.common.isEmpty(panelUrl) && $activeTab.length) {
+        panelUrl = $activeTab.attr('data-panel');
+    }
+    if ($.common.isNotEmpty(panelUrl) && !isUnsafeNavUrl(panelUrl)) {
+        closeCurrentTabAndActivate(panelUrl, topWindow);
+        return;
+    }
+
+    if ($activeTab.length && $activeTab.find('i.fa-times-circle').length) {
+        var $prev = $activeTab.prev('.menuTab');
+        var activateId = $prev.length ? $prev.data('id') : homeId;
+        $activeTab.find('i.fa-times-circle').trigger('click');
+        if ($.common.isNotEmpty(activateId)) {
+            setTimeout(function() { activateOrOpenTab(activateId, topWindow); }, 0);
+        }
+        return;
+    }
+
+    if ($.common.isNotEmpty(fallbackUrl) && !isUnsafeNavUrl(fallbackUrl)) {
+        activateOrOpenTab(fallbackUrl, topWindow);
+        return;
+    }
+    activateOrOpenTab(homeId, topWindow);
+}
+
+function isUnsafeNavUrl(url) {
+    if ($.common.isEmpty(url)) {
+        return true;
+    }
+    var u = String(url).toLowerCase();
+    if (u.indexOf('http://') === 0 || u.indexOf('https://') === 0 || u.indexOf('//') === 0) {
+        if (u.indexOf(String(location.origin).toLowerCase()) !== 0) {
+            return true;
+        }
+    }
+    return /(^|\/)login(\/|$|\?)|(^|\/)logout(\/|$|\?)|(^|\/)register(\/|$|\?)/.test(u);
+}
+
+function activateOrOpenTab(dataUrl, topWindow) {
+    topWindow = topWindow || $(window.parent.document);
+    var $tab = $('.menuTab[data-id="' + dataUrl + '"]', topWindow);
+    if ($tab.length) {
+        if (!$tab.hasClass('active')) {
+            $tab.addClass('active').siblings('.menuTab').removeClass('active');
+            $('.mainContent .RuoYi_iframe', topWindow).each(function() {
+                if ($(this).data('id') == dataUrl) {
+                    openToCurrentTab(this);
+                    return false;
+                }
+            });
+        }
+        return;
+    }
+    var $menu = $('a.menuItem[href="' + dataUrl + '"], a.menuItem[href$="' + dataUrl + '"]', topWindow).first();
+    if ($menu.length) {
+        $menu.trigger('click');
+        return;
+    }
+    if (window.parent && window.parent.$ && window.parent.$.modal && typeof window.parent.$.modal.openTab === 'function') {
+        window.parent.$.modal.openTab('功能页面', dataUrl);
+    }
+}
+
+function closeCurrentTabAndActivate(panelUrl, topWindow) {
+    topWindow = topWindow || $(window.parent.document);
+    var currentId = window.frameElement ? window.frameElement.getAttribute('data-id') : $('.page-tabs-content .active', topWindow).data('id');
+    var $cur = $('.menuTab[data-id="' + currentId + '"]', topWindow);
+    if ($cur.length && $cur.find('i.fa-times-circle').length) {
+        $cur.remove();
+        $('.mainContent .RuoYi_iframe[data-id="' + currentId + '"]', topWindow).remove();
+    }
+    var $panel = $('.menuTab[data-id="' + panelUrl + '"]', topWindow);
+    if ($panel.length) {
+        $panel.addClass('active').siblings('.menuTab').removeClass('active');
+        $('.mainContent .RuoYi_iframe', topWindow).each(function() {
+            if ($(this).data('id') == panelUrl) {
+                openToCurrentTab(this);
+                return false;
+            }
+        });
+        return;
+    }
+    activateOrOpenTab(panelUrl, topWindow);
+}
+
 /** 关闭选项卡 */
 var closeItem = function(dataId){
 	var topWindow = $(window.parent.document);
@@ -233,7 +359,11 @@ var closeItem = function(dataId){
 	    $('.mainContent .RuoYi_iframe[data-id="' + dataId + '"]', topWindow).remove();
 	    return;
 	}
-	var panelUrl = window.frameElement.getAttribute('data-panel');
+	var panelUrl = window.frameElement ? window.frameElement.getAttribute('data-panel') : null;
+	if ($.common.isNotEmpty(panelUrl) && !isUnsafeNavUrl(panelUrl)) {
+	    closeCurrentTabAndActivate(panelUrl, topWindow);
+	    return;
+	}
 	$('.page-tabs-content .active i', topWindow).click();
 	if ($.common.isNotEmpty(panelUrl)) {
 	    $('.menuTab[data-id="' + panelUrl + '"]', topWindow).addClass('active').siblings('.menuTab').removeClass('active');
