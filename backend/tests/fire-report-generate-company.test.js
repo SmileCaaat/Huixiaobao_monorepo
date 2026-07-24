@@ -11,14 +11,13 @@ const serviceIface = read('ruoyi-system/src/main/java/com/ruoyi/system/service/I
 const serviceImpl = read('ruoyi-system/src/main/java/com/ruoyi/system/service/impl/FireReportRecordServiceImpl.java');
 
 assert.ok(page.includes('id="companyId"'), 'company select exists');
-assert.ok(page.includes('\u8bf7\u9009\u62e9\u5ba2\u6237') || page.includes('��ѡ��ͻ�'), 'company placeholder');
-assert.ok(page.includes('\u8bf7\u5148\u9009\u62e9\u5ba2\u6237') || page.includes('����ѡ��ͻ�'), 'task placeholder before company');
+assert.ok(page.includes('请选择客户'), 'company placeholder');
+assert.ok(page.includes('请先选择客户'), 'task placeholder before company');
 assert.ok(page.includes('manualTaskId'), 'manual task select');
 assert.ok(page.includes('prop("disabled"'), 'task disabled until company chosen');
 assert.ok(page.includes('onCompanyChange'), 'company change handler');
 assert.ok(page.includes('formatTaskLabel'), 'task label with date/id');
-assert.ok(page.includes('\u8be5\u5ba2\u6237\u6682\u65e0\u53ef\u751f\u6210\u62a5\u544a\u7684\u7ef4\u4fdd\u4efb\u52a1')
-    || page.includes('�ÿͻ����޿����ɱ����ά������'), 'empty tip');
+assert.ok(page.includes('该客户暂无可生成报告的维保任务'), 'empty tip');
 assert.ok(page.includes('companyId: companyId, taskId: taskId'), 'submit both ids');
 assert.ok(page.includes("prefix + \"/companies\""), 'load companies api');
 assert.ok(page.includes("prefix + \"/tasks\""), 'load tasks api');
@@ -28,8 +27,7 @@ assert.match(controller, /@GetMapping\("\/tasks"\)/);
 assert.match(controller, /generate\(Long companyId, Long taskId\)/);
 assert.ok(controller.includes('query.setCompanyId(companyId)'), 'tasks filtered by companyId');
 assert.ok(serviceIface.includes('generateReportForTask(Long companyId, Long taskId)'), 'service overload');
-assert.ok(serviceImpl.includes('\u7ef4\u4fdd\u4efb\u52a1\u4e0d\u5c5e\u4e8e\u6240\u9009\u5ba2\u6237')
-    || serviceImpl.includes('ά������������ѡ�ͻ�'), 'ownership check');
+assert.ok(serviceImpl.includes('维保任务不属于所选客户'), 'ownership check');
 assert.ok(serviceImpl.includes('doGenerateReportForTask'), 'shared generate core');
 assert.ok(serviceImpl.includes('generateReportForTask(Long taskId)'), 'quartz path kept');
 
