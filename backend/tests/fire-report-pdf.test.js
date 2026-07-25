@@ -19,18 +19,24 @@ assert.ok(!/:83\b/.test(listPage), 'no hardcoded port 83');
 assert.ok(listPage.includes('downloadReport'), 'download action');
 assert.ok(previewPage.includes('MSG_LOADING'), 'loading message constant');
 assert.ok(previewPage.includes('\\u6b63\\u5728\\u52a0\\u8f7d\\u62a5\\u544a'), 'loading unicode');
-assert.ok(previewPage.includes('/check/'), 'precheck before iframe');
-assert.ok(previewPage.includes('/preview/'), 'iframe uses relative preview');
-assert.ok(previewPage.includes('canPreview'), 'docx fallback by canPreview');
+assert.ok(previewPage.includes('/check/'), 'precheck before preview');
+assert.ok(previewPage.includes('/preview/'), 'relative preview fetch');
+assert.ok(previewPage.includes('docx.renderAsync') || previewPage.includes('renderDocx'), 'docxjs render');
+assert.ok(previewPage.includes('docx-preview'), 'docx-preview static lib');
+assert.ok(previewPage.includes('canPreview'), 'gate by canPreview');
 assert.ok(previewPage.includes('downloadWord'), 'docx download helper');
 assert.ok(previewPage.includes('res.msg'), 'show backend message not whole response');
+const docxSource = read('ruoyi-admin/src/main/resources/static/ajax/libs/docx-preview/SOURCE.md');
+assert.ok(docxSource.includes('https://github.com/VolodymyrBaydalka/docxjs'), 'docxjs source noted');
+assert.ok(fs.existsSync(path.join(backend, 'ruoyi-admin/src/main/resources/static/ajax/libs/docx-preview/docx-preview.min.js')), 'docx-preview bundle present');
+assert.ok(fs.existsSync(path.join(backend, 'ruoyi-admin/src/main/resources/static/ajax/libs/docx-preview/jszip.min.js')), 'jszip present');
 
 assert.match(controller, /@GetMapping\("\/view\/\{reportId\}"\)/);
 assert.match(controller, /@GetMapping\("\/check\/\{reportId\}"\)/);
 assert.ok(controller.includes('application/pdf'), 'pdf content type');
 assert.ok(controller.includes('inline'), 'inline disposition for preview');
 assert.ok(controller.includes('@RequiresPermissions("fire:report:list")'), 'permission on preview/download');
-assert.ok(controller.includes('报告已生成，但PDF预览转换失败'), 'docx success warning message');
+assert.ok(controller.includes('报告已生成（Word可在线预览）') || controller.includes('报告已生成，但PDF'), 'docx success warning message');
 assert.ok(controller.includes('describeReportFile'), 'check uses describeReportFile');
 assert.ok(!controller.includes('报告生成失败: " + e.getMessage()'), 'do not leak raw exception to user on generate');
 
@@ -42,7 +48,9 @@ assert.ok(service.includes('resolveReportFile'), 'unified resolve');
 assert.ok(service.includes('PDF 成功时保留同名 DOCX') || service.includes('供“下载 Word”') || service.includes('filePath 存 PDF'), 'keep docx when pdf ok');
 assert.ok(controller.includes('siblingWithExtension') || controller.includes('siblingDocx'), 'download prefers sibling docx');
 assert.ok(service.includes('describeReportFile'), 'describe report capability');
+assert.ok(service.includes('canPreview') && service.includes('previewDocx'), 'canPreview based on docx availability');
 assert.ok(!/throw new ServiceException\("历史报告为 Word/.test(service), 'docx no longer hard-fail assert');
+assert.ok(!controller.includes('报告为Word格式，无法在线预览，请使用下载功能'), 'preview no longer rejects docx stream');
 
 // --- converter quality ---
 assert.ok(converter.includes('soffice'), 'libreoffice soffice');

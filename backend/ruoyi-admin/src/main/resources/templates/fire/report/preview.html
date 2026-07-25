@@ -3,8 +3,9 @@
 <head>
     <th:block th:include="include :: header('报告预览')" />
     <meta charset="UTF-8" />
+    <!-- Word 在线预览：docxjs / docx-preview，来源见 static/ajax/libs/docx-preview/SOURCE.md -->
     <style>
-        html, body { height: 100%; margin: 0; background: #f5f5f5; }
+        html, body { height: 100%; margin: 0; background: #e8e8e8; }
         .preview-wrap { height: 100%; display: flex; flex-direction: column; }
         .preview-status {
             padding: 12px 16px;
@@ -12,51 +13,103 @@
             border-bottom: 1px solid #e7eaec;
             color: #666;
             font-size: 14px;
+            flex-shrink: 0;
         }
         .preview-status.error { color: #ed5565; }
         .preview-status .btn { margin-left: 12px; }
-        .preview-frame { flex: 1; border: 0; width: 100%; background: #fff; }
-        .preview-frame.hidden { display: none; }
+        #docxContainer {
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+        }
+        #docxContainer.hidden { display: none; }
+        /* docx-preview wrapper 居中 */
+        #docxContainer .docx-wrapper { background: transparent; padding: 8px 0; }
+        #docxContainer .docx-wrapper > section.docx {
+            box-shadow: 0 2px 8px rgba(0,0,0,.12);
+            margin-bottom: 16px;
+            background: #fff;
+        }
     </style>
 </head>
 <body>
 <div class="preview-wrap">
     <div id="status" class="preview-status"></div>
-    <iframe id="pdfFrame" class="preview-frame hidden" title="pdf"></iframe>
+    <div id="docxContainer" class="hidden"></div>
 </div>
 <th:block th:include="include :: footer" />
+<script th:src="@{/ajax/libs/docx-preview/jszip.min.js}"></script>
+<script th:src="@{/ajax/libs/docx-preview/docx-preview.min.js}"></script>
 <script th:inline="javascript">
     var prefix = ctx + "fire/report";
     var reportId = [[${reportId}]];
     var MSG_LOADING = "\u6b63\u5728\u52a0\u8f7d\u62a5\u544a\u2026\u2026";
     var MSG_DONE = "\u62a5\u544a\u52a0\u8f7d\u5b8c\u6210";
     var MSG_FAIL = "\u62a5\u544a\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5";
-    var MSG_DOCX = "\u62a5\u544a\u4e3aWord\u683c\u5f0f\uff0c\u65e0\u6cd5\u5728\u7ebf\u9884\u89c8\uff0c\u8bf7\u4e0b\u8f7dWord\u62a5\u544a\u67e5\u770b";
+    var MSG_NO_DOCX = "\u62a5\u544aWord\u6587\u4ef6\u4e0d\u5b58\u5728\uff0c\u65e0\u6cd5\u5728\u7ebf\u9884\u89c8";
 
     function downloadWord() {
         window.location.href = prefix + "/download/" + reportId;
     }
 
+    function renderDocx(arrayBuffer) {
+        var container = document.getElementById("docxContainer");
+        container.classList.remove("hidden");
+        container.innerHTML = "";
+        return docx.renderAsync(arrayBuffer, container, null, {
+            className: "docx",
+            inWrapper: true,
+            ignoreWidth: false,
+            breakPages: true,
+            renderHeaders: true,
+            renderFooters: true
+        });
+    }
+
     $(function () {
         $("#status").text(MSG_LOADING);
+        if (typeof docx === "undefined" || typeof JSZip === "undefined") {
+            $("#status").addClass("error").text("Word\u9884\u89c8\u7ec4\u4ef6\u672a\u52a0\u8f7d");
+            return;
+        }
         $.ajax({
             url: prefix + "/check/" + reportId,
             type: "get",
             dataType: "json",
             success: function (res) {
                 var msg = (res && res.msg) ? res.msg : MSG_FAIL;
-                if (res && res.code == web_status.SUCCESS) {
-                    var info = res.data || {};
-                    if (info.canPreview === false || info.format === "docx") {
-                        $("#status").html(MSG_DOCX
-                            + ' <a class="btn btn-primary btn-xs" href="javascript:void(0)" onclick="downloadWord()"><i class="fa fa-download"></i> \u4e0b\u8f7dWord\u62a5\u544a</a>');
-                        return;
-                    }
-                    $("#status").text(MSG_DONE);
-                    $("#pdfFrame").removeClass("hidden").attr("src", prefix + "/preview/" + reportId);
-                } else {
+                if (!(res && res.code == web_status.SUCCESS)) {
                     $("#status").addClass("error").text(msg);
+                    return;
                 }
+                var info = res.data || {};
+                if (info.canPreview === false) {
+                    $("#status").html(MSG_NO_DOCX
+                        + ' <a class="btn btn-primary btn-xs" href="javascript:void(0)" onclick="downloadWord()"><i class="fa fa-download"></i> \u4e0b\u8f7d</a>');
+                    return;
+                }
+                var previewUrl = prefix + "/preview/" + reportId;
+                fetch(previewUrl, { credentials: "same-origin" })
+                    .then(function (r) {
+                        if (!r.ok) {
+                            return r.text().then(function (t) {
+                                throw new Error(t || ("HTTP " + r.status));
+                            });
+                        }
+                        return r.arrayBuffer();
+                    })
+                    .then(function (buf) {
+                        return renderDocx(buf);
+                    })
+                    .then(function () {
+                        $("#status").html(MSG_DONE
+                            + ' <a class="btn btn-primary btn-xs" href="javascript:void(0)" onclick="downloadWord()"><i class="fa fa-download"></i> \u4e0b\u8f7dWord</a>');
+                    })
+                    .catch(function (err) {
+                        console.error(err);
+                        $("#status").addClass("error").html(MSG_FAIL
+                            + ' <a class="btn btn-primary btn-xs" href="javascript:void(0)" onclick="downloadWord()"><i class="fa fa-download"></i> \u4e0b\u8f7dWord</a>');
+                    });
             },
             error: function (xhr) {
                 var msg = MSG_FAIL;

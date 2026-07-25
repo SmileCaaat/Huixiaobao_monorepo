@@ -848,14 +848,14 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
             return;
         }
         if (name.endsWith(".docx")) {
-            // Word 可下载，不可在线 PDF 预览；由 check 接口区分提示
+            // Word 由前端 docx-preview 在线预览
             return;
         }
         throw new ServiceException("不支持的报告文件格式");
     }
 
     /**
-     * 报告文件能力描述：供预览页判断 PDF 预览或 Word 下载。
+     * 报告文件能力描述：优先 Word 在线预览（docx-preview），否则标明不可预览。
      */
     @Override
     public java.util.Map<String, Object> describeReportFile(FireReportRecord record) {
@@ -865,14 +865,28 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         String lower = name.toLowerCase();
         boolean isPdf = lower.endsWith(".pdf");
         boolean isDocx = lower.endsWith(".docx");
+        Path previewDocx = null;
+        if (isDocx) {
+            previewDocx = file;
+        } else if (isPdf) {
+            Path sibling = file.resolveSibling(name.substring(0, name.length() - 4) + ".docx");
+            try {
+                if (Files.isRegularFile(sibling) && Files.size(sibling) > 0) {
+                    previewDocx = sibling;
+                }
+            } catch (Exception ignored) {
+                // ignore
+            }
+        }
+        boolean canPreview = previewDocx != null;
         java.util.Map<String, Object> info = new java.util.HashMap<String, Object>();
-        info.put("format", isPdf ? "pdf" : (isDocx ? "docx" : "unknown"));
-        info.put("canPreview", Boolean.valueOf(isPdf));
+        info.put("format", canPreview ? "docx" : (isPdf ? "pdf" : (isDocx ? "docx" : "unknown")));
+        info.put("canPreview", Boolean.valueOf(canPreview));
         info.put("canDownload", Boolean.TRUE);
-        info.put("fileName", name);
+        info.put("fileName", canPreview ? previewDocx.getFileName().toString() : name);
         // 仅返回相对业务路径提示，不暴露服务器绝对磁盘路径
         info.put("downloadPath", "/fire/report/download/" + record.getReportId());
-        info.put("previewPath", isPdf ? ("/fire/report/preview/" + record.getReportId()) : null);
+        info.put("previewPath", canPreview ? ("/fire/report/preview/" + record.getReportId()) : null);
         return info;
     }
 

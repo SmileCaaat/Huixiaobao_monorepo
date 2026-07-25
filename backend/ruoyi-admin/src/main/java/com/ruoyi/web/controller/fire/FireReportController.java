@@ -144,7 +144,7 @@ public class FireReportController extends BaseController {
                 if (StringUtils.isEmpty(reason)) {
                     reason = "未找到LibreOffice或PDF转换失败";
                 }
-                msg = "报告已生成，但PDF预览转换失败，可先下载Word报告。原因：" + reason;
+                msg = "报告已生成（Word可在线预览）。PDF转换失败不影响预览与下载，原因：" + reason;
             }
             return AjaxResult.success(msg, record);
         } catch (ServiceException e) {
@@ -200,7 +200,7 @@ public class FireReportController extends BaseController {
     }
 
     /**
-     * 下载报告（PDF；历史 DOCX 仍可下载但不可在线预览）
+     * 下载报告（优先同名 DOCX；否则按记录主文件）
      */
     @RequiresPermissions("fire:report:list")
     @GetMapping("/download/{reportId}")
@@ -210,7 +210,7 @@ public class FireReportController extends BaseController {
     }
 
     /**
-     * 预览报告（inline PDF 流）
+     * 预览报告（优先 DOCX 流，供前端 docx-preview 渲染；无 DOCX 时回退 PDF）
      */
     @RequiresPermissions("fire:report:list")
     @GetMapping("/preview/{reportId}")
@@ -243,7 +243,7 @@ public class FireReportController extends BaseController {
             fireDataPermissionService.assertCanAccessReport(ShiroUtils.getSysUser(), record);
             java.util.Map<String, Object> info = fireReportRecordService.describeReportFile(record);
             boolean canPreview = Boolean.TRUE.equals(info.get("canPreview"));
-            String msg = canPreview ? "ok" : "报告为Word格式，无法在线预览，请下载Word报告查看";
+            String msg = canPreview ? "ok" : "报告文件不存在，无法在线预览";
             return AjaxResult.success(msg, info);
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
@@ -278,12 +278,14 @@ public class FireReportController extends BaseController {
                 return;
             }
 
-            // 下载时优先同名 DOCX（PDF 预览成功后仍保留 Word）；预览仍使用 resolve 到的主文件（PDF）
-            if (attachment) {
-                Path siblingDocx = siblingWithExtension(filePath, ".docx");
-                if (siblingDocx != null && Files.isRegularFile(siblingDocx) && Files.size(siblingDocx) > 0) {
-                    filePath = siblingDocx;
-                }
+            // 预览与下载均优先同名 DOCX（在线预览由前端 docx-preview 渲染 Word）
+            Path siblingDocx = siblingWithExtension(filePath, ".docx");
+            if (siblingDocx != null && Files.isRegularFile(siblingDocx) && Files.size(siblingDocx) > 0) {
+                filePath = siblingDocx;
+            } else if (!attachment && !filePath.getFileName().toString().toLowerCase().endsWith(".docx")
+                    && !filePath.getFileName().toString().toLowerCase().endsWith(".pdf")) {
+                writeHtmlError(response, HttpServletResponse.SC_BAD_REQUEST, "不支持的报告文件格式");
+                return;
             }
 
             String fileName = filePath.getFileName().toString();
@@ -295,11 +297,6 @@ public class FireReportController extends BaseController {
             if (lower.endsWith(".pdf")) {
                 contentType = "application/pdf";
             } else if (lower.endsWith(".docx")) {
-                if (!attachment) {
-                    writeHtmlError(response, HttpServletResponse.SC_BAD_REQUEST,
-                            "报告为Word格式，无法在线预览，请使用下载功能获取Word报告");
-                    return;
-                }
                 contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
             } else {
                 writeHtmlError(response, HttpServletResponse.SC_BAD_REQUEST, "不支持的报告文件格式");
