@@ -84,4 +84,9 @@ public interface IFireReportRecordService {
      * 校验报告是否可预览/下载，不可用时抛出业务异常
      */
     public void assertReportFileReady(FireReportRecord record);
+
+    /**
+     * 描述报告文件能力（pdf/docx、可否预览/下载），不返回服务器本地磁盘路径
+     */
+    public java.util.Map<String, Object> describeReportFile(FireReportRecord record);
 }

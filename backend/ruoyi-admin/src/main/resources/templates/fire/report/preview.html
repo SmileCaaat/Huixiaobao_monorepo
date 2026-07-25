@@ -1,7 +1,8 @@
 ﻿<!DOCTYPE html>
 <html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:include="include :: header('report preview')" />
+    <th:block th:include="include :: header('报告预览')" />
+    <meta charset="UTF-8" />
     <style>
         html, body { height: 100%; margin: 0; background: #f5f5f5; }
         .preview-wrap { height: 100%; display: flex; flex-direction: column; }
@@ -13,6 +14,7 @@
             font-size: 14px;
         }
         .preview-status.error { color: #ed5565; }
+        .preview-status .btn { margin-left: 12px; }
         .preview-frame { flex: 1; border: 0; width: 100%; background: #fff; }
         .preview-frame.hidden { display: none; }
     </style>
@@ -29,22 +31,41 @@
     var MSG_LOADING = "\u6b63\u5728\u52a0\u8f7d\u62a5\u544a\u2026\u2026";
     var MSG_DONE = "\u62a5\u544a\u52a0\u8f7d\u5b8c\u6210";
     var MSG_FAIL = "\u62a5\u544a\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5";
+    var MSG_DOCX = "\u62a5\u544a\u4e3aWord\u683c\u5f0f\uff0c\u65e0\u6cd5\u5728\u7ebf\u9884\u89c8\uff0c\u8bf7\u4e0b\u8f7dWord\u62a5\u544a\u67e5\u770b";
+
+    function downloadWord() {
+        window.location.href = prefix + "/download/" + reportId;
+    }
 
     $(function () {
         $("#status").text(MSG_LOADING);
         $.ajax({
             url: prefix + "/check/" + reportId,
             type: "get",
+            dataType: "json",
             success: function (res) {
-                if (res.code == web_status.SUCCESS) {
+                var msg = (res && res.msg) ? res.msg : MSG_FAIL;
+                if (res && res.code == web_status.SUCCESS) {
+                    var info = res.data || {};
+                    if (info.canPreview === false || info.format === "docx") {
+                        $("#status").html(MSG_DOCX
+                            + ' <a class="btn btn-primary btn-xs" href="javascript:void(0)" onclick="downloadWord()"><i class="fa fa-download"></i> \u4e0b\u8f7dWord\u62a5\u544a</a>');
+                        return;
+                    }
                     $("#status").text(MSG_DONE);
                     $("#pdfFrame").removeClass("hidden").attr("src", prefix + "/preview/" + reportId);
                 } else {
-                    $("#status").addClass("error").text(res.msg || MSG_FAIL);
+                    $("#status").addClass("error").text(msg);
                 }
             },
-            error: function () {
-                $("#status").addClass("error").text(MSG_FAIL);
+            error: function (xhr) {
+                var msg = MSG_FAIL;
+                try {
+                    if (xhr.responseJSON && xhr.responseJSON.msg) {
+                        msg = xhr.responseJSON.msg;
+                    }
+                } catch (e) {}
+                $("#status").addClass("error").text(msg);
             }
         });
     });

@@ -10,9 +10,11 @@ ruoyi:
   demoEnabled: false
   # 文件路径（相对路径，本地和线上通用）
   profile: ./uploadPath
-  # 维保报告 PDF 转换：LibreOffice soffice 路径（留空则自动探测常见安装位置）
+  # 维保报告 PDF 转换：LibreOffice soffice 路径
+  # 可用环境变量 LIBREOFFICE_PATH 覆盖；可填 soffice.exe 全路径或 LibreOffice 安装目录
+  # 留空则自动探测 PATH 与常见安装位置。勿在公共配置中写死某台开发机路径。
   report:
-    libreOfficePath:
+    libreOfficePath: ${LIBREOFFICE_PATH:}
   # 获取ip地址开关
   addressEnabled: false
 

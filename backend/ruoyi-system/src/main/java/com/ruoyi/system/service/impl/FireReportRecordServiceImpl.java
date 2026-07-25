@@ -658,59 +658,100 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
             data.put("maintenanceRecordTable", null);
         }
 
-        // 3. 生成临时 DOCX → 转换为 PDF → 落盘到统一报告目录
+        // 3. 先生成并落盘 DOCX；再尝试转 PDF（PDF 失败不撤销 DOCX）
         String templatePath = getTemplatePath();
         String companyPart = sanitizeFileName(company != null ? company.getCompanyName() : task.getCompanyName());
         String taskPart = sanitizeFileName(task.getTaskName());
         String stamp = DateUtils.dateTimeNow();
-        String pdfFileName = companyPart + "_" + taskPart + "_" + stamp + ".pdf";
-        String unique = java.util.UUID.randomUUID().toString().replace("-", "");
+        String baseName = companyPart + "_" + taskPart + "_" + stamp;
+        String docxFileName = baseName + ".docx";
+        String pdfFileName = baseName + ".pdf";
 
         Path outputDir = getReportOutputDir();
+        Path docxPath = outputDir.resolve(docxFileName);
         Path pdfPath = outputDir.resolve(pdfFileName);
-        Path tempDir = null;
-        Path tempDocx = null;
 
         try {
             Files.createDirectories(outputDir);
-            tempDir = Files.createTempDirectory("fire-report-" + unique + "-");
-            tempDocx = tempDir.resolve("report-" + unique + ".docx");
-
-            log.info("开始生成报告 DOCX, 模板: {}, 临时: {}", templatePath, tempDocx);
-            maintenanceReportService.generateReport(data, templatePath, tempDocx.toString());
-
-            log.info("开始转换为 PDF: {}", pdfPath);
-            docxToPdfConverter.convert(tempDocx, pdfPath);
-            DocxToPdfConverter.assertValidPdf(pdfPath);
-            log.info("报告 PDF 生成成功: {}", pdfPath);
+            log.info("开始生成报告 DOCX, 模板: {}, 输出: {}", templatePath, docxPath);
+            maintenanceReportService.generateReport(data, templatePath, docxPath.toString());
+            if (!Files.isRegularFile(docxPath) || Files.size(docxPath) <= 0) {
+                deleteQuietly(docxPath);
+                throw new ServiceException("报告Word文件生成失败或为空");
+            }
+            log.info("报告 DOCX 生成成功: {}, size={}", docxPath, Files.size(docxPath));
         } catch (ServiceException e) {
+            deleteQuietly(docxPath);
             deleteQuietly(pdfPath);
             throw e;
         } catch (Exception e) {
+            deleteQuietly(docxPath);
             deleteQuietly(pdfPath);
-            log.error("生成报告失败", e);
+            log.error("生成报告 DOCX 失败", e);
             throw new ServiceException("生成报告失败: " + e.getMessage());
-        } finally {
-            deleteQuietly(tempDocx);
-            deleteDirectoryQuietly(tempDir);
         }
 
-        // 4. 获取文件大小并保存记录（仅 PDF 成功后落库）
+        boolean pdfOk = false;
+        String pdfFailReason = null;
+        try {
+            log.info("开始转换为 PDF: {}", pdfPath);
+            docxToPdfConverter.convert(docxPath, pdfPath);
+            DocxToPdfConverter.assertValidPdf(pdfPath);
+            pdfOk = true;
+            log.info("报告 PDF 生成成功: {}", pdfPath);
+        } catch (ServiceException e) {
+            pdfFailReason = e.getMessage();
+            deleteQuietly(pdfPath);
+            log.warn("报告 PDF 转换失败，保留 DOCX。原因: {}", pdfFailReason);
+        } catch (Exception e) {
+            pdfFailReason = "PDF转换异常，请查看服务器日志";
+            deleteQuietly(pdfPath);
+            log.error("报告 PDF 转换异常，保留 DOCX", e);
+        }
+
+        String storedFileName;
         long fileSize;
         try {
-            fileSize = Files.size(pdfPath);
+            if (pdfOk) {
+                storedFileName = pdfFileName;
+                fileSize = Files.size(pdfPath);
+                // PDF 成功时保留同名 DOCX，供“下载 Word”使用；filePath 存 PDF 供预览
+            } else {
+                storedFileName = docxFileName;
+                fileSize = Files.size(docxPath);
+            }
         } catch (Exception e) {
             deleteQuietly(pdfPath);
-            throw new ServiceException("读取 PDF 文件大小失败");
+            // DOCX 已成功时不要删掉，仅提示
+            if (!Files.isRegularFile(docxPath)) {
+                throw new ServiceException("读取报告文件大小失败");
+            }
+            storedFileName = docxFileName;
+            try {
+                fileSize = Files.size(docxPath);
+            } catch (Exception ex) {
+                throw new ServiceException("读取报告文件大小失败");
+            }
+            pdfOk = false;
+            if (pdfFailReason == null) {
+                pdfFailReason = "读取PDF失败";
+            }
         }
 
         FireReportRecord record = new FireReportRecord();
         record.setTaskId(taskId);
         record.setTaskName(task.getTaskName());
-        record.setReportName(pdfFileName);
-        record.setFilePath(pdfFileName); // 只存文件名，下载/预览时拼接安全目录
+        record.setReportName(storedFileName);
+        record.setFilePath(storedFileName); // 只存文件名，下载/预览时拼接安全目录
         record.setFileSize(fileSize);
         record.setCreateTime(new Date());
+        if (!pdfOk && StringUtils.isNotEmpty(pdfFailReason)) {
+            String remark = "PDF预览转换失败：" + pdfFailReason;
+            if (remark.length() > 500) {
+                remark = remark.substring(0, 500);
+            }
+            record.setRemark(remark);
+        }
 
         try {
             record.setCreateBy(ShiroUtils.getLoginName());
@@ -721,7 +762,9 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         try {
             insertFireReportRecord(record);
         } catch (Exception e) {
+            // 落库失败才清理已生成文件
             deleteQuietly(pdfPath);
+            deleteQuietly(docxPath);
             throw new ServiceException("保存报告记录失败: " + e.getMessage());
         }
 
@@ -784,6 +827,15 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         if (file == null || !Files.isRegularFile(file)) {
             throw new ServiceException("报告文件不存在或已被删除");
         }
+        try {
+            if (Files.size(file) <= 0) {
+                throw new ServiceException("报告文件为空");
+            }
+        } catch (ServiceException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ServiceException("报告文件读取失败");
+        }
         String name = file.getFileName().toString().toLowerCase();
         if (name.endsWith(".pdf")) {
             try {
@@ -796,9 +848,32 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
             return;
         }
         if (name.endsWith(".docx")) {
-            throw new ServiceException("历史报告为 Word 格式，无法在线预览，请重新生成 PDF 报告");
+            // Word 可下载，不可在线 PDF 预览；由 check 接口区分提示
+            return;
         }
         throw new ServiceException("不支持的报告文件格式");
+    }
+
+    /**
+     * 报告文件能力描述：供预览页判断 PDF 预览或 Word 下载。
+     */
+    @Override
+    public java.util.Map<String, Object> describeReportFile(FireReportRecord record) {
+        assertReportFileReady(record);
+        Path file = resolveReportFile(record);
+        String name = file.getFileName().toString();
+        String lower = name.toLowerCase();
+        boolean isPdf = lower.endsWith(".pdf");
+        boolean isDocx = lower.endsWith(".docx");
+        java.util.Map<String, Object> info = new java.util.HashMap<String, Object>();
+        info.put("format", isPdf ? "pdf" : (isDocx ? "docx" : "unknown"));
+        info.put("canPreview", Boolean.valueOf(isPdf));
+        info.put("canDownload", Boolean.TRUE);
+        info.put("fileName", name);
+        // 仅返回相对业务路径提示，不暴露服务器绝对磁盘路径
+        info.put("downloadPath", "/fire/report/download/" + record.getReportId());
+        info.put("previewPath", isPdf ? ("/fire/report/preview/" + record.getReportId()) : null);
+        return info;
     }
 
     /**

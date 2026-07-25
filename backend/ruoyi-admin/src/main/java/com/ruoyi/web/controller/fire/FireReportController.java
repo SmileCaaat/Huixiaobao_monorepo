@@ -30,10 +30,12 @@ import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.ShiroUtils;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.service.IFireCompanyService;
+import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
 import com.ruoyi.quartz.domain.SysJob;
 import com.ruoyi.quartz.service.ISysJobService;
@@ -66,6 +68,9 @@ public class FireReportController extends BaseController {
     @Autowired
     private IFireCompanyService fireCompanyService;
 
+    @Autowired
+    private IFireDataPermissionService fireDataPermissionService;
+
     @RequiresPermissions("fire:report:view")
     @GetMapping()
     public String report() {
@@ -79,6 +84,7 @@ public class FireReportController extends BaseController {
     @PostMapping("/list")
     @ResponseBody
     public TableDataInfo list(FireReportRecord fireReportRecord) {
+        fireDataPermissionService.applyReportListScope(fireReportRecord, ShiroUtils.getSysUser());
         startPage();
         List<FireReportRecord> list = fireReportRecordService.selectFireReportRecordList(fireReportRecord);
         return getDataTable(list);
@@ -92,6 +98,7 @@ public class FireReportController extends BaseController {
     @PostMapping("/export")
     @ResponseBody
     public AjaxResult export(FireReportRecord fireReportRecord) {
+        fireDataPermissionService.applyReportListScope(fireReportRecord, ShiroUtils.getSysUser());
         List<FireReportRecord> list = fireReportRecordService.selectFireReportRecordList(fireReportRecord);
         ExcelUtil<FireReportRecord> util = new ExcelUtil<FireReportRecord>(FireReportRecord.class);
         return util.exportExcel(list, "report");
@@ -123,13 +130,28 @@ public class FireReportController extends BaseController {
             if (taskId == null) {
                 return AjaxResult.error("请选择维保任务");
             }
+            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), companyId);
+            FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
             FireReportRecord record = fireReportRecordService.generateReportForTask(companyId, taskId);
-            return AjaxResult.success("报告生成成功", record);
+            String msg = "报告生成成功";
+            String filePath = record.getFilePath();
+            if (filePath != null && filePath.toLowerCase().endsWith(".docx")) {
+                String reason = record.getRemark();
+                if (StringUtils.isNotEmpty(reason) && reason.startsWith("PDF预览转换失败：")) {
+                    reason = reason.substring("PDF预览转换失败：".length());
+                }
+                if (StringUtils.isEmpty(reason)) {
+                    reason = "未找到LibreOffice或PDF转换失败";
+                }
+                msg = "报告已生成，但PDF预览转换失败，可先下载Word报告。原因：" + reason;
+            }
+            return AjaxResult.success(msg, record);
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         } catch (Exception e) {
             log.error("报告生成失败", e);
-            return AjaxResult.error("报告生成失败: " + e.getMessage());
+            return AjaxResult.error("报告生成失败，请稍后重试");
         }
     }
 
@@ -140,16 +162,12 @@ public class FireReportController extends BaseController {
     @GetMapping("/companies")
     @ResponseBody
     public AjaxResult companies() {
-        if (ShiroUtils.getSysUser() != null && ShiroUtils.getSysUser().isAdmin()) {
+        if (fireDataPermissionService.hasGlobalBizDataScope(ShiroUtils.getSysUser())) {
             return AjaxResult.success(fireCompanyService.selectCompanyAll());
         }
         Long userId = ShiroUtils.getUserId();
         List<FireCompany> bound = fireCompanyService.selectCompanyListByUserId(userId);
-        if (bound != null && !bound.isEmpty()) {
-            return AjaxResult.success(bound);
-        }
-        // 未绑定客户的后台账号：与维保任务页 company/all 一致
-        return AjaxResult.success(fireCompanyService.selectCompanyAll());
+        return AjaxResult.success(bound != null ? bound : java.util.Collections.emptyList());
     }
 
     /**
@@ -171,22 +189,14 @@ public class FireReportController extends BaseController {
         }
         FireMaintenanceTask query = new FireMaintenanceTask();
         query.setCompanyId(companyId);
+        fireDataPermissionService.applyTaskListScope(query, ShiroUtils.getSysUser());
         List<FireMaintenanceTask> tasks = fireMaintenanceTaskService.selectFireMaintenanceTaskList(query);
         return AjaxResult.success(tasks != null ? tasks : java.util.Collections.emptyList());
     }
 
     /** 与生成接口一致的客户访问判断 */
     private boolean canAccessCompany(Long companyId) {
-        if (ShiroUtils.getSysUser() != null && ShiroUtils.getSysUser().isAdmin()) {
-            return true;
-        }
-        Long userId = ShiroUtils.getUserId();
-        List<FireCompany> bound = fireCompanyService.selectCompanyListByUserId(userId);
-        if (bound != null && !bound.isEmpty()) {
-            return bound.stream().anyMatch(item -> companyId.equals(item.getCompanyId()));
-        }
-        List<FireCompany> all = fireCompanyService.selectCompanyAll();
-        return all != null && all.stream().anyMatch(item -> companyId.equals(item.getCompanyId()));
+        return fireDataPermissionService.canAccessCompany(ShiroUtils.getSysUser(), companyId);
     }
 
     /**
@@ -215,6 +225,8 @@ public class FireReportController extends BaseController {
     @RequiresPermissions("fire:report:list")
     @GetMapping("/view/{reportId}")
     public String viewPage(@PathVariable("reportId") Long reportId, ModelMap mmap) {
+        FireReportRecord record = fireReportRecordService.selectFireReportRecordById(reportId);
+        fireDataPermissionService.assertCanAccessReport(ShiroUtils.getSysUser(), record);
         mmap.put("reportId", reportId);
         return prefix + "/preview";
     }
@@ -228,8 +240,11 @@ public class FireReportController extends BaseController {
     public AjaxResult check(@PathVariable("reportId") Long reportId) {
         try {
             FireReportRecord record = fireReportRecordService.selectFireReportRecordById(reportId);
-            fireReportRecordService.assertReportFileReady(record);
-            return AjaxResult.success("ok");
+            fireDataPermissionService.assertCanAccessReport(ShiroUtils.getSysUser(), record);
+            java.util.Map<String, Object> info = fireReportRecordService.describeReportFile(record);
+            boolean canPreview = Boolean.TRUE.equals(info.get("canPreview"));
+            String msg = canPreview ? "ok" : "报告为Word格式，无法在线预览，请下载Word报告查看";
+            return AjaxResult.success(msg, info);
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         }
@@ -240,6 +255,12 @@ public class FireReportController extends BaseController {
             FireReportRecord record = fireReportRecordService.selectFireReportRecordById(reportId);
             if (record == null) {
                 writeHtmlError(response, HttpServletResponse.SC_NOT_FOUND, "报告不存在");
+                return;
+            }
+            try {
+                fireDataPermissionService.assertCanAccessReport(ShiroUtils.getSysUser(), record);
+            } catch (ServiceException e) {
+                writeHtmlError(response, HttpServletResponse.SC_FORBIDDEN, e.getMessage());
                 return;
             }
             if (!attachment) {
@@ -257,7 +278,18 @@ public class FireReportController extends BaseController {
                 return;
             }
 
-            String fileName = record.getReportName() != null ? record.getReportName() : filePath.getFileName().toString();
+            // 下载时优先同名 DOCX（PDF 预览成功后仍保留 Word）；预览仍使用 resolve 到的主文件（PDF）
+            if (attachment) {
+                Path siblingDocx = siblingWithExtension(filePath, ".docx");
+                if (siblingDocx != null && Files.isRegularFile(siblingDocx) && Files.size(siblingDocx) > 0) {
+                    filePath = siblingDocx;
+                }
+            }
+
+            String fileName = filePath.getFileName().toString();
+            if (!attachment && record.getReportName() != null) {
+                fileName = record.getReportName();
+            }
             String lower = filePath.getFileName().toString().toLowerCase();
             String contentType;
             if (lower.endsWith(".pdf")) {
@@ -265,7 +297,7 @@ public class FireReportController extends BaseController {
             } else if (lower.endsWith(".docx")) {
                 if (!attachment) {
                     writeHtmlError(response, HttpServletResponse.SC_BAD_REQUEST,
-                            "历史报告为 Word 格式，无法在线预览，请重新生成 PDF 报告");
+                            "报告为Word格式，无法在线预览，请使用下载功能获取Word报告");
                     return;
                 }
                 contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -298,6 +330,16 @@ public class FireReportController extends BaseController {
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
         }
+    }
+
+    private Path siblingWithExtension(Path file, String extension) {
+        if (file == null || file.getFileName() == null || file.getParent() == null) {
+            return null;
+        }
+        String name = file.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        return file.getParent().resolve(base + extension);
     }
 
     private void writeHtmlError(HttpServletResponse response, int status, String message) throws Exception {
