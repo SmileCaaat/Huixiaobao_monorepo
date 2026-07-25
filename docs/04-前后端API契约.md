@@ -110,10 +110,10 @@ Content-Type: application/json
 | 报修操作 | `/api/fire/repair/add/edit/delete/dispatch/complete` | `repairId,companyId` | 已对应 |
 | 报修撤回（管理端） | `POST /fire/repair/recall` | `repairId` | 已对应；权限 `fire:repair:accept` |
 | 报修统计 | `GET /api/fire/repair/statistics` | `pending,processing,completed` | 已对应 |
-| 报告（小程序） | `/api/fire/report/list/detail/download/preview` | `reportId`；文件为 PDF | 已对应 |
-| 报告生成（管理端） | `POST /fire/report/generate` | `companyId,taskId` | 已对应；校验任务归属客户 |
+| 报告（小程序） | `/api/fire/report/list/detail/download/preview` | `reportId`；预览需 PDF，下载可为 DOCX/PDF | 已对应 |
+| 报告生成（管理端） | `POST /fire/report/generate` | `companyId,taskId`；DOCX 必落盘，PDF 失败仍成功并提示 | 已对应；校验任务归属客户 |
 | 报告联动（管理端） | `GET /fire/report/companies`、`/fire/report/tasks` | `companyId` | 已对应 |
-| 报告预览页（管理端） | `GET /fire/report/view/{reportId}`、`/check/{reportId}`、`/preview/{reportId}` | PDF inline | 已对应 |
+| 报告预览页（管理端） | `GET /fire/report/view/{reportId}`、`/check/{reportId}`、`/preview/{reportId}`、`/download/{reportId}` | PDF 可预览；DOCX 降级下载；check 返回 format/canPreview | 已对应 |
 | 上传 | `POST /api/common/upload` | multipart `file` | 已对应 |
 
 ## 3. 必须先修的契约问题
