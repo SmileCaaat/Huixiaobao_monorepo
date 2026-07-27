@@ -1,6 +1,7 @@
 package com.ruoyi.web.controller.fire;
 
 import java.util.List;
+import java.util.Map;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -13,16 +14,19 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.enums.RepairStatus;
 import com.ruoyi.common.enums.UrgencyLevel;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.ShiroUtils;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.fire.domain.FireFaultRepair;
 import com.ruoyi.fire.service.IFireCompanyService;
 import com.ruoyi.fire.service.IFireEquipmentService;
+import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireFaultRepairService;
 import com.ruoyi.fire.service.IFireSystemTypeService;
 
@@ -38,6 +42,9 @@ public class FireFaultRepairController extends BaseController {
     private IFireFaultRepairService fireFaultRepairService;
 
     @Autowired
+    private IFireDataPermissionService fireDataPermissionService;
+
+    @Autowired
     private IFireCompanyService companyService;
 
     @Autowired
@@ -49,8 +56,13 @@ public class FireFaultRepairController extends BaseController {
     @RequiresPermissions("fire:repair:view")
     @GetMapping()
     public String repair(ModelMap mmap) {
+        SysUser user = ShiroUtils.getSysUser();
+        boolean workbenchMode = fireDataPermissionService.isRepairEmployeeWorkbench(user);
         mmap.put("urgencyLevels", UrgencyLevel.values());
         mmap.put("repairStatuses", RepairStatus.values());
+        mmap.put("currentUserId", user != null ? user.getUserId() : null);
+        mmap.put("workbenchMode", workbenchMode);
+        mmap.put("defaultWorkbenchCategory", workbenchMode ? "assignedPending" : "");
         return prefix + "/repair";
     }
 
@@ -58,6 +70,9 @@ public class FireFaultRepairController extends BaseController {
     @PostMapping("/list")
     @ResponseBody
     public TableDataInfo list(FireFaultRepair fireFaultRepair) {
+        SysUser user = ShiroUtils.getSysUser();
+        String category = extractWorkbenchCategory(fireFaultRepair);
+        fireDataPermissionService.prepareRepairListQuery(fireFaultRepair, user, category);
         startPage();
         List<FireFaultRepair> list = fireFaultRepairService.selectFireFaultRepairList(fireFaultRepair);
         return getDataTable(list);
@@ -68,6 +83,9 @@ public class FireFaultRepairController extends BaseController {
     @PostMapping("/export")
     @ResponseBody
     public AjaxResult export(FireFaultRepair fireFaultRepair) {
+        SysUser user = ShiroUtils.getSysUser();
+        String category = extractWorkbenchCategory(fireFaultRepair);
+        fireDataPermissionService.prepareRepairListQuery(fireFaultRepair, user, category);
         List<FireFaultRepair> list = fireFaultRepairService.selectFireFaultRepairList(fireFaultRepair);
         ExcelUtil<FireFaultRepair> util = new ExcelUtil<>(FireFaultRepair.class);
         return util.exportExcel(list, "故障报修");
@@ -113,6 +131,8 @@ public class FireFaultRepairController extends BaseController {
     @ResponseBody
     public AjaxResult editSave(FireFaultRepair fireFaultRepair) {
         try {
+            fireDataPermissionService.assertCanAccessRepair(ShiroUtils.getSysUser(),
+                    fireFaultRepairService.selectFireFaultRepairById(fireFaultRepair.getRepairId()));
             fireFaultRepair.setUpdateBy(ShiroUtils.getLoginName());
             return toAjax(fireFaultRepairService.updateFireFaultRepair(fireFaultRepair));
         } catch (ServiceException e) {
@@ -169,6 +189,8 @@ public class FireFaultRepairController extends BaseController {
             if (repairUserId == null) {
                 return error("请选择报修处理人");
             }
+            fireDataPermissionService.assertCanAccessRepair(ShiroUtils.getSysUser(),
+                    fireFaultRepairService.selectFireFaultRepairById(repairId));
             return toAjax(fireFaultRepairService.dispatchRepair(
                     repairId, repairUserId, ShiroUtils.getLoginName()));
         } catch (ServiceException e) {
@@ -188,6 +210,8 @@ public class FireFaultRepairController extends BaseController {
             if (repairId == null) {
                 return error("repairId 不能为空");
             }
+            fireDataPermissionService.assertCanAccessRepair(ShiroUtils.getSysUser(),
+                    fireFaultRepairService.selectFireFaultRepairById(repairId));
             fireFaultRepairService.recallDispatch(repairId, ShiroUtils.getLoginName());
             return AjaxResult.success("撤回成功");
         } catch (ServiceException e) {
@@ -206,6 +230,8 @@ public class FireFaultRepairController extends BaseController {
     @PostMapping("/accept")
     @ResponseBody
     public AjaxResult acceptSave(Long repairId, String repairPerson, String repairPhone) {
+        fireDataPermissionService.assertCanAccessRepair(ShiroUtils.getSysUser(),
+                fireFaultRepairService.selectFireFaultRepairById(repairId));
         return toAjax(fireFaultRepairService.acceptRepair(repairId, repairPerson, repairPhone));
     }
 
@@ -214,12 +240,22 @@ public class FireFaultRepairController extends BaseController {
     @PostMapping("/start/{repairId}")
     @ResponseBody
     public AjaxResult start(@PathVariable("repairId") Long repairId) {
-        return toAjax(fireFaultRepairService.startRepair(repairId));
+        try {
+            return toAjax(fireFaultRepairService.startRepair(repairId));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
+    @RequiresPermissions("fire:repair:complete")
     @GetMapping("/complete/{repairId}")
     public String complete(@PathVariable("repairId") Long repairId, ModelMap mmap) {
-        mmap.put("repair", getRepair(repairId));
+        FireFaultRepair repair = fireFaultRepairService.selectFireFaultRepairById(repairId);
+        fireDataPermissionService.assertCanProcessRepair(ShiroUtils.getSysUser(), repair);
+        if (repair.getStartTime() == null) {
+            throw new ServiceException("请先开始处理后再填写处理结果");
+        }
+        mmap.put("repair", repair);
         return prefix + "/complete";
     }
 
@@ -228,11 +264,33 @@ public class FireFaultRepairController extends BaseController {
     @PostMapping("/complete")
     @ResponseBody
     public AjaxResult completeSave(FireFaultRepair fireFaultRepair) {
-        fireFaultRepair.setUpdateBy(ShiroUtils.getLoginName());
-        return toAjax(fireFaultRepairService.completeRepair(fireFaultRepair));
+        try {
+            fireFaultRepair.setUpdateBy(ShiroUtils.getLoginName());
+            return toAjax(fireFaultRepairService.completeRepair(fireFaultRepair));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
     private FireFaultRepair getRepair(Long repairId) {
-        return fireFaultRepairService.selectFireFaultRepairById(repairId);
+        FireFaultRepair repair = fireFaultRepairService.selectFireFaultRepairById(repairId);
+        fireDataPermissionService.assertCanAccessRepair(ShiroUtils.getSysUser(), repair);
+        return repair;
+    }
+
+    private String extractWorkbenchCategory(FireFaultRepair query) {
+        if (query == null) {
+            return null;
+        }
+        Map<String, Object> params = query.getParams();
+        if (params == null || params.isEmpty()) {
+            return null;
+        }
+        Object raw = params.get("workbenchCategory");
+        if (raw == null) {
+            return null;
+        }
+        String value = String.valueOf(raw).trim();
+        return StringUtils.isEmpty(value) ? null : value;
     }
 }

@@ -25,6 +25,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="repairStatus"       column="repair_status"       />
         <result property="repairUserId"       column="repair_user_id"      />
         <result property="repairPerson"       column="repair_person"       />
+        <result property="repairUserName"     column="repair_user_name"    />
+        <result property="repairUserLogin"    column="repair_user_login"   />
         <result property="repairPhone"        column="repair_phone"        />
         <result property="dispatchBy"         column="dispatch_by"         />
         <result property="dispatchTime"       column="dispatch_time"       />
@@ -43,72 +45,104 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectFireFaultRepairVo">
-        SELECT repair_id, repair_no, company_id, company_name, system_type_id, system_type_name,
-               equipment_id, equipment_name, found_time, is_reported, urgency_level,
-               fault_description, fault_images, reporter_name, reporter_phone, reporter_id,
-               customer_address, repair_status, repair_user_id, repair_person, repair_phone,
-               dispatch_by, dispatch_time, accept_time, start_time, complete_time,
-               repair_description, repair_images, status, del_flag,
-               create_by, create_time, update_by, update_time, remark
-        FROM fire_fault_repair
+        SELECT f.repair_id, f.repair_no, f.company_id, f.company_name, f.system_type_id, f.system_type_name,
+               f.equipment_id, f.equipment_name, f.found_time, f.is_reported, f.urgency_level,
+               f.fault_description, f.fault_images, f.reporter_name, f.reporter_phone, f.reporter_id,
+               f.customer_address, f.repair_status, f.repair_user_id, f.repair_person, f.repair_phone,
+               f.dispatch_by, f.dispatch_time, f.accept_time, f.start_time, f.complete_time,
+               f.repair_description, f.repair_images, f.status, f.del_flag,
+               f.create_by, f.create_time, f.update_by, f.update_time, f.remark,
+               ru.user_name AS repair_user_name,
+               ru.login_name AS repair_user_login
+        FROM fire_fault_repair f
+        LEFT JOIN sys_user ru ON ru.user_id = f.repair_user_id AND ru.del_flag = '0'
     </sql>
 
     <select id="selectFireFaultRepairList" parameterType="com.ruoyi.fire.domain.FireFaultRepair" resultMap="FireFaultRepairResult">
         <include refid="selectFireFaultRepairVo"/>
         <where>
-            del_flag = '0'
+            f.del_flag = '0'
             <if test="repairNo != null and repairNo != ''">
-                AND repair_no LIKE CONCAT('%', #{repairNo}, '%')
+                AND f.repair_no LIKE CONCAT('%', #{repairNo}, '%')
             </if>
             <if test="companyId != null">
-                AND company_id = #{companyId}
+                AND f.company_id = #{companyId}
             </if>
             <if test="companyName != null and companyName != ''">
-                AND company_name LIKE CONCAT('%', #{companyName}, '%')
+                AND f.company_name LIKE CONCAT('%', #{companyName}, '%')
             </if>
             <if test="systemTypeId != null">
-                AND system_type_id = #{systemTypeId}
+                AND f.system_type_id = #{systemTypeId}
             </if>
             <if test="equipmentId != null">
-                AND equipment_id = #{equipmentId}
+                AND f.equipment_id = #{equipmentId}
             </if>
             <if test="equipmentName != null and equipmentName != ''">
-                AND equipment_name LIKE CONCAT('%', #{equipmentName}, '%')
+                AND f.equipment_name LIKE CONCAT('%', #{equipmentName}, '%')
             </if>
             <if test="urgencyLevel != null and urgencyLevel != ''">
-                AND urgency_level = #{urgencyLevel}
+                AND f.urgency_level = #{urgencyLevel}
             </if>
             <if test="repairStatus != null and repairStatus != ''">
-                AND repair_status = #{repairStatus}
+                AND f.repair_status = #{repairStatus}
             </if>
             <if test="reporterName != null and reporterName != ''">
-                AND reporter_name LIKE CONCAT('%', #{reporterName}, '%')
+                AND f.reporter_name LIKE CONCAT('%', #{reporterName}, '%')
             </if>
             <if test="reporterId != null">
-                AND reporter_id = #{reporterId}
+                AND f.reporter_id = #{reporterId}
             </if>
             <if test="repairUserId != null">
-                AND repair_user_id = #{repairUserId}
+                AND f.repair_user_id = #{repairUserId}
             </if>
             <if test="repairPerson != null and repairPerson != ''">
-                AND repair_person LIKE CONCAT('%', #{repairPerson}, '%')
+                AND f.repair_person LIKE CONCAT('%', #{repairPerson}, '%')
             </if>
-            <if test="params.relatedUserId != null and params.relatedUserId != ''">
-                AND (reporter_id = #{params.relatedUserId} OR repair_user_id = #{params.relatedUserId})
+            <if test="params.scopeMode != null and params.scopeMode == 'leadOrRelated'">
+                AND (
+                    f.reporter_id = #{params.relatedUserId}
+                    OR f.repair_user_id = #{params.relatedUserId}
+                    <if test="params.leadCompanyIds != null and params.leadCompanyIds.size() &gt; 0">
+                        OR f.company_id IN
+                        <foreach collection="params.leadCompanyIds" item="cid" open="(" separator="," close=")">
+                            #{cid}
+                        </foreach>
+                    </if>
+                )
+            </if>
+            <if test="(params.scopeMode == null or params.scopeMode == '') and params.relatedUserId != null and params.relatedUserId != ''">
+                AND (f.reporter_id = #{params.relatedUserId} OR f.repair_user_id = #{params.relatedUserId})
+            </if>
+            <if test="params.workbenchCategory != null and params.workbenchCategory == 'assignedPending'">
+                AND f.repair_user_id = #{params.scopeUserId}
+                AND f.repair_status = '1'
+                AND f.start_time IS NULL
+            </if>
+            <if test="params.workbenchCategory != null and params.workbenchCategory == 'processing'">
+                AND f.repair_user_id = #{params.scopeUserId}
+                AND f.repair_status = '1'
+                AND f.start_time IS NOT NULL
+            </if>
+            <if test="params.workbenchCategory != null and params.workbenchCategory == 'completed'">
+                AND f.repair_user_id = #{params.scopeUserId}
+                AND f.repair_status = '2'
+            </if>
+            <if test="params.workbenchCategory != null and params.workbenchCategory == 'reported'">
+                AND f.reporter_id = #{params.scopeUserId}
             </if>
             <if test="params.beginFoundTime != null and params.beginFoundTime != ''">
-                AND DATE_FORMAT(found_time,'%Y-%m-%d') &gt;= DATE_FORMAT(#{params.beginFoundTime},'%Y-%m-%d')
+                AND DATE_FORMAT(f.found_time,'%Y-%m-%d') &gt;= DATE_FORMAT(#{params.beginFoundTime},'%Y-%m-%d')
             </if>
             <if test="params.endFoundTime != null and params.endFoundTime != ''">
-                AND DATE_FORMAT(found_time,'%Y-%m-%d') &lt;= DATE_FORMAT(#{params.endFoundTime},'%Y-%m-%d')
+                AND DATE_FORMAT(f.found_time,'%Y-%m-%d') &lt;= DATE_FORMAT(#{params.endFoundTime},'%Y-%m-%d')
             </if>
         </where>
-        ORDER BY found_time DESC, create_time DESC
+        ORDER BY f.found_time DESC, f.create_time DESC
     </select>
 
     <select id="selectFireFaultRepairById" parameterType="Long" resultMap="FireFaultRepairResult">
         <include refid="selectFireFaultRepairVo"/>
-        WHERE repair_id = #{repairId} AND del_flag = '0'
+        WHERE f.repair_id = #{repairId} AND f.del_flag = '0'
     </select>
 
     <select id="generateRepairNo" resultType="String">
@@ -255,6 +289,36 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
           AND start_time IS NULL
           AND (repair_description IS NULL OR repair_description = '')
           AND (repair_images IS NULL OR repair_images = '')
+          AND complete_time IS NULL
+    </update>
+
+    <!-- 开始处理：仅首次写入 start_time，幂等不覆盖 -->
+    <update id="startFireFaultRepair">
+        UPDATE fire_fault_repair
+        SET start_time = NOW(),
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE repair_id = #{repairId}
+          AND del_flag = '0'
+          AND repair_status = '1'
+          AND repair_user_id = #{repairUserId}
+          AND start_time IS NULL
+    </update>
+
+    <!-- 完成处理：仅允许更新处理结果与状态相关字段 -->
+    <update id="completeFireFaultRepair">
+        UPDATE fire_fault_repair
+        SET repair_description = #{repairDescription},
+            repair_images = #{repairImages},
+            complete_time = NOW(),
+            repair_status = '2',
+            update_by = #{updateBy},
+            update_time = NOW()
+        WHERE repair_id = #{repairId}
+          AND del_flag = '0'
+          AND repair_status = '1'
+          AND repair_user_id = #{repairUserId}
+          AND start_time IS NOT NULL
           AND complete_time IS NULL
     </update>
 

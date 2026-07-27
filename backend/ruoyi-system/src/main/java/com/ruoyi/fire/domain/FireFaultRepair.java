@@ -66,6 +66,12 @@ public class FireFaultRepair extends BaseEntity {
     @Excel(name = "处理人")
     private String repairPerson;
 
+    /** 当前系统账号真实姓名（列表/详情展示优先） */
+    private String repairUserName;
+
+    /** 处理人登录账号（重名时详情展示） */
+    private String repairUserLogin;
+
     private String repairPhone;
 
     @Excel(name = "派发人")
@@ -251,6 +257,22 @@ public class FireFaultRepair extends BaseEntity {
 
     public void setRepairPerson(String repairPerson) {
         this.repairPerson = repairPerson;
+    }
+
+    public String getRepairUserName() {
+        return repairUserName;
+    }
+
+    public void setRepairUserName(String repairUserName) {
+        this.repairUserName = repairUserName;
+    }
+
+    public String getRepairUserLogin() {
+        return repairUserLogin;
+    }
+
+    public void setRepairUserLogin(String repairUserLogin) {
+        this.repairUserLogin = repairUserLogin;
     }
 
     public String getRepairPhone() {

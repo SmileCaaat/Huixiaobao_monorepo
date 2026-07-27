@@ -73,4 +73,14 @@ public interface FireFaultRepairMapper {
      */
     int recallFireFaultRepair(@org.apache.ibatis.annotations.Param("repairId") Long repairId,
             @org.apache.ibatis.annotations.Param("updateBy") String updateBy);
+
+    int startFireFaultRepair(@org.apache.ibatis.annotations.Param("repairId") Long repairId,
+            @org.apache.ibatis.annotations.Param("repairUserId") Long repairUserId,
+            @org.apache.ibatis.annotations.Param("updateBy") String updateBy);
+
+    int completeFireFaultRepair(@org.apache.ibatis.annotations.Param("repairId") Long repairId,
+            @org.apache.ibatis.annotations.Param("repairUserId") Long repairUserId,
+            @org.apache.ibatis.annotations.Param("repairDescription") String repairDescription,
+            @org.apache.ibatis.annotations.Param("repairImages") String repairImages,
+            @org.apache.ibatis.annotations.Param("updateBy") String updateBy);
 }

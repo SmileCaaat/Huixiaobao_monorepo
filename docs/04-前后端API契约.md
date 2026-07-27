@@ -107,7 +107,10 @@ Content-Type: application/json
 | 公司任务下拉 | `/api/fire/checkIn/listTasksByCompany` | `companyId` | 已对应 |
 | 巡检 | `/api/fire/inspection/myList/detail/add/edit/delete` | `inspectionId,companyId,buildingId` | 已对应 |
 | 报修列表 | `/api/fire/repair/myReportedList`、`myAssignedList` | `repairId,reporterId,repairUserId` | 已对应 |
-| 报修操作 | `/api/fire/repair/add/edit/delete/dispatch/complete` | `repairId,companyId` | 已对应 |
+| 报修操作 | `/api/fire/repair/add/edit/delete/dispatch/start/complete` | `repairId,companyId` | 已对应；start/complete 仅当前处理人 |
+| 报修列表（PC 员工工作台） | `POST /fire/repair/list` | `params[workbenchCategory]`：`assignedPending`/`processing`/`completed`/`reported` | 已对应；后端注入当前用户，忽略客户端 scope 参数 |
+| 报修开始（PC） | `POST /fire/repair/start/{repairId}` | 幂等写 `start_time` | 已对应；权限 `fire:repair:start` |
+| 报修完成（PC） | `GET/POST /fire/repair/complete/{repairId}` | `repairDescription,repairImages` | 已对应；权限 `fire:repair:complete` |
 | 报修撤回（管理端） | `POST /fire/repair/recall` | `repairId` | 已对应；权限 `fire:repair:accept` |
 | 报修统计 | `GET /api/fire/repair/statistics` | `pending,processing,completed` | 已对应 |
 | 报告（小程序） | `/api/fire/report/list/detail/download/preview` | `reportId`；按真实文件 | 已对应 |

@@ -33,6 +33,20 @@ public enum UrgencyLevel {
         return null;
     }
 
+    /**
+     * 列表/详情展示：合法枚举返回文案；非法历史值不直接暴露裸数字。
+     */
+    public static String getDisplayInfo(String code) {
+        String info = getInfo(code);
+        if (info != null) {
+            return info;
+        }
+        if (code == null || code.isEmpty()) {
+            return "";
+        }
+        return "未知";
+    }
+
     public static boolean isValid(String code) {
         return getInfo(code) != null;
     }

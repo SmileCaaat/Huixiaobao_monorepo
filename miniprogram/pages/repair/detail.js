@@ -42,7 +42,7 @@ const _sfc_main = {
     };
     const getUrgencyText = (level) => {
       const map = { 0: "一般", 1: "紧急", 2: "特急" };
-      return map[level] || "一般";
+      return map[level] || "未知";
     };
     const isAdmin = common_vendor.computed(
       () => {
@@ -92,6 +92,27 @@ const _sfc_main = {
       common_vendor.index.previewImage({
         urls: images,
         current: index
+      });
+    };
+    const handleStart = async () => {
+      common_vendor.index.showModal({
+        title: "开始处理",
+        content: "确认开始处理该报修工单吗？",
+        success: async (res) => {
+          if (res.confirm) {
+            try {
+              const resStart = await api_index.api.startRepair(detail.value.repairId);
+              if (resStart.code === 200 || resStart.code === 0) {
+                common_vendor.index.showToast({ title: "已开始处理" });
+                fetchData();
+              } else {
+                common_vendor.index.showToast({ title: resStart.msg || "开始处理失败", icon: "none" });
+              }
+            } catch (e) {
+              common_vendor.index.showToast({ title: "开始处理失败", icon: "none" });
+            }
+          }
+        }
       });
     };
     const handleAccept = async () => {
@@ -264,9 +285,13 @@ const _sfc_main = {
       }, canAccept.value ? {
         H: common_vendor.o(handleAccept)
       } : {}) : {}, {
-        I: detail.value.repairStatus === "1" && (isAssignee.value || isAdmin.value)
-      }, detail.value.repairStatus === "1" && (isAssignee.value || isAdmin.value) ? {
-        J: common_vendor.o(openCompleteForm)
+        I: detail.value.repairStatus === "1" && isAssignee.value && !detail.value.startTime
+      }, detail.value.repairStatus === "1" && isAssignee.value && !detail.value.startTime ? {
+        J: common_vendor.o(handleStart)
+      } : {}, {
+        I2: detail.value.repairStatus === "1" && isAssignee.value && !!detail.value.startTime
+      }, detail.value.repairStatus === "1" && isAssignee.value && !!detail.value.startTime ? {
+        J2: common_vendor.o(openCompleteForm)
       } : {}, {
         K: detail.value.repairStatus === "2"
       }, detail.value.repairStatus === "2" ? {} : {}) : {}, {

@@ -28,7 +28,7 @@
 - `miniprogram/` 不是 uni-app 源工程，而是 `mp-weixin` 编译结果；仓库中没有 `.vue`、`pages.json`、`manifest.json`、`package.json` 或有效 sourcemap。
 - `local_sever/` 仅用于本机联调（网关、面板、一键启动），不是生产组件。
 - 小程序可以整体原生重构，但应先固定 API 契约，否则会把当前接口漂移复制进新代码。
-- 近期管理端增量：故障报修派发撤回、维保报告按客户选任务、报告 DOCX 落盘与 Word 在线预览（[docxjs](https://github.com/VolodymyrBaydalka/docxjs)；PDF/LibreOffice 可选）；建筑编码统一后端自动生成（`B`+数字）；维保任务维护/测试弹窗按视口放大。
+- 近期管理端增量：故障报修 PC 员工工作台（待我处理/处理中/已完成/我上报的，与小程序共用 start/complete 规则）；故障报修派发撤回；维保报告按客户选任务、报告 DOCX 落盘与 Word 在线预览（[docxjs](https://github.com/VolodymyrBaydalka/docxjs)；PDF/LibreOffice 可选）；建筑编码统一后端自动生成（`B`+数字）；维保任务维护/测试弹窗按视口放大。
 - 消防业务 SQL 仍以增量脚本为主；本地可用 `backend/sql/local_fire_baseline.sql` 建消防相关表。本地与线上菜单/数据差异通常来自数据库内容，而非代码分叉。
 - 生产部署 PDF 只覆盖 JAR 更新和日志查看，没有提供服务器、数据库、Nginx、备份或回滚信息。
 

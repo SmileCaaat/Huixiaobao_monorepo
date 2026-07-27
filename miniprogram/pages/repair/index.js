@@ -55,7 +55,7 @@ const _sfc_main = {
     };
     const getUrgencyText = (level) => {
       const map = { 0: "一般", 1: "紧急", 2: "特急" };
-      return map[level] || "一般";
+      return map[level] || "未知";
     };
     const formatTime = (timeStr) => {
       if (!timeStr)

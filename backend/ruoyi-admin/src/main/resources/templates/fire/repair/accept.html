@@ -44,6 +44,8 @@
                         <span th:if="${repair.urgencyLevel == '0'}" class="badge badge-secondary">一般</span>
                         <span th:if="${repair.urgencyLevel == '1'}" class="badge badge-warning">紧急</span>
                         <span th:if="${repair.urgencyLevel == '2'}" class="badge badge-danger">特急</span>
+                        <span th:if="${repair.urgencyLevel != '0' and repair.urgencyLevel != '1' and repair.urgencyLevel != '2'}"
+                              class="badge badge-default">未知</span>
                     </p>
                 </div>
             </div>

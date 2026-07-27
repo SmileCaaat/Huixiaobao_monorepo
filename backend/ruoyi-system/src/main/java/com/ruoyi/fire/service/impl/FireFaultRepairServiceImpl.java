@@ -17,6 +17,7 @@ import com.ruoyi.fire.domain.FireFaultRepair;
 import com.ruoyi.fire.domain.FireUserCompany;
 import com.ruoyi.fire.mapper.FireFaultRepairMapper;
 import com.ruoyi.fire.service.IFireCompanyService;
+import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireFaultRepairService;
 import com.ruoyi.system.service.ISysUserService;
 
@@ -33,6 +34,9 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
 
     @Autowired
     private IFireCompanyService companyService;
+
+    @Autowired
+    private IFireDataPermissionService fireDataPermissionService;
 
     @Override
     public FireFaultRepair selectFireFaultRepairById(Long repairId) {
@@ -162,41 +166,77 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int startRepair(Long repairId) {
+        SysUser current = requireCurrentUser();
         FireFaultRepair repair = getRequiredRepair(repairId);
-        if (!RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())
-                || repair.getRepairUserId() == null) {
-            throw new ServiceException("只有已派发且处理中的报修单才能开始处理");
+        fireDataPermissionService.assertCanProcessRepair(current, repair);
+
+        if (repair.getStartTime() != null) {
+            // 幂等：已开始则不覆盖原 start_time
+            return 1;
         }
 
-        FireFaultRepair update = new FireFaultRepair();
-        update.setRepairId(repairId);
-        update.setStartTime(new Date());
-        update.setUpdateBy(ShiroUtils.getLoginName());
-        return fireFaultRepairMapper.updateFireFaultRepair(update);
+        int rows = fireFaultRepairMapper.startFireFaultRepair(
+                repairId, current.getUserId(), current.getLoginName());
+        if (rows <= 0) {
+            FireFaultRepair latest = getRequiredRepair(repairId);
+            if (latest.getStartTime() != null && current.getUserId().equals(latest.getRepairUserId())) {
+                return 1;
+            }
+            throw new ServiceException("工单状态已变化，无法开始处理");
+        }
+        return rows;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public int completeRepair(FireFaultRepair fireFaultRepair) {
-        FireFaultRepair repair = getRequiredRepair(fireFaultRepair.getRepairId());
-        if (!RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())) {
-            throw new ServiceException("只有处理中状态的报修单才能完成");
+        SysUser current = requireCurrentUser();
+        if (fireFaultRepair == null || fireFaultRepair.getRepairId() == null) {
+            throw new ServiceException("repairId 不能为空");
         }
-        if (repair.getRepairUserId() == null) {
-            throw new ServiceException("工单尚未派发或已撤回，不能完成处理");
+        FireFaultRepair repair = getRequiredRepair(fireFaultRepair.getRepairId());
+        fireDataPermissionService.assertCanProcessRepair(current, repair);
+
+        if (RepairStatus.COMPLETED.getCode().equals(repair.getRepairStatus())
+                || repair.getCompleteTime() != null) {
+            throw new ServiceException("工单已完成，不能重复提交");
+        }
+        if (repair.getStartTime() == null) {
+            throw new ServiceException("请先开始处理后再填写处理结果");
         }
 
-        FireFaultRepair update = new FireFaultRepair();
-        update.setRepairId(fireFaultRepair.getRepairId());
-        update.setRepairStatus(RepairStatus.COMPLETED.getCode());
-        if (repair.getStartTime() == null) {
-            update.setStartTime(new Date());
+        String description = fireFaultRepair.getRepairDescription();
+        if (StringUtils.isEmpty(description)) {
+            throw new ServiceException("处理说明不能为空");
         }
-        update.setCompleteTime(new Date());
-        update.setRepairDescription(fireFaultRepair.getRepairDescription());
-        update.setRepairImages(fireFaultRepair.getRepairImages());
-        update.setUpdateBy(fireFaultRepair.getUpdateBy());
-        return fireFaultRepairMapper.updateFireFaultRepair(update);
+        if (description.length() > 500) {
+            throw new ServiceException("处理说明不能超过500字");
+        }
+
+        String updateBy = StringUtils.isNotEmpty(fireFaultRepair.getUpdateBy())
+                ? fireFaultRepair.getUpdateBy()
+                : current.getLoginName();
+
+        int rows = fireFaultRepairMapper.completeFireFaultRepair(
+                repair.getRepairId(),
+                current.getUserId(),
+                description,
+                fireFaultRepair.getRepairImages(),
+                updateBy);
+        if (rows <= 0) {
+            throw new ServiceException("工单状态已变化，请刷新后重试");
+        }
+        return rows;
+    }
+
+    private SysUser requireCurrentUser() {
+        SysUser current = ShiroUtils.getSysUser();
+        if (current == null || current.getUserId() == null) {
+            throw new ServiceException("未登录或登录状态已失效");
+        }
+        return current;
     }
 
     @Override

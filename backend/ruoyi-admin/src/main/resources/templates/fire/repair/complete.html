@@ -73,14 +73,43 @@
     <script th:inline="javascript">
         var prefix = ctx + "fire/repair";
         
+        var submittingComplete = false;
+
         $("#form-repair-complete").validate({
             focusCleanup: true
         });
 
         function submitHandler() {
-            if ($.validate.form()) {
-                $.operate.save(prefix + "/complete", $('#form-repair-complete').serialize());
+            if (submittingComplete) {
+                return;
             }
+            if (!$.validate.form()) {
+                return;
+            }
+            submittingComplete = true;
+            $.ajax({
+                url: prefix + "/complete",
+                type: "post",
+                dataType: "json",
+                data: $('#form-repair-complete').serialize(),
+                success: function(result) {
+                    if (result.code == web_status.SUCCESS) {
+                        $.modal.msgSuccess(result.msg || "完成成功");
+                        $.modal.close();
+                        if (parent && parent.$ && parent.$.table) {
+                            parent.$.table.refresh();
+                        }
+                    } else {
+                        submittingComplete = false;
+                        $.modal.alertError(result.msg || "提交失败");
+                    }
+                },
+                error: function(xhr) {
+                    submittingComplete = false;
+                    var msg = (xhr.responseJSON && xhr.responseJSON.msg) || "提交失败，请稍后重试";
+                    $.modal.alertError(msg);
+                }
+            });
         }
 
         $(function() {

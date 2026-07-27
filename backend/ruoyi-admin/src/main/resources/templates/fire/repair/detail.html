@@ -96,9 +96,13 @@
                                     <p th:if="${repair.dispatchBy != null}">
                                         派发人：<span th:text="${repair.dispatchBy}"></span>
                                     </p>
-                                    <p th:if="${repair.repairPerson != null}">
-                                        处理人：<span th:text="${repair.repairPerson}"></span>
-                                        <span th:if="${repair.repairPhone != null}" th:text="' (' + ${repair.repairPhone} + ')'"></span>
+                                    <p th:if="${repair.repairUserId != null or repair.repairPerson != null}">
+                                        处理人：
+                                        <span th:text="${repair.repairUserName != null ? repair.repairUserName : repair.repairPerson}"></span>
+                                        <span th:if="${repair.repairUserLogin != null and repair.repairUserLogin != ''}"
+                                              th:text="'（' + ${repair.repairUserLogin} + '）'"></span>
+                                        <span th:if="${(repair.repairUserLogin == null or repair.repairUserLogin == '') and repair.repairPhone != null}"
+                                              th:text="'（' + ${repair.repairPhone} + '）'"></span>
                                     </p>
                                 </div>
                             </div>
@@ -186,6 +190,8 @@
                                         <span th:if="${repair.urgencyLevel == '0'}" class="badge badge-secondary">一般</span>
                                         <span th:if="${repair.urgencyLevel == '1'}" class="badge badge-warning">紧急</span>
                                         <span th:if="${repair.urgencyLevel == '2'}" class="badge badge-danger">特急</span>
+                                        <span th:if="${repair.urgencyLevel != '0' and repair.urgencyLevel != '1' and repair.urgencyLevel != '2'}"
+                                              class="badge badge-default">未知</span>
                                     </p>
                                 </div>
                             </div>
@@ -248,10 +254,14 @@
                                     <p class="form-control-static" th:text="${#dates.format(repair.dispatchTime, 'yyyy-MM-dd HH:mm:ss')}"></p>
                                 </div>
                             </div>
-                            <div class="form-group" th:if="${repair.repairPerson != null}">
+                            <div class="form-group" th:if="${repair.repairUserId != null or repair.repairPerson != null}">
                                 <label class="col-sm-4 control-label">处理人：</label>
                                 <div class="col-sm-8">
-                                    <p class="form-control-static" th:text="${repair.repairPerson}"></p>
+                                    <p class="form-control-static">
+                                        <span th:text="${repair.repairUserName != null ? repair.repairUserName : repair.repairPerson}"></span>
+                                        <span th:if="${repair.repairUserLogin != null and repair.repairUserLogin != ''}"
+                                              th:text="'（' + ${repair.repairUserLogin} + '）'"></span>
+                                    </p>
                                 </div>
                             </div>
                             <div class="form-group" th:if="${repair.repairPhone != null}">

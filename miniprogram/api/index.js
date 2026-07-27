@@ -178,6 +178,9 @@ const deleteRepair = (repairId) => {
 const dispatchRepair = (data) => {
   return utils_request.post("/api/fire/repair/dispatch", data);
 };
+const startRepair = (repairId) => {
+  return utils_request.post(`/api/fire/repair/start/${repairId}`);
+};
 const completeRepair = (data) => {
   return utils_request.post("/api/fire/repair/complete", data);
 };
@@ -260,6 +263,7 @@ const api = {
   editRepair,
   deleteRepair,
   dispatchRepair,
+  startRepair,
   completeRepair,
   getRepairStats,
   getEquipmentByCompanyAndSystem,

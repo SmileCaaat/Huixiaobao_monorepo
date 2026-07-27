@@ -75,6 +75,9 @@ public class FireMiniAppController extends BaseController {
     @Autowired
     private IFireReportRecordService fireReportRecordService;
 
+    @Autowired
+    private IFireDataPermissionService fireDataPermissionService;
+
     // ==================== 公司相关接口 ====================
 
     /**
@@ -196,23 +199,26 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 获取签到列表
+     * 获取签到列表（后端按身份注入数据范围，忽略客户端伪造的 scope）
      */
     @PostMapping("/checkIn/list")
     public TableDataInfo checkInList(@RequestBody FireCheckIn checkIn) {
+        fireDataPermissionService.applyCheckInListScope(checkIn, ShiroUtils.getSysUser());
         startPage();
         List<FireCheckIn> list = checkInService.selectFireCheckInList(checkIn);
         return getDataTable(list);
     }
 
     /**
-     * 获取签到详情
+     * 获取签到详情（按记录校验数据权限）
      */
     @GetMapping("/checkIn/detail/{checkInId}")
     public AjaxResult checkInDetail(@PathVariable("checkInId") Long checkInId) {
         FireCheckIn checkIn = checkInService.selectFireCheckInById(checkInId);
-        if (checkIn == null) {
-            return AjaxResult.error("签到记录不存在");
+        try {
+            fireDataPermissionService.assertCanAccessCheckIn(ShiroUtils.getSysUser(), checkIn);
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
         }
         AjaxResult ajax = AjaxResult.success(checkIn);
         Map<String, FireCheckIn> pair = checkInService.resolvePairRecords(checkIn);
@@ -334,7 +340,6 @@ public class FireMiniAppController extends BaseController {
      */
     @PostMapping("/building/add")
     public AjaxResult addBuilding(@RequestBody FireBuilding building) {
-        // 建筑编码由后端统一生成，忽略客户端传入值
         building.setBuildingCode(null);
         building.setCreateBy(ShiroUtils.getLoginName());
         try {
@@ -352,7 +357,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 修改建筑（建筑编码不可改，由服务层强制保留库中原值）
+     * 修改建筑
      */
     @PostMapping("/building/edit")
     public AjaxResult editBuilding(@RequestBody FireBuilding building) {
@@ -450,14 +455,15 @@ public class FireMiniAppController extends BaseController {
     public TableDataInfo myTaskList(@RequestBody Map<String, Object> params) {
         FireMaintenanceTask query = new FireMaintenanceTask();
 
-        // 始终使用服务端 Session 中的当前用户 ID，禁止客户端覆盖
-        // SQL 中 managerId 会同时匹配 manager_id / executor_id / FIND_IN_SET(operator_ids)
-        query.setManagerId(ShiroUtils.getUserId());
-
-        // 根据公司ID查询
+        // 根据公司ID查询；列表范围由统一数据权限服务注入
         Long companyId = getLongValue(params, "companyId");
         if (companyId != null) {
             query.setCompanyId(companyId);
+        }
+        fireDataPermissionService.applyTaskListScope(query, ShiroUtils.getSysUser());
+        if (query.getManagerId() == null && !isSysAdmin()
+                && !fireDataPermissionService.hasGlobalBizDataScope(ShiroUtils.getSysUser())) {
+            query.setManagerId(ShiroUtils.getUserId());
         }
 
         // 根据任务状态查询
@@ -563,30 +569,7 @@ public class FireMiniAppController extends BaseController {
      * 判断用户是否为任务的相关人员（项目负责人 / 执行人 / 维保操作员）
      */
     private boolean isTaskRelated(FireMaintenanceTask task, Long userId) {
-        if (userId == null || task == null) {
-            return false;
-        }
-        // 项目负责人
-        if (userId.equals(task.getManagerId())) {
-            return true;
-        }
-        // 执行人
-        if (userId.equals(task.getExecutorId())) {
-            return true;
-        }
-        // 维保操作员（逗号分隔的 ID 字符串，如 "1,2,3"）
-        String operatorIds = task.getOperatorIds();
-        if (StringUtils.isNotEmpty(operatorIds)) {
-            for (String id : operatorIds.split(",")) {
-                try {
-                    if (userId.equals(Long.parseLong(id.trim()))) {
-                        return true;
-                    }
-                } catch (NumberFormatException ignored) {
-                }
-            }
-        }
-        return false;
+        return fireDataPermissionService.canAccessTask(userId, task);
     }
 
     /**
@@ -1074,8 +1057,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 完成报修。
-     * 派发给我的处理单和管理员都可以完结。
+     * 完成报修。仅当前派发处理人可完成（与 PC 同一 Service 规则）。
      */
     @PostMapping("/repair/complete")
     public AjaxResult completeRepair(@RequestBody Map<String, Object> params) {
@@ -1084,25 +1066,28 @@ public class FireMiniAppController extends BaseController {
             return AjaxResult.error("repairId 不能为空");
         }
 
-        Long userId = ShiroUtils.getUserId();
-        FireFaultRepair repair = faultRepairService.selectFireFaultRepairById(repairId);
-        if (repair == null) {
-            return AjaxResult.error("报修记录不存在");
+        try {
+            FireFaultRepair update = new FireFaultRepair();
+            update.setRepairId(repairId);
+            update.setRepairDescription(getStringValue(params, "repairDescription"));
+            update.setRepairImages(getStringValue(params, "repairImages"));
+            update.setUpdateBy(ShiroUtils.getLoginName());
+            return toAjax(faultRepairService.completeRepair(update));
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
         }
-        if (repair.getRepairUserId() == null
-                || !"1".equals(repair.getRepairStatus())) {
-            return AjaxResult.error("工单状态已发生变化，请刷新后重试。");
-        }
-        if (!canCompleteRepair(repair, userId)) {
-            return AjaxResult.error("只有当前处理人或管理员可以完成报修");
-        }
+    }
 
-        FireFaultRepair update = new FireFaultRepair();
-        update.setRepairId(repairId);
-        update.setRepairDescription(getStringValue(params, "repairDescription"));
-        update.setRepairImages(getStringValue(params, "repairImages"));
-        update.setUpdateBy(ShiroUtils.getLoginName());
-        return toAjax(faultRepairService.completeRepair(update));
+    /**
+     * 开始处理报修（与 PC /fire/repair/start 同一业务规则）。
+     */
+    @PostMapping("/repair/start/{repairId}")
+    public AjaxResult startRepair(@PathVariable("repairId") Long repairId) {
+        try {
+            return toAjax(faultRepairService.startRepair(repairId));
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
     }
 
     /**
@@ -1197,7 +1182,13 @@ public class FireMiniAppController extends BaseController {
     }
 
     private boolean hasCompanyAccess(Long companyId, Long userId) {
-        return companyId != null;
+        if (companyId == null || userId == null) {
+            return false;
+        }
+        if (isSysAdmin() || fireDataPermissionService.hasGlobalBizDataScope(ShiroUtils.getSysUser())) {
+            return true;
+        }
+        return fireDataPermissionService.canAccessCompany(userId, companyId);
     }
 
     private boolean isCompanyRepairAdmin(Long companyId, Long userId) {
@@ -1225,20 +1216,13 @@ public class FireMiniAppController extends BaseController {
     }
 
     private boolean canViewRepair(FireFaultRepair repair, Long userId) {
-        return isSysAdmin()
-                || isRepairReporter(repair, userId)
-                || isRepairAssignee(repair, userId)
-                || isCompanyRepairAdmin(repair.getCompanyId(), userId);
+        return fireDataPermissionService.canAccessRepair(ShiroUtils.getSysUser(), repair)
+                || (userId != null && fireDataPermissionService.canAccessRepair(userId, repair));
     }
 
     private boolean canEditRepair(FireFaultRepair repair, Long userId) {
         return "0".equals(repair.getRepairStatus())
                 && (isSysAdmin() || isRepairReporter(repair, userId) || isCompanyRepairAdmin(repair.getCompanyId(), userId));
-    }
-
-    private boolean canCompleteRepair(FireFaultRepair repair, Long userId) {
-        return "1".equals(repair.getRepairStatus())
-                && (isSysAdmin() || isRepairAssignee(repair, userId) || isCompanyRepairAdmin(repair.getCompanyId(), userId));
     }
 
     private boolean isSysAdmin() {

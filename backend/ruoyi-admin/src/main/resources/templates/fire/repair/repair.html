@@ -2,12 +2,25 @@
 <html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
 <head>
     <th:block th:include="include :: header('故障报修列表')" />
+    <style>
+        .repair-workbench-tabs { margin: 0 0 12px; padding: 0 15px; }
+        .repair-workbench-tabs .btn { margin-right: 6px; }
+        .repair-workbench-tabs .btn.active { box-shadow: inset 0 0 0 1px rgba(0,0,0,.08); }
+    </style>
 </head>
 <body class="gray-bg">
     <div class="container-div">
         <div class="row">
+            <div class="col-sm-12 repair-workbench-tabs" th:if="${workbenchMode}">
+                <a href="javascript:void(0)" class="btn btn-sm btn-primary active" data-category="assignedPending" onclick="switchWorkbench('assignedPending', this)">待我处理</a>
+                <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="processing" onclick="switchWorkbench('processing', this)">处理中</a>
+                <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="completed" onclick="switchWorkbench('completed', this)">已完成</a>
+                <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="reported" onclick="switchWorkbench('reported', this)">我上报的</a>
+            </div>
+
             <div class="col-sm-12 search-collapse">
                 <form id="formId">
+                    <input type="hidden" name="params[workbenchCategory]" id="workbenchCategory" th:value="${defaultWorkbenchCategory}"/>
                     <div class="select-list">
                         <ul>
                             <li>
@@ -25,7 +38,7 @@
                                     <option th:each="level : ${urgencyLevels}" th:value="${level.code}" th:text="${level.info}"></option>
                                 </select>
                             </li>
-                            <li>
+                            <li th:unless="${workbenchMode}">
                                 <label>维修状态：</label>
                                 <select name="repairStatus">
                                     <option value="">全部</option>
@@ -40,14 +53,14 @@
                             </li>
                             <li>
                                 <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i class="fa fa-search"></i>&nbsp;搜索</a>
-                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="resetSearch()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
                             </li>
                         </ul>
                     </div>
                 </form>
             </div>
 
-            <div class="btn-group-sm" id="toolbar" role="group">
+            <div class="btn-group-sm" id="toolbar" role="group" th:unless="${workbenchMode}">
                 <a class="btn btn-success" onclick="$.operate.add()" shiro:hasPermission="fire:repair:add">
                     <i class="fa fa-plus"></i> 新增
                 </a>
@@ -72,21 +85,19 @@
         var editFlag = [[${@permission.hasPermi('fire:repair:edit')}]];
         var removeFlag = [[${@permission.hasPermi('fire:repair:remove')}]];
         var dispatchFlag = [[${@permission.hasPermi('fire:repair:accept')}]];
+        var startFlag = [[${@permission.hasPermi('fire:repair:start')}]];
         var completeFlag = [[${@permission.hasPermi('fire:repair:complete')}]];
+        var currentUserId = [[${currentUserId}]];
+        var workbenchMode = [[${workbenchMode}]];
         var prefix = ctx + "fire/repair";
+        var startingRepairId = null;
 
         $(function() {
-            var options = {
-                url: prefix + "/list",
-                createUrl: prefix + "/add",
-                updateUrl: prefix + "/edit/{id}",
-                removeUrl: prefix + "/remove",
-                exportUrl: prefix + "/export",
-                modalName: "故障报修",
-                columns: [{
-                    checkbox: true
-                },
-                {
+            var columns = [];
+            if (!workbenchMode) {
+                columns.push({ checkbox: true });
+            }
+            columns = columns.concat([{
                     field: 'repairId',
                     title: '报修ID',
                     visible: false
@@ -117,7 +128,8 @@
                         if (value == '0') return '<span class="badge badge-secondary">一般</span>';
                         if (value == '1') return '<span class="badge badge-warning">紧急</span>';
                         if (value == '2') return '<span class="badge badge-danger">特急</span>';
-                        return value;
+                        if (value == null || value === '') return '';
+                        return '<span class="badge badge-default">未知</span>';
                     }
                 },
                 {
@@ -136,7 +148,10 @@
                 },
                 {
                     field: 'repairPerson',
-                    title: '处理人'
+                    title: '处理人',
+                    formatter: function(value, row) {
+                        return row.repairUserName || value || '';
+                    }
                 },
                 {
                     field: 'dispatchTime',
@@ -153,30 +168,78 @@
                         var actions = [];
                         actions.push('<a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="$.operate.detail(' + row.repairId + ')"><i class="fa fa-eye"></i>查看</a> ');
 
-                        if (row.repairStatus == '0') {
-                            actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.repairId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
-                            actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.repairId + '\')"><i class="fa fa-remove"></i>删除</a> ');
+                        if (!workbenchMode) {
+                            if (row.repairStatus == '0') {
+                                actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.repairId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
+                                actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.repairId + '\')"><i class="fa fa-remove"></i>删除</a> ');
+                            }
+                            if (row.repairStatus != '2') {
+                                actions.push('<a class="btn btn-primary btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="dispatchRepair(' + row.repairId + ')"><i class="fa fa-share"></i>派发</a> ');
+                            }
+                            if (canRecallRepair(row)) {
+                                actions.push('<a class="btn btn-warning btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="recallRepair(' + row.repairId + ')"><i class="fa fa-undo"></i>撤回</a> ');
+                            }
                         }
 
-                        if (row.repairStatus != '2') {
-                            actions.push('<a class="btn btn-primary btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="dispatchRepair(' + row.repairId + ')"><i class="fa fa-share"></i>派发</a> ');
+                        if (canStartRepair(row)) {
+                            actions.push('<a class="btn btn-info btn-xs ' + startFlag + '" href="javascript:void(0)" onclick="startRepair(' + row.repairId + ')"><i class="fa fa-play"></i>开始处理</a> ');
                         }
-
-                        // 已派发(处理中)且有处理人、尚未开始处理：显示撤回
-                        if (canRecallRepair(row)) {
-                            actions.push('<a class="btn btn-warning btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="recallRepair(' + row.repairId + ')"><i class="fa fa-undo"></i>撤回</a> ');
-                        }
-
-                        if (row.repairStatus == '1') {
-                            actions.push('<a class="btn btn-success btn-xs ' + completeFlag + '" href="javascript:void(0)" onclick="completeRepair(' + row.repairId + ')"><i class="fa fa-check-circle"></i>完成</a>');
+                        if (canCompleteRepair(row)) {
+                            actions.push('<a class="btn btn-success btn-xs ' + completeFlag + '" href="javascript:void(0)" onclick="completeRepair(' + row.repairId + ')"><i class="fa fa-check-circle"></i>填写处理结果</a>');
                         }
 
                         return actions.join('');
                     }
-                }]
+                }]);
+
+            var options = {
+                url: prefix + "/list",
+                createUrl: prefix + "/add",
+                updateUrl: prefix + "/edit/{id}",
+                removeUrl: prefix + "/remove",
+                exportUrl: prefix + "/export",
+                modalName: "故障报修",
+                columns: columns
             };
             $.table.init(options);
         });
+
+        function switchWorkbench(category, el) {
+            $('#workbenchCategory').val(category);
+            $('.repair-workbench-tabs .btn').removeClass('btn-primary active').addClass('btn-default');
+            $(el).removeClass('btn-default').addClass('btn-primary active');
+            $.table.search();
+        }
+
+        function resetSearch() {
+            if (workbenchMode) {
+                var current = $('#workbenchCategory').val() || 'assignedPending';
+                $.form.reset();
+                $('#workbenchCategory').val(current);
+                $.table.search();
+            } else {
+                $.form.reset();
+            }
+        }
+
+        function sameUser(a, b) {
+            if (a == null || b == null || a === '' || b === '') {
+                return false;
+            }
+            return String(a) === String(b);
+        }
+
+        function canStartRepair(row) {
+            return sameUser(row.repairUserId, currentUserId)
+                && row.repairStatus == '1'
+                && !row.startTime;
+        }
+
+        function canCompleteRepair(row) {
+            return sameUser(row.repairUserId, currentUserId)
+                && row.repairStatus == '1'
+                && !!row.startTime;
+        }
 
         /** 是否可撤回：已派发 + 有处理人 + 未开始 + 未完成 */
         function canRecallRepair(row) {
@@ -212,6 +275,38 @@
         function dispatchRepair(repairId) {
             var url = prefix + '/dispatch/' + repairId;
             $.modal.open("派发报修", url, '700', '420');
+        }
+
+        function startRepair(repairId) {
+            $.modal.confirm("确认开始处理该报修工单？", function() {
+                if (startingRepairId === repairId) {
+                    return;
+                }
+                startingRepairId = repairId;
+                $.ajax({
+                    url: prefix + '/start/' + repairId,
+                    type: 'post',
+                    dataType: 'json',
+                    success: function(result) {
+                        startingRepairId = null;
+                        if (result.code == web_status.SUCCESS) {
+                            $.modal.msgSuccess(result.msg || '已开始处理');
+                            if (workbenchMode) {
+                                switchWorkbench('processing', $('.repair-workbench-tabs [data-category="processing"]')[0]);
+                            } else {
+                                $.table.refresh();
+                            }
+                        } else {
+                            $.modal.alertError(result.msg || '开始处理失败');
+                        }
+                    },
+                    error: function(xhr) {
+                        startingRepairId = null;
+                        var msg = (xhr.responseJSON && xhr.responseJSON.msg) || '开始处理失败，请稍后重试';
+                        $.modal.alertError(msg);
+                    }
+                });
+            });
         }
 
         function recallRepair(repairId) {
@@ -257,7 +352,7 @@
 
         function completeRepair(repairId) {
             var url = prefix + '/complete/' + repairId;
-            $.modal.open("完成维修", url, '800', '600');
+            $.modal.open("填写处理结果", url, '800', '600');
         }
     </script>
 </body>
