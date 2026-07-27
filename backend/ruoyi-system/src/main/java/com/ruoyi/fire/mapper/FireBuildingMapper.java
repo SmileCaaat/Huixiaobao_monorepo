@@ -88,6 +88,13 @@ public interface FireBuildingMapper {
     public int countBuilding();
 
     /**
+     * 查询当前最大的 B+数字 建筑编码序号（忽略非该格式的历史编码）
+     *
+     * @return 最大序号，无则 0
+     */
+    public Long selectMaxBuildingCodeSeq();
+
+    /**
      * 根据所属客户ID删除建筑信息（逻辑删除）
      *
      * @param companyId 客户ID

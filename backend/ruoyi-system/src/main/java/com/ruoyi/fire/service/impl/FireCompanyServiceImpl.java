@@ -1,7 +1,9 @@
 package com.ruoyi.fire.service.impl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +13,7 @@ import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireUserCompany;
 import com.ruoyi.fire.mapper.FireBuildingMapper;
 import com.ruoyi.fire.mapper.FireCompanyMapper;
+import com.ruoyi.fire.service.IFireBuildingService;
 import com.ruoyi.fire.service.IFireCompanyService;
 
 /**
@@ -26,6 +29,9 @@ public class FireCompanyServiceImpl implements IFireCompanyService {
 
     @Autowired
     private FireBuildingMapper buildingMapper;
+
+    @Autowired
+    private IFireBuildingService buildingService;
 
     @Override
     public List<FireCompany> selectFireCompanyList(FireCompany fireCompany) {
@@ -62,24 +68,17 @@ public class FireCompanyServiceImpl implements IFireCompanyService {
         }
         int rows = companyMapper.insertFireCompany(fireCompany);
 
-        // 保存关联的建筑信息到 fire_building 表
+        // 保存关联建筑：复用统一 insertBuilding（自动生成 B 编码，忽略前端编码）
         List<FireBuilding> buildingList = fireCompany.getBuildingList();
         if (buildingList != null && !buildingList.isEmpty()) {
-            int buildingCount = buildingMapper.countBuilding();
-            for (int i = 0; i < buildingList.size(); i++) {
-                FireBuilding b = buildingList.get(i);
+            for (FireBuilding b : buildingList) {
+                b.setBuildingId(null);
+                b.setBuildingCode(null);
                 b.setCompanyId(fireCompany.getCompanyId());
                 b.setCompanyName(fireCompany.getCompanyName());
-                if (StringUtils.isEmpty(b.getBuildingCode())) {
-                    b.setBuildingCode(String.format("B%04d", buildingCount + i + 1));
-                }
-                if (StringUtils.isEmpty(b.getStatus())) {
-                    b.setStatus("0");
-                }
-                b.setDelFlag("0");
                 b.setCreateBy(fireCompany.getCreateBy());
+                buildingService.insertBuilding(b);
             }
-            buildingMapper.batchInsertBuildings(buildingList);
         }
         return rows;
     }
@@ -90,28 +89,47 @@ public class FireCompanyServiceImpl implements IFireCompanyService {
         fillDefaultFields(fireCompany);
         int rows = companyMapper.updateFireCompany(fireCompany);
 
-        // 处理关联的建筑列表：全删全增（只对前台有传 buildingList 时处理，保证兼容性）
+        // 有传 buildingList 时同步：已有建筑更新（保留编码），新增建筑走统一生成，移除的逻辑删除
         List<FireBuilding> buildingList = fireCompany.getBuildingList();
         if (buildingList != null) {
-            // 先根据公司ID逻辑删除原有联结建筑
-            buildingMapper.deleteBuildingByCompanyId(fireCompany.getCompanyId());
-            // 如果列表不为空，则批量重新插入
-            if (!buildingList.isEmpty()) {
-                int buildingCount = buildingMapper.countBuilding();
-                for (int i = 0; i < buildingList.size(); i++) {
-                    FireBuilding b = buildingList.get(i);
-                    b.setCompanyId(fireCompany.getCompanyId());
-                    b.setCompanyName(fireCompany.getCompanyName());
-                    if (StringUtils.isEmpty(b.getBuildingCode())) {
-                        b.setBuildingCode(String.format("B%04d", buildingCount + i + 1));
-                    }
-                    if (StringUtils.isEmpty(b.getStatus())) {
-                        b.setStatus("0");
-                    }
-                    b.setDelFlag("0");
-                    b.setCreateBy(fireCompany.getUpdateBy() != null ? fireCompany.getUpdateBy() : fireCompany.getCreateBy());
+            FireBuilding query = new FireBuilding();
+            query.setCompanyId(fireCompany.getCompanyId());
+            List<FireBuilding> existing = buildingMapper.selectBuildingList(query);
+            Set<Long> keepIds = new HashSet<Long>();
+            String operator = fireCompany.getUpdateBy() != null ? fireCompany.getUpdateBy() : fireCompany.getCreateBy();
+
+            for (FireBuilding b : buildingList) {
+                if (StringUtils.isEmpty(b.getBuildingName())) {
+                    continue;
                 }
-                buildingMapper.batchInsertBuildings(buildingList);
+                b.setCompanyId(fireCompany.getCompanyId());
+                b.setCompanyName(fireCompany.getCompanyName());
+                Long buildingId = b.getBuildingId();
+                if (buildingId != null && buildingId.longValue() > 0) {
+                    FireBuilding db = buildingMapper.selectBuildingById(buildingId);
+                    if (db != null && fireCompany.getCompanyId().equals(db.getCompanyId())) {
+                        b.setUpdateBy(operator);
+                        buildingService.updateBuilding(b);
+                        keepIds.add(buildingId);
+                        continue;
+                    }
+                }
+                // 新建筑：忽略任何前端编码
+                b.setBuildingId(null);
+                b.setBuildingCode(null);
+                b.setCreateBy(operator);
+                buildingService.insertBuilding(b);
+                if (b.getBuildingId() != null) {
+                    keepIds.add(b.getBuildingId());
+                }
+            }
+
+            if (existing != null) {
+                for (FireBuilding old : existing) {
+                    if (old.getBuildingId() != null && !keepIds.contains(old.getBuildingId())) {
+                        buildingMapper.deleteBuildingByIds(new Long[] { old.getBuildingId() });
+                    }
+                }
             }
         }
         return rows;

@@ -100,6 +100,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="countBuilding" resultType="int">
         select count(*) from fire_building where del_flag = '0' and status = '0'
     </select>
+
+    <!-- 仅统计 B+纯数字 编码的最大序号，包含已逻辑删除行，避免编码复用冲突 -->
+    <select id="selectMaxBuildingCodeSeq" resultType="long">
+        select ifnull(max(cast(substring(building_code, 2) as unsigned)), 0)
+        from fire_building
+        where building_code regexp '^B[0-9]+$'
+    </select>
     
     <select id="countBuildingByType" resultType="java.util.Map">
         select building_type as name, count(*) as value 
@@ -167,7 +174,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <update id="updateBuilding" parameterType="com.ruoyi.fire.domain.FireBuilding">
         update fire_building
         <set>
-            <if test="buildingCode != null and buildingCode != ''">building_code = #{buildingCode},</if>
+            <!-- building_code is system-generated; never update here -->
             <if test="buildingName != null and buildingName != ''">building_name = #{buildingName},</if>
             <if test="buildingType != null">building_type = #{buildingType},</if>
             <if test="autoFireSystem != null">auto_fire_system = #{autoFireSystem},</if>

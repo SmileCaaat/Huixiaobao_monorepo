@@ -50,7 +50,7 @@ public interface IFireBuildingService {
     public boolean checkBuildingNameUnique(FireBuilding building);
 
     /**
-     * 新增建筑信息
+     * 新增建筑信息（后端自动生成建筑编码，忽略请求中的 buildingCode）
      * 
      * @param building 建筑信息
      * @return 结果
@@ -58,12 +58,19 @@ public interface IFireBuildingService {
     public int insertBuilding(FireBuilding building);
 
     /**
-     * 修改建筑信息
+     * 修改建筑信息（保留原建筑编码，不允许请求覆盖）
      * 
      * @param building 建筑信息
      * @return 结果
      */
     public int updateBuilding(FireBuilding building);
+
+    /**
+     * 生成下一个建筑编码：B + 至少4位数字（如 B0001、B0125、B10000）
+     *
+     * @return 建筑编码
+     */
+    public String generateNextBuildingCode();
 
     /**
      * 批量删除建筑信息

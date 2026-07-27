@@ -76,7 +76,7 @@ public class FireBuildingController extends BaseController {
     }
 
     /**
-     * 新增保存建筑
+     * 新增保存建筑（建筑编码由后端自动生成）
      */
     @RequiresPermissions("fire:building:add")
     @Log(title = "建筑管理", businessType = BusinessType.INSERT)
@@ -86,13 +86,18 @@ public class FireBuildingController extends BaseController {
         if (building.getCompanyId() == null) {
             return error("请选择所属客户");
         }
-        if (!buildingService.checkBuildingCodeUnique(building)) {
-            return error("新增建筑'" + building.getBuildingName() + "'失败，建筑编码已存在");
-        } else if (!buildingService.checkBuildingNameUnique(building)) {
-            return error("新增建筑'" + building.getBuildingName() + "'失败，同一客户下建筑名称不能重复");
-        }
+        // 不信任前端传入的建筑编码
+        building.setBuildingCode(null);
         building.setCreateBy(getLoginName());
-        return toAjax(buildingService.insertBuilding(building));
+        try {
+            int rows = buildingService.insertBuilding(building);
+            if (rows > 0) {
+                return AjaxResult.success("新增成功", building);
+            }
+            return error("新增失败");
+        } catch (com.ruoyi.common.exception.ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
     /**
@@ -106,7 +111,7 @@ public class FireBuildingController extends BaseController {
     }
 
     /**
-     * 修改保存建筑
+     * 修改保存建筑（建筑编码不可修改，由服务层强制保留原值）
      */
     @RequiresPermissions("fire:building:edit")
     @Log(title = "建筑管理", businessType = BusinessType.UPDATE)
@@ -116,13 +121,12 @@ public class FireBuildingController extends BaseController {
         if (building.getCompanyId() == null) {
             return error("请选择所属客户");
         }
-        if (!buildingService.checkBuildingCodeUnique(building)) {
-            return error("修改建筑'" + building.getBuildingName() + "'失败，建筑编码已存在");
-        } else if (!buildingService.checkBuildingNameUnique(building)) {
-            return error("修改建筑'" + building.getBuildingName() + "'失败，同一客户下建筑名称不能重复");
-        }
         building.setUpdateBy(getLoginName());
-        return toAjax(buildingService.updateBuilding(building));
+        try {
+            return toAjax(buildingService.updateBuilding(building));
+        } catch (com.ruoyi.common.exception.ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
     /**

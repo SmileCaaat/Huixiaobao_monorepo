@@ -133,7 +133,6 @@ public class FireBuilding extends BaseEntity {
         this.companyName = companyName;
     }
 
-    @NotBlank(message = "建筑编码不能为空")
     @Size(min = 0, max = 50, message = "建筑编码长度不能超过50个字符")
     public String getBuildingCode() {
         return buildingCode;

@@ -736,6 +736,7 @@
             
             var html = '<table class="table table-bordered entry-table building-item-table" id="brow_' + idx + '" style="width:100%; margin-bottom:15px; border:2px solid #aec2cf;">' +
                 '<tbody>' +
+                (data.buildingId ? '<input type="hidden" name="' + n + 'buildingId" value="' + val(data.buildingId) + '">' : '') +
                 '<tr>' +
                     '<th class="label-cell" style="width:10%;">建筑名称:</th>' +
                     '<td class="value-cell" style="width:23%;"><input type="text" name="' + n + 'buildingName" value="' + val(data.buildingName) + '" class="form-control" placeholder="建筑名称"></td>' +

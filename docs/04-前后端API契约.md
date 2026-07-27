@@ -75,7 +75,7 @@ Content-Type: application/json
 |---|---|---|---|
 | 建筑列表 | `POST /api/fire/building/list` | `companyId,pageNum,pageSize` | 路径对应；分页传递需修复 |
 | 建筑详情 | `GET /api/fire/building/detail/{buildingId}` | `buildingId` | 已对应 |
-| 新增/编辑建筑 | `POST /api/fire/building/add|edit` | `companyId,buildingId,buildingName` | 已对应 |
+| 新增/编辑建筑 | `POST /api/fire/building/add|edit` | `companyId,buildingId,buildingName` | 已对应；`buildingCode` 由后端生成，客户端传入会被忽略；新增成功可回传 `buildingCode`；编辑不可改编码 |
 | 公司建筑 | `GET /api/fire/building/byCompany/{companyId}` | `companyId` | 已对应 |
 | 设备列表 | `POST /api/fire/equipment/list` | `companyId,buildingId,systemTypeId` | 路径对应；分页传递需修复 |
 | 设备详情 | `GET /api/fire/equipment/detail/{equipmentId}` | `equipmentId` | 已对应 |

@@ -334,23 +334,34 @@ public class FireMiniAppController extends BaseController {
      */
     @PostMapping("/building/add")
     public AjaxResult addBuilding(@RequestBody FireBuilding building) {
+        // 建筑编码由后端统一生成，忽略客户端传入值
+        building.setBuildingCode(null);
         building.setCreateBy(ShiroUtils.getLoginName());
-        int rows = buildingService.insertBuilding(building);
-        if (rows > 0) {
-            Map<String, Object> result = new HashMap<>();
-            result.put("buildingId", building.getBuildingId());
-            return AjaxResult.success("新增成功", result);
+        try {
+            int rows = buildingService.insertBuilding(building);
+            if (rows > 0) {
+                Map<String, Object> result = new HashMap<>();
+                result.put("buildingId", building.getBuildingId());
+                result.put("buildingCode", building.getBuildingCode());
+                return AjaxResult.success("新增成功", result);
+            }
+            return AjaxResult.error("新增失败");
+        } catch (com.ruoyi.common.exception.ServiceException e) {
+            return AjaxResult.error(e.getMessage());
         }
-        return AjaxResult.error("新增失败");
     }
 
     /**
-     * 修改建筑
+     * 修改建筑（建筑编码不可改，由服务层强制保留库中原值）
      */
     @PostMapping("/building/edit")
     public AjaxResult editBuilding(@RequestBody FireBuilding building) {
         building.setUpdateBy(ShiroUtils.getLoginName());
-        return toAjax(buildingService.updateBuilding(building));
+        try {
+            return toAjax(buildingService.updateBuilding(building));
+        } catch (com.ruoyi.common.exception.ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
     }
 
     // ==================== 设备相关接口 ====================

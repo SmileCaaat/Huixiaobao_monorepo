@@ -439,13 +439,23 @@
             $.modal.open("维保简报", url, '800', '500');
         }
 
+        // 维护 / 消防测试弹窗尺寸：目标 1350×900（较原 900×600 放大 50%），并按视口收缩
+        function getTaskDetailLayerArea() {
+            var win = top || window;
+            var vw = win.innerWidth || (win.document.documentElement && win.document.documentElement.clientWidth) || 1350;
+            var vh = win.innerHeight || (win.document.documentElement && win.document.documentElement.clientHeight) || 900;
+            var width = Math.min(1350, Math.floor(vw * 0.94));
+            var height = Math.min(900, Math.floor(vh * 0.92));
+            return [width + 'px', height + 'px'];
+        }
+
         // 打开维护页面（弹框模式，关闭刷新列表）
         function openMaintenanceDetail(taskId) {
             var url = prefix + '/detail/' + taskId;
             top.layer.open({
                 type: 2,
                 title: '维保维护',
-                area: ['900px', '600px'],
+                area: getTaskDetailLayerArea(),
                 fix: false,
                 maxmin: true,
                 shade: 0.3,
@@ -464,7 +474,7 @@
             top.layer.open({
                 type: 2,
                 title: '消防设施测试',
-                area: ['900px', '600px'],
+                area: getTaskDetailLayerArea(),
                 fix: false,
                 maxmin: true,
                 shade: 0.3,
