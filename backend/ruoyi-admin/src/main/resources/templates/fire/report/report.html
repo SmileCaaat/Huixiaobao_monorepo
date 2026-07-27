@@ -53,7 +53,7 @@
     </div>
     <th:block th:include="include :: footer" />
     <script th:inline="javascript">
-        var removeFlag = [[${@permission.hasPermi('fire:report:remove') }]];
+        var canRemove = [[${@permission.isPermitted('fire:report:remove')}]];
         var prefix = ctx + "fire/report";
 
         $(function () {
@@ -108,7 +108,7 @@
                         } else {
                             actions.push('<a class="btn btn-info btn-xs" href="javascript:void(0)" onclick="previewReport(' + row.reportId + ')"><i class="fa fa-eye"></i> 预览</a> ');
                         }
-                        if (removeFlag) {
+                        if (canRemove) {
                             actions.push('<a class="btn btn-danger btn-xs" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.reportId + '\')"><i class="fa fa-remove"></i> 删除</a>');
                         }
                         return actions.join('');

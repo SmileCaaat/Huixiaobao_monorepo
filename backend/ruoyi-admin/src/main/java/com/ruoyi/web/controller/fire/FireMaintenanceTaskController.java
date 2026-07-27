@@ -24,7 +24,9 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.domain.FireMaintenanceTemplate;
+import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.utils.ShiroUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.common.core.page.TableDataInfo;
@@ -42,6 +44,9 @@ public class FireMaintenanceTaskController extends BaseController {
 
     @Autowired
     private IFireMaintenanceTaskService fireMaintenanceTaskService;
+
+    @Autowired
+    private IFireDataPermissionService fireDataPermissionService;
 
     /**
      * 维保任务页面
@@ -79,6 +84,7 @@ public class FireMaintenanceTaskController extends BaseController {
     @GetMapping("/edit/{taskId}")
     public String edit(@PathVariable("taskId") Long taskId, org.springframework.ui.ModelMap mmap) {
         FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+        fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
         mmap.put("task", task);
 
         // 加载用户列表
@@ -168,11 +174,8 @@ public class FireMaintenanceTaskController extends BaseController {
     @PostMapping("/list")
     @ResponseBody
     public TableDataInfo list(FireMaintenanceTask fireMaintenanceTask) {
-        // 非超级管理员：自动注入当前用户 ID，SQL 中 managerId 会同时匹配
-        // manager_id（项目负责人）、executor_id（执行人）、FIND_IN_SET(operator_ids)（操作员）
-        if (!ShiroUtils.getSysUser().isAdmin()) {
-            fireMaintenanceTask.setManagerId(ShiroUtils.getUserId());
-        }
+        fireDataPermissionService.applyTaskListScope(fireMaintenanceTask, ShiroUtils.getSysUser());
+        sanitizeDashboardFilter(fireMaintenanceTask);
         startPage();
         List<FireMaintenanceTask> list = fireMaintenanceTaskService.selectFireMaintenanceTaskList(fireMaintenanceTask);
         return getDataTable(list);
@@ -186,6 +189,8 @@ public class FireMaintenanceTaskController extends BaseController {
     @PostMapping("/export")
     @ResponseBody
     public void export(HttpServletResponse response, FireMaintenanceTask fireMaintenanceTask) {
+        fireDataPermissionService.applyTaskListScope(fireMaintenanceTask, ShiroUtils.getSysUser());
+        sanitizeDashboardFilter(fireMaintenanceTask);
         List<FireMaintenanceTask> list = fireMaintenanceTaskService.selectFireMaintenanceTaskList(fireMaintenanceTask);
         ExcelUtil<FireMaintenanceTask> util = new ExcelUtil<FireMaintenanceTask>(FireMaintenanceTask.class);
         util.exportExcel(response, list, "维保任务数据");
@@ -198,7 +203,9 @@ public class FireMaintenanceTaskController extends BaseController {
     @GetMapping(value = "/{taskId}")
     @ResponseBody
     public AjaxResult getInfo(@PathVariable("taskId") Long taskId) {
-        return success(fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId));
+        FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+        fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
+        return success(task);
     }
 
     /**
@@ -228,6 +235,7 @@ public class FireMaintenanceTaskController extends BaseController {
             if (existing == null) {
                 return error("维保任务不存在");
             }
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), existing);
             if (StringUtils.isEmpty(fireMaintenanceTask.getTaskName())) {
                 return error("任务名称不能为空");
             }
@@ -263,29 +271,55 @@ public class FireMaintenanceTaskController extends BaseController {
     @PostMapping("/remove")
     @ResponseBody
     public AjaxResult remove(String ids) {
-        return toAjax(fireMaintenanceTaskService.deleteFireMaintenanceTaskByTaskIds(convertStrToLongArray(ids)));
+        Long[] taskIds = convertStrToLongArray(ids);
+        SysUser user = ShiroUtils.getSysUser();
+        for (Long taskId : taskIds) {
+            FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+            fireDataPermissionService.assertCanAccessTask(user, task);
+        }
+        return toAjax(fireMaintenanceTaskService.deleteFireMaintenanceTaskByTaskIds(taskIds));
     }
 
     /**
      * 维保简报编辑页面
      */
-    @RequiresPermissions("fire:task:edit")
+    @RequiresPermissions("fire:task:briefing")
     @GetMapping("/briefing/{taskId}")
     public String briefing(@PathVariable("taskId") Long taskId, org.springframework.ui.ModelMap mmap) {
         FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+        try {
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
+        } catch (ServiceException e) {
+            return "error/unauth";
+        }
         mmap.put("task", task);
         return prefix + "/briefing";
     }
 
     /**
-     * 保存维保简报
+     * 保存维保简报（仅更新简报字段，不走通用任务更新）
      */
-    @RequiresPermissions("fire:task:edit")
+    @RequiresPermissions("fire:task:briefing")
     @Log(title = "维保简报", businessType = BusinessType.UPDATE)
     @PostMapping("/saveBriefing")
     @ResponseBody
-    public AjaxResult saveBriefing(FireMaintenanceTask fireMaintenanceTask) {
-        return toAjax(fireMaintenanceTaskService.updateFireMaintenanceTask(fireMaintenanceTask));
+    public AjaxResult saveBriefing(Long taskId, String maintenanceSummary, Date maintenanceTime) {
+        try {
+            if (taskId == null) {
+                return error("任务ID不能为空");
+            }
+            FireMaintenanceTask existing = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), existing);
+            // 仅允许已下发（进行中=1）或已完成（2）填写简报；0=待执行
+            String status = existing.getTaskStatus();
+            if (!"1".equals(status) && !"2".equals(status)) {
+                return error("请先下发任务后再填写维保简报");
+            }
+            return toAjax(fireMaintenanceTaskService.updateTaskBriefing(taskId, maintenanceSummary,
+                    maintenanceTime, ShiroUtils.getLoginName()));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
     }
 
     /**
@@ -382,6 +416,8 @@ public class FireMaintenanceTaskController extends BaseController {
 
     /**
      * 更新检查详情
+     * 仅更新本次传入的非空字段；checkResult 未传时不覆盖外层状态。
+     * otherNotes / faultImages 允许传空字符串以清空。
      */
     @PostMapping("/updateCheckDetail")
     @ResponseBody
@@ -389,10 +425,19 @@ public class FireMaintenanceTaskController extends BaseController {
             String otherNotes, String faultImages) {
         com.ruoyi.fire.domain.FireMaintenanceRecord record = new com.ruoyi.fire.domain.FireMaintenanceRecord();
         record.setRecordId(recordId);
-        record.setCheckResult(checkResult);
-        record.setFaultDescription(faultDescription);
-        record.setOtherNotes(otherNotes);
-        record.setFaultImages(faultImages);
+        // 未传 checkResult 时保持 null，MyBatis 动态 SQL 不会更新该列
+        if (checkResult != null && !checkResult.isEmpty()) {
+            record.setCheckResult(checkResult);
+        }
+        if (faultDescription != null) {
+            record.setFaultDescription(faultDescription);
+        }
+        if (otherNotes != null) {
+            record.setOtherNotes(otherNotes);
+        }
+        if (faultImages != null) {
+            record.setFaultImages(faultImages);
+        }
 
         return toAjax(getRecordService().updateCheckResult(record));
     }
@@ -451,6 +496,8 @@ public class FireMaintenanceTaskController extends BaseController {
     @PostMapping("/dispatch/{taskId}")
     @ResponseBody
     public AjaxResult dispatch(@PathVariable("taskId") Long taskId) {
+        FireMaintenanceTask existing = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+        fireDataPermissionService.assertCanDispatchTask(ShiroUtils.getSysUser(), existing);
         FireMaintenanceTask task = new FireMaintenanceTask();
         task.setTaskId(taskId);
         task.setTaskStatus("1"); // 设置为进行中
@@ -459,12 +506,28 @@ public class FireMaintenanceTaskController extends BaseController {
 
     /**
      * 一键完成任务（所有检查项标记为正常）
+     * 双层校验：Shiro fire:task:completeAll + 仅系统超级管理员(userId=1)可执行
      */
-    @RequiresPermissions("fire:task:edit")
+    @RequiresPermissions("fire:task:completeAll")
     @Log(title = "一键完成维保任务", businessType = BusinessType.UPDATE)
     @PostMapping("/completeAll/{taskId}")
     @ResponseBody
     public AjaxResult completeAll(@PathVariable("taskId") Long taskId) {
+        SysUser user = ShiroUtils.getSysUser();
+        if (user == null || !user.isAdmin()) {
+            return error("只有超级管理员可以使用一键完成功能");
+        }
+        if (taskId == null) {
+            return error("任务ID不能为空");
+        }
+        FireMaintenanceTask existing = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (existing == null) {
+            return error("维保任务不存在");
+        }
+        // 仅进行中(taskStatus=1)允许一键完成
+        if (!"1".equals(existing.getTaskStatus())) {
+            return error("仅进行中的任务可一键完成");
+        }
         return toAjax(getRecordService().completeAllByTaskId(taskId));
     }
 
@@ -534,6 +597,20 @@ public class FireMaintenanceTaskController extends BaseController {
             }
         }
         return AjaxResult.success(result);
+    }
+
+    private void sanitizeDashboardFilter(FireMaintenanceTask task) {
+        if (task == null || task.getParams() == null) {
+            return;
+        }
+        Object raw = task.getParams().get("dashboardFilter");
+        if (raw == null) {
+            return;
+        }
+        String value = String.valueOf(raw).trim();
+        if (!"today".equals(value) && !"overdue".equals(value)) {
+            task.getParams().remove("dashboardFilter");
+        }
     }
 
     private Long[] convertStrToLongArray(String ids) {

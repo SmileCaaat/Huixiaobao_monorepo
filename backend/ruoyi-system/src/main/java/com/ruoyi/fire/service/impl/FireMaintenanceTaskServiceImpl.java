@@ -1,6 +1,7 @@
 package com.ruoyi.fire.service.impl;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -235,6 +236,24 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                 taskId, oldSystemIds, newSystemIds, addSystems, removeSystems, oldFireIds, newFireIds, addFires,
                 removeFires, added, removed, counts[0], counts[1]);
         return rows;
+    }
+
+    @Override
+    public int updateTaskBriefing(Long taskId, String maintenanceSummary, Date maintenanceTime, String updateBy) {
+        if (taskId == null) {
+            throw new ServiceException("任务ID不能为空");
+        }
+        FireMaintenanceTask existing = fireMaintenanceTaskMapper.selectFireMaintenanceTaskByTaskId(taskId);
+        if (existing == null) {
+            throw new ServiceException("维保任务不存在");
+        }
+        if (StringUtils.isEmpty(maintenanceSummary)) {
+            throw new ServiceException("维保情况简述不能为空");
+        }
+        if (maintenanceTime == null) {
+            throw new ServiceException("维保时间不能为空");
+        }
+        return fireMaintenanceTaskMapper.updateTaskBriefing(taskId, maintenanceSummary, maintenanceTime, updateBy);
     }
 
     /**

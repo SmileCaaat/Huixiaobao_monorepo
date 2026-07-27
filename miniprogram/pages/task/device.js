@@ -20,15 +20,25 @@ const _sfc_main = {
     const itemList = common_vendor.ref([]);
     const showModal = common_vendor.ref(false);
     const currentItem = common_vendor.ref({});
+    const savingMap = common_vendor.reactive({});
+    const statusSeqMap = common_vendor.reactive({});
     const modalForm = common_vendor.reactive({
       otherNotes: "",
       faultImages: ""
     });
-    const statusOptions = [
-      { label: "正常", value: "1" },
-      { label: "故障", value: "2" },
-      { label: "无此设备", value: "3" }
-    ];
+    const normalizeImageUrl = (url) => {
+      if (!url)
+        return "";
+      return url.startsWith("http") ? url : `${api_index.api.BASE_URL}${url}`;
+    };
+    const splitImages = (images) => {
+      if (!images)
+        return [];
+      return String(images).split(",").map((s) => s.trim()).filter(Boolean);
+    };
+    const getActiveLabel = (val, target, text) => {
+      return val === target ? `✓ ${text}` : text;
+    };
     const goBack = () => {
       common_vendor.index.navigateBack();
     };
@@ -46,8 +56,9 @@ const _sfc_main = {
           itemList.value = (data.checkItems || data.items || []).filter((item) => item.recordType === recordType.value).map((item) => ({
             ...item,
             faultDescription: item.faultDescription || "",
+            otherNotes: item.otherNotes || "",
+            faultImages: item.faultImages || "",
             checkResult: item.checkResult || "0"
-            // 默认为0未检查
           }));
           if (!taskId.value) {
             const eq = data.equipment || {};
@@ -60,20 +71,28 @@ const _sfc_main = {
           }
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/task/device.vue:239", "获取检查项列表失败:", e);
+        common_vendor.index.__f__("error", "at pages/task/device.vue:loadItemList", "获取检查项列表失败:", e);
         common_vendor.index.showToast({ title: "获取检查项列表失败", icon: "none" });
       } finally {
         loading.value = false;
       }
     };
     const handleQuickAction = async (item, result) => {
+      if (!item || !item.recordId)
+        return;
       if (item.checkResult === result)
+        return;
+      if (savingMap[item.recordId])
         return;
       if (!taskId.value) {
         common_vendor.index.showToast({ title: "缺少任务ID，请从任务列表进入", icon: "none" });
         return;
       }
       const originalResult = item.checkResult;
+      const originalDesc = item.faultDescription;
+      savingMap[item.recordId] = true;
+      statusSeqMap[item.recordId] = (statusSeqMap[item.recordId] || 0) + 1;
+      const seq = statusSeqMap[item.recordId];
       item.checkResult = result;
       if (result !== "2") {
         item.faultDescription = "";
@@ -85,15 +104,24 @@ const _sfc_main = {
           checkResult: result,
           taskId: taskId.value
         });
+        if (seq !== statusSeqMap[item.recordId])
+          return;
         if (res.code !== 200 && res.code !== 0) {
           item.checkResult = originalResult;
+          item.faultDescription = originalDesc;
           common_vendor.index.showToast({ title: res.msg || "操作失败", icon: "none" });
         }
       } catch (e) {
-        item.checkResult = originalResult;
-        common_vendor.index.__f__("error", "at pages/task/device.vue:272", e);
+        if (seq === statusSeqMap[item.recordId]) {
+          item.checkResult = originalResult;
+          item.faultDescription = originalDesc;
+        }
+        common_vendor.index.__f__("error", "at pages/task/device.vue:handleQuickAction", e);
         common_vendor.index.showToast({ title: "操作失败", icon: "none" });
       } finally {
+        if (seq === statusSeqMap[item.recordId]) {
+          savingMap[item.recordId] = false;
+        }
         common_vendor.index.hideLoading();
       }
     };
@@ -119,13 +147,13 @@ const _sfc_main = {
           common_vendor.index.showToast({ title: res.msg || "保存失败", icon: "none" });
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/task/device.vue:299", e);
+        common_vendor.index.__f__("error", "at pages/task/device.vue:saveFaultDesc", e);
         common_vendor.index.showToast({ title: "保存失败", icon: "none" });
       } finally {
         common_vendor.index.hideLoading();
       }
     };
-    const openDetailModal = (item) => {
+    const openOtherNotes = (item) => {
       currentItem.value = { ...item };
       modalForm.otherNotes = item.otherNotes || "";
       modalForm.faultImages = item.faultImages || "";
@@ -134,41 +162,53 @@ const _sfc_main = {
     const closeModal = () => {
       showModal.value = false;
     };
-    const updateModalResult = (result) => {
-      currentItem.value.checkResult = result;
-    };
-    const onStatusChange = (e) => {
-      const index = e.detail.value;
-      currentItem.value.checkResult = statusOptions[index].value;
-    };
-    const getStatusLabel = (val) => {
-      const option = statusOptions.find((opt) => opt.value === val);
-      return option ? option.label : "请选择";
-    };
     const chooseImage = () => {
       common_vendor.index.chooseImage({
         count: 3,
         sizeType: ["compressed"],
+        sourceType: ["camera", "album"],
         success: async (res) => {
-          const tempFilePaths = res.tempFilePaths;
+          const tempFilePaths = res.tempFilePaths || [];
           common_vendor.index.showLoading({ title: "上传中..." });
+          let failed = false;
           for (const path of tempFilePaths) {
             try {
               const uploadRes = await api_index.api.uploadFile(path);
               if (uploadRes.code === 200 || uploadRes.code === 0) {
-                const currentImages = modalForm.faultImages ? modalForm.faultImages.split(",").filter((s) => s) : [];
-                if (currentImages.length < 5) {
-                  currentImages.push(uploadRes.fileName || uploadRes.data.url);
+                const currentImages = splitImages(modalForm.faultImages);
+                const url = uploadRes.fileName || uploadRes.url || uploadRes.data && (uploadRes.data.url || uploadRes.data.fileName);
+                if (url && currentImages.length < 5) {
+                  currentImages.push(url);
                   modalForm.faultImages = currentImages.join(",");
                 }
+              } else {
+                failed = true;
               }
             } catch (e) {
-              common_vendor.index.__f__("error", "at pages/task/device.vue:358", "图片上传失败:", e);
+              failed = true;
+              common_vendor.index.__f__("error", "at pages/task/device.vue:chooseImage", e);
             }
           }
           common_vendor.index.hideLoading();
+          if (failed) {
+            common_vendor.index.showToast({ title: "部分上传失败，可重试", icon: "none" });
+          }
         }
       });
+    };
+    const previewModalImages = (index) => {
+      const urls = splitImages(modalForm.faultImages).map(normalizeImageUrl);
+      if (!urls.length)
+        return;
+      common_vendor.index.previewImage({
+        urls,
+        current: index
+      });
+    };
+    const removeModalImage = (index) => {
+      const images = splitImages(modalForm.faultImages);
+      images.splice(index, 1);
+      modalForm.faultImages = images.join(",");
     };
     const saveDetail = async () => {
       if (!taskId.value) {
@@ -177,34 +217,29 @@ const _sfc_main = {
       }
       try {
         common_vendor.index.showLoading({ mask: true });
+        // 不传 checkResult，避免覆盖外层状态按钮结果
         const res = await api_index.api.updateCheckDetail({
           recordId: currentItem.value.recordId,
-          checkResult: currentItem.value.checkResult,
-          faultDescription: currentItem.value.faultDescription,
-          // 从 currentItem 取
-          otherNotes: modalForm.otherNotes,
-          faultImages: modalForm.faultImages,
+          otherNotes: modalForm.otherNotes == null ? "" : modalForm.otherNotes,
+          faultImages: modalForm.faultImages == null ? "" : modalForm.faultImages,
           taskId: taskId.value
         });
         if (res.code === 200 || res.code === 0) {
           common_vendor.index.showToast({ title: "保存成功", icon: "success" });
-          closeModal();
-          const index = itemList.value.findIndex(
-            (i) => i.recordId === currentItem.value.recordId
-          );
+          const index = itemList.value.findIndex((i) => i.recordId === currentItem.value.recordId);
           if (index > -1) {
             itemList.value[index] = {
               ...itemList.value[index],
-              checkResult: currentItem.value.checkResult,
-              otherNotes: modalForm.otherNotes,
-              faultImages: modalForm.faultImages
+              otherNotes: modalForm.otherNotes == null ? "" : modalForm.otherNotes,
+              faultImages: modalForm.faultImages == null ? "" : modalForm.faultImages
             };
           }
+          closeModal();
         } else {
           common_vendor.index.showToast({ title: res.msg || "保存失败", icon: "none" });
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/task/device.vue:397", e);
+        common_vendor.index.__f__("error", "at pages/task/device.vue:saveDetail", e);
         common_vendor.index.showToast({ title: "保存失败", icon: "none" });
       } finally {
         common_vendor.index.hideLoading();
@@ -216,7 +251,7 @@ const _sfc_main = {
       const options = currentPage.options || {};
       recordId.value = options.recordId;
       const cachedTask = common_vendor.index.getStorageSync("currentTask");
-      taskId.value = options.taskId || (cachedTask && cachedTask.taskId) || null;
+      taskId.value = options.taskId || cachedTask && cachedTask.taskId || null;
       recordType.value = options.recordType || "0";
       const cached = common_vendor.index.getStorageSync("currentDevice");
       if (cached) {
@@ -236,25 +271,32 @@ const _sfc_main = {
           color: "#ffffff"
         }),
         c: common_vendor.f(itemList.value, (item, k0, i0) => {
+          const count = splitImages(item.faultImages).length;
           return common_vendor.e({
             a: common_vendor.t(item.itemName),
             b: common_vendor.t(item.itemCode),
-            c: item.checkResult === "1" ? 1 : "",
+            c: item.checkResult === "1",
             d: common_vendor.o(($event) => handleQuickAction(item, "1"), item.recordId),
-            e: item.checkResult === "2" ? 1 : "",
-            f: common_vendor.o(($event) => handleQuickAction(item, "2"), item.recordId),
-            g: item.checkResult === "3" ? 1 : "",
-            h: common_vendor.o(($event) => handleQuickAction(item, "3"), item.recordId),
-            i: item.checkResult === "2"
+            e: common_vendor.t(getActiveLabel(item.checkResult, "1", "正常")),
+            f: item.checkResult === "2",
+            g: common_vendor.o(($event) => handleQuickAction(item, "2"), item.recordId),
+            h: common_vendor.t(getActiveLabel(item.checkResult, "2", "故障")),
+            i: item.checkResult === "3",
+            j: common_vendor.o(($event) => handleQuickAction(item, "3"), item.recordId),
+            k: common_vendor.t(getActiveLabel(item.checkResult, "3", "无此设备")),
+            l: item.checkResult === "2"
           }, item.checkResult === "2" ? {
-            j: item.faultDescription,
-            k: common_vendor.o(($event) => item.faultDescription = $event.detail.value, item.recordId),
-            l: common_vendor.o(($event) => saveFaultDesc(item), item.recordId),
-            m: common_vendor.o(() => {
+            m: item.faultDescription,
+            n: common_vendor.o(($event) => item.faultDescription = $event.detail.value, item.recordId),
+            o: common_vendor.o(($event) => saveFaultDesc(item), item.recordId),
+            p: common_vendor.o(() => {
             }, item.recordId)
           } : {}, {
-            n: item.recordId,
-            o: common_vendor.o(($event) => openDetailModal(item), item.recordId)
+            q: common_vendor.o(($event) => openOtherNotes(item), item.recordId),
+            r: common_vendor.t("其他说明"),
+            s: count > 0,
+            t: common_vendor.t(count),
+            z: item.recordId
           });
         }),
         d: loading.value
@@ -264,27 +306,26 @@ const _sfc_main = {
         f: showModal.value
       }, showModal.value ? common_vendor.e({
         g: common_vendor.o(closeModal),
-        h: common_vendor.t(currentItem.value.itemName),
-        i: currentItem.value.checkResult === "1"
-      }, currentItem.value.checkResult === "1" ? {} : {}, {
-        j: currentItem.value.checkResult === "1" ? 1 : "",
-        k: common_vendor.o(($event) => updateModalResult("1")),
-        l: currentItem.value.checkResult === "2"
-      }, currentItem.value.checkResult === "2" ? {} : {}, {
-        m: currentItem.value.checkResult === "2" ? 1 : "",
-        n: common_vendor.o(($event) => updateModalResult("2")),
-        o: common_vendor.t(getStatusLabel(currentItem.value.checkResult)),
-        p: statusOptions,
-        q: common_vendor.o(onStatusChange),
-        r: modalForm.otherNotes,
-        s: common_vendor.o(($event) => modalForm.otherNotes = $event.detail.value),
-        t: common_vendor.o(chooseImage),
-        v: !modalForm.faultImages
+        h: modalForm.otherNotes,
+        i: common_vendor.o(($event) => modalForm.otherNotes = $event.detail.value),
+        j: common_vendor.o(chooseImage),
+        k: !modalForm.faultImages
       }, !modalForm.faultImages ? {} : {
-        w: common_vendor.t(modalForm.faultImages.split(",").length)
+        l: common_vendor.t(splitImages(modalForm.faultImages).length)
       }, {
-        x: common_vendor.o(closeModal),
-        y: common_vendor.o(saveDetail),
+        m: !!modalForm.faultImages
+      }, modalForm.faultImages ? {
+        n: common_vendor.f(splitImages(modalForm.faultImages), (img, index, i0) => {
+          return {
+            a: normalizeImageUrl(img),
+            b: common_vendor.o(($event) => previewModalImages(index), index),
+            c: common_vendor.o(($event) => removeModalImage(index), "del-" + index),
+            d: index
+          };
+        })
+      } : {}, {
+        o: common_vendor.o(closeModal),
+        p: common_vendor.o(saveDetail),
         z: common_vendor.o(() => {
         }),
         A: common_vendor.o(closeModal)
@@ -296,4 +337,3 @@ const _sfc_main = {
 };
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-588b9861"]]);
 wx.createPage(MiniProgramPage);
-//# sourceMappingURL=../../../.sourcemap/mp-weixin/pages/task/device.js.map

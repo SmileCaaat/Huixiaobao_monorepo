@@ -93,7 +93,7 @@ Content-Type: application/json
 | `getDeviceDetail` | `GET /api/fire/task/equipment/{recordId}` | `recordId` → `equipment,checkItems[]` | 已对应 |
 | `updateCheckResult` | `POST /api/fire/task/updateCheckResult` | `taskId,recordId,checkResult` | 已对应 |
 | `updateFaultDesc` | `POST /api/fire/task/updateFaultDesc` | `taskId,recordId,faultDescription` | 已对应 |
-| `updateCheckDetail` | `POST /api/fire/task/updateCheckDetail` | `taskId,recordId,checkResult,otherNotes,faultImages` | 已对应 |
+| `updateCheckDetail` | `POST /api/fire/task/updateCheckDetail` | `taskId,recordId,otherNotes,faultImages`（可选 `checkResult`/`faultDescription`） | 已对应；仅传说明/附件时不覆盖 `check_result` |
 | `updateMaintenance` | `POST /api/fire/task/updateMaintenance` | `taskId,recordId,testResult,sitePhotos` | 后端 API 缺失 |
 
 管理端存在 `POST /fire/task/updateMaintenance`，但它接受表单参数且位于管理端路由，不能直接视为小程序接口。应在 `/api/fire` 下补一个 JSON 版本，并复用 Service。

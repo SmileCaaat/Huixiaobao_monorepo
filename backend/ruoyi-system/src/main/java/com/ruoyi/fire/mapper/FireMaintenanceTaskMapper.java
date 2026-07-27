@@ -46,6 +46,14 @@ public interface FireMaintenanceTaskMapper
     public int updateFireMaintenanceTask(FireMaintenanceTask fireMaintenanceTask);
 
     /**
+     * 仅更新维保简报字段
+     */
+    int updateTaskBriefing(@Param("taskId") Long taskId,
+            @Param("maintenanceSummary") String maintenanceSummary,
+            @Param("maintenanceTime") java.util.Date maintenanceTime,
+            @Param("updateBy") String updateBy);
+
+    /**
      * 删除维保任务
      * 
      * @param taskId 维保任务主键
@@ -68,4 +76,9 @@ public interface FireMaintenanceTaskMapper
      * @return 公司列表
      */
     public List<FireCompany> selectCompanyListByTaskUserId(@Param("userId") Long userId);
+
+    /**
+     * 查询用户作为任务负责人（manager_id）所负责的项目/客户 ID 列表
+     */
+    List<Long> selectManagedCompanyIdsByUserId(@Param("userId") Long userId);
 }

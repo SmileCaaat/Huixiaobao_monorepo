@@ -377,6 +377,34 @@
                 font-size: 32px;
             }
         }
+
+        #personalStatsRow .stat-card-clickable {
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #personalStatsRow .stat-card-clickable:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+        }
+
+        #personalStatsRow .stat-card-clickable:active {
+            transform: translateY(-1px);
+        }
+
+        #personalStatsRow .stat-card-clickable:focus {
+            outline: 2px solid rgba(220, 53, 69, 0.45);
+            outline-offset: 2px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #personalStatsRow .stat-card-clickable,
+            #personalStatsRow .stat-card-clickable:hover,
+            #personalStatsRow .stat-card-clickable:active {
+                transition: none;
+                transform: none;
+            }
+        }
     </style>
 </head>
 
@@ -390,7 +418,7 @@
                     <div class="header-info">
                         <i class="fa fa-clock-o"></i> 系统运行状态：正常 |
                         <i class="fa fa-user"></i> 欢迎您，<span
-                            th:text="${@permission.getPrincipalProperty('userName')}">管理员</span> |
+                            th:text="${displayName}">管理员</span> |
                         <i class="fa fa-calendar"></i> <span id="currentDate"></span>
                     </div>
                 </div>
@@ -400,7 +428,78 @@
             </div>
         </div>
 
-        <!-- 统计卡片 -->
+        <!-- 本人任务统计（普通维保人员） -->
+        <div class="row" id="personalStatsRow" th:style="${homeScope == 'personal'} ? '' : 'display:none'">
+            <div class="col-sm-6 col-md-2">
+                <div class="stat-card card-warning stat-card-clickable" role="button" tabindex="0" aria-label="待处理任务"
+                    onclick="openTaskDashboard('pending')" onkeydown="handleStatCardKey(event, 'pending')">
+                    <i class="fa fa-hourglass-half stat-icon"></i>
+                    <div class="stat-number" id="pendingCount">-</div>
+                    <div class="stat-title">待处理</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <div class="stat-card card-primary stat-card-clickable" role="button" tabindex="0" aria-label="进行中任务"
+                    onclick="openTaskDashboard('doing')" onkeydown="handleStatCardKey(event, 'doing')">
+                    <i class="fa fa-spinner stat-icon"></i>
+                    <div class="stat-number" id="doingCount">-</div>
+                    <div class="stat-title">进行中</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <div class="stat-card card-success stat-card-clickable" role="button" tabindex="0" aria-label="今日任务"
+                    onclick="openTaskDashboard('today')" onkeydown="handleStatCardKey(event, 'today')">
+                    <i class="fa fa-calendar-check-o stat-icon"></i>
+                    <div class="stat-number" id="todayCount">-</div>
+                    <div class="stat-title">今日任务</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <div class="stat-card card-success stat-card-clickable" role="button" tabindex="0" aria-label="已完成任务"
+                    onclick="openTaskDashboard('completed')" onkeydown="handleStatCardKey(event, 'completed')">
+                    <i class="fa fa-check-circle stat-icon"></i>
+                    <div class="stat-number" id="doneCount">-</div>
+                    <div class="stat-title">已完成</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <div class="stat-card card-danger stat-card-clickable" role="button" tabindex="0" aria-label="已逾期任务"
+                    onclick="openTaskDashboard('overdue')" onkeydown="handleStatCardKey(event, 'overdue')">
+                    <i class="fa fa-exclamation-triangle stat-icon"></i>
+                    <div class="stat-number" id="overdueCount">-</div>
+                    <div class="stat-title">已逾期</div>
+                </div>
+            </div>
+            <div class="col-sm-6 col-md-2">
+                <div class="stat-card card-primary stat-card-clickable" role="button" tabindex="0" aria-label="本人全部任务"
+                    onclick="openTaskDashboard('mine')" onkeydown="handleStatCardKey(event, 'mine')">
+                    <i class="fa fa-tasks stat-icon"></i>
+                    <div class="stat-number" id="totalCount">-</div>
+                    <div class="stat-title">本人任务</div>
+                </div>
+            </div>
+        </div>
+        <div class="row" id="personalQuickRow" th:style="${homeScope == 'personal'} ? '' : 'display:none'">
+            <div class="col-md-12">
+                <div class="info-panel">
+                    <div class="panel-header">
+                        <i class="fa fa-th-large"></i>
+                        <h3>快捷入口</h3>
+                    </div>
+                    <div class="row">
+                        <div class="col-xs-6 col-sm-3">
+                            <a href="javascript:void(0)" onclick="openTaskDashboard('mine')" class="quick-entry">
+                                <i class="fa fa-tasks"></i>
+                                <span>我的维保任务</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 全局统计（管理员） -->
+        <div id="globalStatsBlock" th:style="${homeScope == 'global'} ? '' : 'display:none'">
         <div class="row">
             <div class="col-sm-6 col-md-3">
                 <div class="stat-card card-primary">
@@ -566,6 +665,7 @@
                 </div>
             </div>
         </div>
+        </div><!-- /globalStatsBlock -->
     </div>
 
     <script th:src="@{/js/jquery.min.js}"></script>
@@ -600,7 +700,16 @@
                 dataType: "json",
                 success: function (res) {
                     console.log("AJAX Success:", res);
-                    if (res.code == 0) {
+                    if (res.code == 0 || res.code == 200) {
+                        if (res.scope === 'personal') {
+                            $("#pendingCount").text(res.pendingCount != null ? res.pendingCount : 0);
+                            $("#doingCount").text(res.doingCount != null ? res.doingCount : 0);
+                            $("#todayCount").text(res.todayCount != null ? res.todayCount : 0);
+                            $("#doneCount").text(res.doneCount != null ? res.doneCount : 0);
+                            $("#overdueCount").text(res.overdueCount != null ? res.overdueCount : 0);
+                            $("#totalCount").text(res.totalCount != null ? res.totalCount : 0);
+                            return;
+                        }
                         // 顶部卡片
                         $("#companyCount").text(res.companyCount);
                         $("#buildingCount").text(res.buildingCount);
@@ -676,7 +785,141 @@
             });
         }
 
-        // 快捷入口跳转函数 - 模拟点击左侧菜单
+        // 快捷入口跳转：交给若依 openMenu 管理页签，筛选通过 sessionStorage + postMessage 传递
+        var TASK_MENU_BASE = '/fire/task';
+        var TASK_MENU_TITLE = '维保任务';
+        var TASK_DASHBOARD_FILTERS = ['pending', 'doing', 'today', 'completed', 'overdue', 'mine'];
+        var TASK_FILTER_STORAGE_KEY = 'fireTaskDashboardFilter';
+        var TASK_FILTER_MSG_TYPE = 'fire-task-dashboard-filter';
+
+        function normalizeTaskDashboardFilter(filter) {
+            if (TASK_DASHBOARD_FILTERS.indexOf(filter) >= 0) {
+                return filter;
+            }
+            return 'mine';
+        }
+
+        function handleStatCardKey(e, filter) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openTaskDashboard(filter);
+            }
+        }
+
+        function hasTaskMenuPermission() {
+            try {
+                var parentDoc = window.parent.document;
+                var menuItems = parentDoc.querySelectorAll('a.menuItem');
+                for (var i = 0; i < menuItems.length; i++) {
+                    var href = menuItems[i].getAttribute('href');
+                    if (href && (href === TASK_MENU_BASE || href.endsWith(TASK_MENU_BASE))) {
+                        return true;
+                    }
+                }
+            } catch (e) {
+                console.error('检查维保任务菜单权限失败:', e);
+            }
+            return false;
+        }
+
+        function findTaskIframe() {
+            try {
+                var parentDoc = window.parent && window.parent.document;
+                if (!parentDoc) {
+                    return null;
+                }
+                var iframes = parentDoc.querySelectorAll('iframe.RuoYi_iframe');
+                for (var i = 0; i < iframes.length; i++) {
+                    var dataId = iframes[i].getAttribute('data-id') || '';
+                    if (dataId === TASK_MENU_BASE || dataId.endsWith(TASK_MENU_BASE)) {
+                        return iframes[i];
+                    }
+                }
+            } catch (e) {
+                console.warn('查找维保任务 iframe 失败:', e);
+            }
+            return null;
+        }
+
+        function isTaskIframeDocumentReady(iframe) {
+            try {
+                var doc = iframe.contentWindow && iframe.contentWindow.document;
+                if (!doc) {
+                    return false;
+                }
+                var href = '';
+                try {
+                    href = iframe.contentWindow.location.href || '';
+                } catch (e) {
+                    return false;
+                }
+                if (!href || href === 'about:blank') {
+                    return false;
+                }
+                return doc.readyState === 'interactive' || doc.readyState === 'complete';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function postFilterToTaskIframe(filter) {
+            try {
+                var iframe = findTaskIframe();
+                if (!iframe || !iframe.contentWindow || !isTaskIframeDocumentReady(iframe)) {
+                    return false;
+                }
+                iframe.contentWindow.postMessage({
+                    type: TASK_FILTER_MSG_TYPE,
+                    filter: filter
+                }, window.location.origin);
+                return true;
+            } catch (e) {
+                console.warn('向维保任务页发送筛选消息失败:', e);
+                return false;
+            }
+        }
+
+        function notifyTaskFilterOnce(filter) {
+            if (postFilterToTaskIframe(filter)) {
+                return;
+            }
+            var iframe = findTaskIframe();
+            if (iframe) {
+                var onLoad = function () {
+                    iframe.removeEventListener('load', onLoad);
+                    postFilterToTaskIframe(filter);
+                };
+                iframe.addEventListener('load', onLoad);
+            }
+            var attempts = 0;
+            var timer = setInterval(function () {
+                attempts++;
+                if (postFilterToTaskIframe(filter) || attempts >= 10) {
+                    clearInterval(timer);
+                }
+            }, 200);
+        }
+
+        function openTaskDashboard(filter) {
+            filter = normalizeTaskDashboardFilter(filter);
+            if (!hasTaskMenuPermission()) {
+                if (typeof $.modal !== 'undefined' && $.modal.msgWarning) {
+                    $.modal.msgWarning('无权访问维保任务');
+                } else {
+                    alert('无权访问维保任务');
+                }
+                return;
+            }
+            try {
+                sessionStorage.setItem(TASK_FILTER_STORAGE_KEY, filter);
+            } catch (e) {
+                console.warn('写入任务筛选缓存失败:', e);
+            }
+            // 仅通过若依菜单点击切换页签，禁止手动改 iframe CSS
+            openMenu(TASK_MENU_BASE, TASK_MENU_TITLE);
+            notifyTaskFilterOnce(filter);
+        }
+
         function openMenu(url, title) {
             try {
                 // 在父窗口中查找对应的菜单项并点击
@@ -709,6 +952,11 @@
 
                 if (!found) {
                     console.warn('未找到菜单项: ' + url);
+                    if (typeof $.modal !== 'undefined' && $.modal.msgWarning) {
+                        $.modal.msgWarning('未找到维保任务菜单，请确认已分配菜单权限');
+                    } else {
+                        alert('未找到维保任务菜单，请确认已分配菜单权限');
+                    }
                 }
             } catch (e) {
                 console.error('跳转失败:', e);

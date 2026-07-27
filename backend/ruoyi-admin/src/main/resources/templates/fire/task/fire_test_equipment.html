@@ -54,11 +54,7 @@
 
         .check-info {
             flex: 1;
-            cursor: pointer;
-        }
-
-        .check-info:hover {
-            opacity: 0.8;
+            min-width: 0;
         }
 
         .check-name {
@@ -77,6 +73,9 @@
             display: flex;
             gap: 8px;
             align-items: center;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .status-btn {
@@ -87,15 +86,26 @@
             cursor: pointer;
             transition: all 0.3s;
             background: white;
+            line-height: 1.4;
         }
 
         .status-btn:hover {
             opacity: 0.8;
         }
 
+        .status-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
         .status-btn.active {
             font-weight: bold;
             border-width: 2px;
+        }
+
+        .status-btn.active::before {
+            content: "✓ ";
+            font-weight: bold;
         }
 
         .status-btn.btn-normal {
@@ -125,7 +135,66 @@
 
         .status-btn.btn-nodevice.active {
             background: #ffc107;
-            color: white;
+            color: #333;
+        }
+
+        .detail-attach-btn {
+            padding: 6px 10px;
+            border: 1px solid #e65100;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            background: #fff;
+            color: #e65100;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+
+        .detail-attach-btn:hover {
+            background: #fff3e0;
+        }
+
+        .detail-attach-btn .attach-badge {
+            display: inline-block;
+            min-width: 16px;
+            padding: 0 5px;
+            margin-left: 4px;
+            border-radius: 10px;
+            background: #e65100;
+            color: #fff;
+            font-size: 11px;
+            line-height: 16px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .image-preview-item {
+            position: relative;
+            width: 80px;
+            height: 80px;
+        }
+
+        .image-preview-item img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .image-preview-item .img-remove {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #dc3545;
+            color: #fff;
+            font-size: 12px;
+            line-height: 18px;
+            text-align: center;
+            cursor: pointer;
         }
 
         .fault-desc-area {
@@ -189,9 +258,11 @@
         <div class="check-list" id="checkList">
             <div th:each="item : ${checkItems}" class="check-item" th:data-id="${item.recordId}"
                 th:data-name="${item.itemName}" th:data-result="${item.checkResult}"
-                th:data-desc="${item.faultDescription}">
+                th:data-desc="${item.faultDescription}"
+                th:data-images="${item.faultImages}"
+                th:data-notes="${item.otherNotes}">
                 <div class="check-header">
-                    <div class="check-info" onclick="openCheckDetailFromCard(this)">
+                    <div class="check-info">
                         <div class="check-name" th:text="${item.itemName}">检查项名称</div>
                         <div class="check-code" th:text="${item.itemCode}">检查项编码</div>
                     </div>
@@ -210,6 +281,13 @@
                             th:classappend="${item.checkResult == '3' ? 'active' : ''}"
                             th:data-record-id="${item.recordId}" onclick="updateStatus(event, this, '3')">
                             无此设备
+                        </button>
+                        <button type="button" class="detail-attach-btn"
+                                th:data-record-id="${item.recordId}"
+                                th:attr="data-attach-count=${item.faultImages != null and !#strings.isEmpty(item.faultImages) ? #strings.arraySplit(item.faultImages, ',').length : 0}"
+                                onclick="openOtherNotes(event, this)"
+                                title="其他说明">
+                            其他说明<span class="attach-badge" th:if="${item.faultImages != null and !#strings.isEmpty(item.faultImages)}" th:text="${#strings.arraySplit(item.faultImages, ',').length}">0</span>
                         </button>
                     </div>
                 </div>
@@ -234,23 +312,109 @@
     <script th:inline="javascript">
         var prefix = ctx + "fire/task";
         var equipmentRecordId = [[${ equipment.recordId }]];
-        var checkItemsData = [[${ checkItems }]];
+        var checkItemsData = [[${ checkItems }]] || [];
+        var savingRecords = {};
+        var statusSeqMap = {};
+        var detailSaving = false;
+        var pendingFaultImages = [];
 
         function goBack() {
             var parentRecordId = [[${ equipment.parentRecordId }]];
             window.location.href = prefix + "/fireTestSystem/" + parentRecordId;
         }
 
-        function openCheckDetailFromCard(element) {
+        function findCheckItem(recordId) {
+            for (var i = 0; i < checkItemsData.length; i++) {
+                if (String(checkItemsData[i].recordId) === String(recordId)) {
+                    return checkItemsData[i];
+                }
+            }
+            return null;
+        }
+
+        function syncLocalCheckItem(recordId, patch) {
+            var item = findCheckItem(recordId);
+            if (item) {
+                for (var key in patch) {
+                    if (Object.prototype.hasOwnProperty.call(patch, key)) {
+                        item[key] = patch[key];
+                    }
+                }
+            }
+            var $item = $('[data-id="' + recordId + '"]');
+            if (patch.checkResult !== undefined) {
+                $item.attr('data-result', patch.checkResult);
+            }
+            if (patch.faultDescription !== undefined) {
+                $item.attr('data-desc', patch.faultDescription || '');
+            }
+            if (patch.faultImages !== undefined) {
+                $item.attr('data-images', patch.faultImages || '');
+                updateAttachBadge(recordId, patch.faultImages || '');
+            }
+            if (patch.otherNotes !== undefined) {
+                $item.attr('data-notes', patch.otherNotes || '');
+            }
+        }
+
+        function countImages(images) {
+            if (!images) return 0;
+            return String(images).split(',').filter(function (s) { return !!s; }).length;
+        }
+
+        function updateAttachBadge(recordId, images) {
+            var count = countImages(images);
+            var $btn = $('.detail-attach-btn[data-record-id="' + recordId + '"]');
+            $btn.find('.attach-badge').remove();
+            if (count > 0) {
+                $btn.append('<span class="attach-badge">' + count + '</span>');
+            }
+            $btn.attr('data-attach-count', count);
+        }
+
+        function applyOuterStatusUI(recordId, status) {
+            var $item = $('[data-id="' + recordId + '"]');
+            $item.find('.status-btn').removeClass('active');
+            if (status === '1') {
+                $item.find('.status-btn.btn-normal').addClass('active');
+            } else if (status === '2') {
+                $item.find('.status-btn.btn-fault').addClass('active');
+            } else if (status === '3') {
+                $item.find('.status-btn.btn-nodevice').addClass('active');
+            }
+            var $faultArea = $('#faultArea-' + recordId);
+            if (status === '2') {
+                $faultArea.addClass('show');
+            } else {
+                $faultArea.removeClass('show');
+                if (status !== '2') {
+                    $('#faultDesc-' + recordId).val('');
+                }
+            }
+        }
+
+        function openOtherNotes(event, element) {
+            event.stopPropagation();
             var $item = $(element).closest('.check-item');
-            var recordId = $item.data('id');
-            var itemName = $item.data('name');
-            openCheckDetail(recordId, itemName);
+            openOtherNotesDialog($item.data('id'), $item.data('name'));
         }
 
         function updateStatus(event, element, status) {
             event.stopPropagation();
             var recordId = $(element).data('record-id');
+            if (savingRecords[recordId]) {
+                return;
+            }
+            var current = findCheckItem(recordId);
+            var previous = current ? (current.checkResult || '0') : String($('[data-id="' + recordId + '"]').attr('data-result') || '0');
+            if (String(previous) === String(status)) {
+                return;
+            }
+
+            savingRecords[recordId] = true;
+            statusSeqMap[recordId] = (statusSeqMap[recordId] || 0) + 1;
+            var seq = statusSeqMap[recordId];
+            $('[data-id="' + recordId + '"]').find('.status-btn').prop('disabled', true);
 
             $.ajax({
                 url: prefix + "/updateCheckResult",
@@ -260,20 +424,33 @@
                     checkResult: status
                 },
                 success: function (res) {
+                    if (seq !== statusSeqMap[recordId]) {
+                        return;
+                    }
                     if (res.code == 0) {
                         $.modal.msgSuccess("状态更新成功");
-                        var $item = $('[data-id="' + recordId + '"]');
-                        $item.find('.status-btn').removeClass('active');
-                        $(element).addClass('active');
-                        var $faultArea = $('#faultArea-' + recordId);
-                        if (status == '2') {
-                            $faultArea.addClass('show');
-                        } else {
-                            $faultArea.removeClass('show');
-                            $('#faultDesc-' + recordId).val('');
+                        applyOuterStatusUI(recordId, status);
+                        var patch = { checkResult: status };
+                        if (status != '2') {
+                            patch.faultDescription = '';
                         }
+                        syncLocalCheckItem(recordId, patch);
                     } else {
-                        $.modal.alertError(res.msg);
+                        applyOuterStatusUI(recordId, previous);
+                        $.modal.alertError(res.msg || "状态更新失败");
+                    }
+                },
+                error: function (xhr) {
+                    if (seq !== statusSeqMap[recordId]) {
+                        return;
+                    }
+                    applyOuterStatusUI(recordId, previous);
+                    $.modal.alertError((xhr.responseJSON && xhr.responseJSON.msg) || "状态更新失败");
+                },
+                complete: function () {
+                    if (seq === statusSeqMap[recordId]) {
+                        savingRecords[recordId] = false;
+                        $('[data-id="' + recordId + '"]').find('.status-btn').prop('disabled', false);
                     }
                 }
             });
@@ -283,7 +460,6 @@
             event.stopPropagation();
             var recordId = $(element).data('record-id');
             var faultDesc = $('#faultDesc-' + recordId).val();
-
             $.ajax({
                 url: prefix + "/updateFaultDesc",
                 type: "post",
@@ -294,6 +470,7 @@
                 success: function (res) {
                     if (res.code == 0) {
                         $.modal.msgSuccess("故障描述保存成功");
+                        syncLocalCheckItem(recordId, { faultDescription: faultDesc });
                     } else {
                         $.modal.alertError(res.msg);
                     }
@@ -301,127 +478,134 @@
             });
         }
 
-        function openCheckDetail(recordId, itemName) {
-            var currentItem = null;
-            for (var i = 0; i < checkItemsData.length; i++) {
-                if (checkItemsData[i].recordId == recordId) {
-                    currentItem = checkItemsData[i];
-                    break;
-                }
-            }
-
-            var checkResult = currentItem ? currentItem.checkResult : '1';
-            var faultDescription = currentItem ? (currentItem.faultDescription || '') : '';
-            var otherNotes = currentItem ? (currentItem.otherNotes || '') : '';
-            var faultImages = currentItem ? (currentItem.faultImages || '') : '';
+        function openOtherNotesDialog(recordId, itemName) {
+            var currentItem = findCheckItem(recordId);
+            var otherNotes = currentItem ? (currentItem.otherNotes || '') : ($('[data-id="' + recordId + '"]').attr('data-notes') || '');
+            var faultImages = currentItem ? (currentItem.faultImages || '') : ($('[data-id="' + recordId + '"]').attr('data-images') || '');
+            pendingFaultImages = faultImages ? String(faultImages).split(',').filter(function (s) { return !!s; }) : [];
 
             var html = '<div style="max-height: calc(85vh - 120px); overflow-y: auto; padding-right: 10px;">' +
                 '<form id="checkForm" style="padding: 20px;">' +
                 '<div class="form-group">' +
-                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">' + itemName + '是否完好？</label>' +
-                '<div style="margin-bottom: 15px;">' +
-                '<label style="margin-right: 20px; cursor: pointer;">' +
-                '<input type="radio" name="isGood" value="yes" ' + (checkResult == '1' ? 'checked' : '') + ' style="margin-right: 5px;"> 是' +
-                '</label>' +
-                '<label style="cursor: pointer;">' +
-                '<input type="radio" name="isGood" value="no" ' + (checkResult == '2' || checkResult == '3' ? 'checked' : '') + ' style="margin-right: 5px;"> 否' +
-                '</label>' +
-                '</div>' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">其他说明' + (itemName ? '（' + itemName + '）' : '') + '：</label>' +
+                '<textarea id="otherNotes" class="form-control" rows="4" placeholder="请输入其他说明...">' + otherNotes + '</textarea>' +
                 '</div>' +
                 '<div class="form-group">' +
-                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">设备状态：</label>' +
-                '<select id="deviceStatus" class="form-control">' +
-                '<option value="1" ' + (checkResult == '1' ? 'selected' : '') + '>正常</option>' +
-                '<option value="2" ' + (checkResult == '2' ? 'selected' : '') + '>故障</option>' +
-                '<option value="3" ' + (checkResult == '3' ? 'selected' : '') + '>无此设备</option>' +
-                '</select>' +
-                '</div>' +
-                '<div class="form-group" id="faultDescGroup" style="' + (checkResult == '2' ? '' : 'display:none;') + '">' +
-                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">故障说明：</label>' +
-                '<textarea id="faultDesc" class="form-control" rows="3" placeholder="请输入故障说明...">' + faultDescription + '</textarea>' +
-                '</div>' +
-                '<div class="form-group">' +
-                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">其他说明：</label>' +
-                '<textarea id="otherNotes" class="form-control" rows="3" placeholder="请输入其他说明...">' + otherNotes + '</textarea>' +
+                '<label style="font-weight: bold; margin-bottom: 10px; display: block;">附件：</label>' +
+                '<input type="file" id="fileUpload" multiple accept="image/*" style="margin-bottom: 10px;">' +
+                '<div id="imagePreview" style="display: flex; flex-wrap: wrap; gap: 10px;"></div>' +
                 '</div>' +
                 '</form>' +
                 '</div>';
 
             layer.open({
                 type: 1,
-                title: '检查详情',
-                area: ['650px', '85%'],
+                title: '其他说明',
+                area: ['650px', '70%'],
                 maxmin: true,
                 scrollbar: true,
                 content: html,
                 btn: ['保存', '取消'],
-                yes: function (index, layero) {
-                    saveCheckDetail(recordId, index);
-                },
-                btn2: function (index, layero) {
-                    // 取消按钮，直接关闭
-                    return true;
-                },
-                success: function (layero, index) {
-                    // 弹窗打开后的初始化
+                yes: function (index) {
+                    saveOtherNotes(recordId, index);
                 }
             });
 
-            $('input[name="isGood"]').change(function () {
-                var isGood = $(this).val();
-                if (isGood == 'yes') {
-                    $('#deviceStatus').val('1');
-                    $('#faultDescGroup').hide();
-                } else {
-                    if ($('#deviceStatus').val() == '1') {
-                        $('#deviceStatus').val('2');
-                    }
-                    if ($('#deviceStatus').val() == '2') {
-                        $('#faultDescGroup').show();
-                    }
-                }
-            });
-
-            $('#deviceStatus').change(function () {
-                var status = $(this).val();
-                if (status == '1') {
-                    $('input[name="isGood"][value="yes"]').prop('checked', true);
-                    $('#faultDescGroup').hide();
-                } else if (status == '2' || status == '3') {
-                    $('input[name="isGood"][value="no"]').prop('checked', true);
-                    if (status == '2') {
-                        $('#faultDescGroup').show();
-                    } else {
-                        $('#faultDescGroup').hide();
-                    }
-                }
-            });
+            renderImagePreview();
         }
 
-        function saveCheckDetail(recordId, layerIndex) {
-            var deviceStatus = $('#deviceStatus').val();
-            var faultDesc = $('#faultDesc').val();
-            var otherNotes = $('#otherNotes').val();
+        function renderImagePreview() {
+            var previewHtml = '';
+            pendingFaultImages.forEach(function (img, idx) {
+                if (!img) return;
+                previewHtml += '<div class="image-preview-item">' +
+                    '<img src="' + img + '" onclick="$.modal.image(\'' + img.replace(/'/g, "\\'") + '\')">' +
+                    '<span class="img-remove" title="移除" onclick="removePendingImage(' + idx + ')">×</span>' +
+                    '</div>';
+            });
+            $('#imagePreview').html(previewHtml);
+        }
 
+        function removePendingImage(index) {
+            pendingFaultImages.splice(index, 1);
+            renderImagePreview();
+        }
+
+        function saveOtherNotes(recordId, layerIndex) {
+            if (detailSaving) {
+                return;
+            }
+            var otherNotes = $('#otherNotes').val();
+            if (otherNotes == null) {
+                otherNotes = '';
+            }
+            var fileInput = document.getElementById('fileUpload');
+            detailSaving = true;
+            var $yesBtn = $('.layui-layer-btn0');
+            $yesBtn.css('pointer-events', 'none').text('保存中...');
+
+            function finishUnlock() {
+                detailSaving = false;
+                $yesBtn.css('pointer-events', 'auto').text('保存');
+            }
+
+            if (fileInput && fileInput.files.length > 0) {
+                var formData = new FormData();
+                for (var i = 0; i < fileInput.files.length; i++) {
+                    formData.append('files', fileInput.files[i]);
+                }
+                $.ajax({
+                    url: ctx + 'common/uploads',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (result) {
+                        if (result.code == 0) {
+                            var uploaded = result.urls ? String(result.urls).split(',').filter(function (s) { return !!s; }) : [];
+                            var merged = pendingFaultImages.concat(uploaded);
+                            submitOtherNotes(recordId, otherNotes, merged.join(','), layerIndex, finishUnlock);
+                        } else {
+                            finishUnlock();
+                            $.modal.alertError("文件上传失败：" + result.msg);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        finishUnlock();
+                        $.modal.alertError("文件上传失败：" + error);
+                    }
+                });
+            } else {
+                submitOtherNotes(recordId, otherNotes, pendingFaultImages.join(','), layerIndex, finishUnlock);
+            }
+        }
+
+        // 仅提交说明与附件；不传 checkResult，避免覆盖外层状态
+        function submitOtherNotes(recordId, otherNotes, imageUrls, layerIndex, unlockFn) {
             $.ajax({
                 url: prefix + "/updateCheckDetail",
                 type: "post",
                 data: {
                     recordId: recordId,
-                    checkResult: deviceStatus,
-                    faultDescription: faultDesc,
-                    otherNotes: otherNotes
+                    otherNotes: otherNotes,
+                    faultImages: imageUrls == null ? '' : imageUrls
                 },
                 success: function (res) {
+                    if (typeof unlockFn === 'function') unlockFn();
                     if (res.code == 0) {
                         $.modal.msgSuccess("保存成功");
+                        syncLocalCheckItem(recordId, {
+                            otherNotes: otherNotes,
+                            faultImages: imageUrls || ''
+                        });
                         layer.close(layerIndex);
-                        setTimeout(function () {
-                            location.reload();
-                        }, 500);
                     } else {
-                        $.modal.alertError(res.msg);
+                        $.modal.alertError(res.msg || "保存失败");
                     }
+                },
+                error: function (xhr) {
+                    if (typeof unlockFn === 'function') unlockFn();
+                    $.modal.alertError((xhr.responseJSON && xhr.responseJSON.msg) || "保存失败");
                 }
             });
         }

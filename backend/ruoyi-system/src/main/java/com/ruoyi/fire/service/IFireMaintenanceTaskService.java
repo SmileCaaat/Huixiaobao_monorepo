@@ -53,6 +53,11 @@ public interface IFireMaintenanceTaskService {
     public int updateFireMaintenanceTask(FireMaintenanceTask fireMaintenanceTask);
 
     /**
+     * 仅更新维保简报字段（maintenanceSummary / maintenanceTime）
+     */
+    int updateTaskBriefing(Long taskId, String maintenanceSummary, java.util.Date maintenanceTime, String updateBy);
+
+    /**
      * 批量删除维保任务
      * 
      * @param taskIds 需要删除的维保任务主键集合

@@ -18,44 +18,47 @@
 }
 .item-card.data-v-588b9861 {
   background: #fff;
-  padding: 30rpx;
+  padding: 28rpx 30rpx;
   border-bottom: 1rpx solid #eee;
-}
-.item-top.data-v-588b9861 {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  box-sizing: border-box;
 }
 .item-info.data-v-588b9861 {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-  flex: 1;
-  padding-right: 20rpx;
+  min-width: 0;
 }
 .item-name.data-v-588b9861 {
   font-size: 30rpx;
   font-weight: bold;
   color: #333;
+  word-break: break-all;
 }
 .item-code.data-v-588b9861 {
   font-size: 24rpx;
   color: #999;
 }
-
-/* 按钮组 */
-.btn-group.data-v-588b9861 {
+.status-row.data-v-588b9861 {
   display: flex;
   gap: 16rpx;
-  flex-shrink: 0;
+  width: 100%;
+  margin-top: 20rpx;
 }
 .check-btn.data-v-588b9861 {
-  padding: 10rpx 24rpx;
+  flex: 1;
+  min-width: 0;
+  min-height: 88rpx;
+  padding: 16rpx 8rpx;
   border-radius: 8rpx;
   border: 2rpx solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 .check-btn text.data-v-588b9861 {
   font-size: 24rpx;
+  text-align: center;
 }
 
 /* 正常按钮 */
@@ -141,6 +144,81 @@
 .save-btn text.data-v-588b9861 {
   color: #fff;
   font-size: 24rpx;
+}
+
+.notes-btn.data-v-588b9861 {
+  margin-top: 20rpx;
+  min-height: 88rpx;
+  box-sizing: border-box;
+  border: 2rpx solid #90caf9;
+  border-radius: 8rpx;
+  background: #f5fbff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  padding: 16rpx;
+}
+.notes-btn text.data-v-588b9861 {
+  color: #1976d2;
+  font-size: 28rpx;
+}
+.notes-badge.data-v-588b9861 {
+  min-width: 32rpx;
+  padding: 0 10rpx;
+  border-radius: 20rpx;
+  background: #1976d2;
+  color: #fff !important;
+  font-size: 22rpx;
+  line-height: 32rpx;
+  text-align: center;
+}
+.firetest .notes-btn.data-v-588b9861 {
+  border-color: #ffcc80;
+  background: #fff8f0;
+}
+.firetest .notes-btn text.data-v-588b9861 {
+  color: #ef6c00;
+}
+.firetest .notes-badge.data-v-588b9861 {
+  background: #ef6c00;
+}
+.thumb-row.data-v-588b9861 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+.thumb.data-v-588b9861 {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 8rpx;
+  background: #f0f0f0;
+}
+.thumb-wrap.data-v-588b9861 {
+  position: relative;
+  width: 120rpx;
+  height: 120rpx;
+}
+.thumb-del.data-v-588b9861 {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #ef5350;
+  color: #fff;
+  font-size: 24rpx;
+  line-height: 36rpx;
+  text-align: center;
+}
+.loading-state.data-v-588b9861,
+.empty-state.data-v-588b9861 {
+  padding: 80rpx 0;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
 }
 
 /* 弹窗样式 */

@@ -589,10 +589,9 @@ public class FireMiniAppController extends BaseController {
         record.setCheckerId(ShiroUtils.getUserId());
         record.setCheckerName(ShiroUtils.getLoginName());
 
-        // 如果不是故障，清空故障描述
+        // 如果不是故障，清空故障描述（不清空附件，避免快速改状态误删已上传图片；与 PC 端一致）
         if (!"2".equals(record.getCheckResult())) {
             record.setFaultDescription("");
-            record.setFaultImages("");
         }
 
         int result = recordService.updateCheckResult(record);
@@ -617,8 +616,9 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 更新检查详情（完整信息）
+     * 更新检查详情（说明与附件等）
      * 校验当前用户是否为该任务相关人员。
+     * 未传 checkResult 时不覆盖外层状态；otherNotes / faultImages 允许空串清空。
      */
     @PostMapping("/task/updateCheckDetail")
     public AjaxResult updateCheckDetail(@RequestBody FireMaintenanceRecord record) {
@@ -628,6 +628,10 @@ public class FireMiniAppController extends BaseController {
         FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(record.getTaskId());
         if (task == null || !isTaskRelated(task, ShiroUtils.getUserId())) {
             return AjaxResult.error("您无权操作该任务");
+        }
+        // 说明/附件保存不改写设备状态
+        if (record.getCheckResult() == null || record.getCheckResult().isEmpty()) {
+            record.setCheckResult(null);
         }
         record.setCheckTime(new Date());
         record.setCheckerId(ShiroUtils.getUserId());

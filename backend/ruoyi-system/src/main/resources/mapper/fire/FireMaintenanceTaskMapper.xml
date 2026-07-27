@@ -64,18 +64,22 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select task_id, task_name, company_id, company_name, plan_start_time, plan_end_time, actual_start_time, actual_end_time, task_status, total_items, completed_items, normal_items, fault_items, no_device_items, executor_id, executor_name, task_type, period_type, period_year, period_num, manager_id, manager_name, manager_phone, operator_ids, operator_names, building_id, building_name, selected_system_ids, selected_fire_test_ids, maintenance_summary, maintenance_time, create_by, create_time, update_by, update_time, remark from fire_maintenance_task
     </sql>
 
+    <sql id="effectiveTaskStatusExpr">
+        CASE
+            WHEN (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3) &gt; 0
+                 AND (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result != '0')
+                     = (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3)
+            THEN '2'
+            WHEN (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result != '0') &gt; 0
+            THEN '1'
+            ELSE t.task_status
+        END
+    </sql>
+
     <select id="selectFireMaintenanceTaskList" parameterType="FireMaintenanceTask" resultMap="FireMaintenanceTaskResult">
         select t.task_id, t.task_name, t.company_id, t.company_name, t.plan_start_time, t.plan_end_time,
             t.actual_start_time, t.actual_end_time,
-            CASE
-                WHEN (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3) > 0
-                     AND (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result != '0')
-                         = (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3)
-                THEN '2'
-                WHEN (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result != '0') > 0
-                THEN '1'
-                ELSE t.task_status
-            END as task_status,
+            <include refid="effectiveTaskStatusExpr"/> as task_status,
             (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3) as total_items,
             (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result != '0') as completed_items,
             (SELECT COUNT(*) FROM fire_maintenance_record r WHERE r.task_id = t.task_id AND r.level = 3 AND r.check_result = '1') as normal_items,
@@ -91,7 +95,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="taskName != null  and taskName != ''"> and t.task_name like concat('%', #{taskName}, '%')</if>
             <if test="companyId != null "> and t.company_id = #{companyId}</if>
             <if test="companyName != null  and companyName != ''"> and t.company_name like concat('%', #{companyName}, '%')</if>
-            <if test="taskStatus != null  and taskStatus != ''"> and t.task_status = #{taskStatus}</if>
+            <if test="taskStatus != null  and taskStatus != ''"> and (<include refid="effectiveTaskStatusExpr"/>) = #{taskStatus}</if>
             <if test="executorId != null "> and t.executor_id = #{executorId}</if>
             <if test="executorName != null  and executorName != ''"> and t.executor_name like concat('%', #{executorName}, '%')</if>
             <if test="taskType != null  and taskType != ''"> and t.task_type = #{taskType}</if>
@@ -109,6 +113,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                     or t.executor_id = #{managerId}
                     or FIND_IN_SET(#{managerId}, t.operator_ids) > 0
                 )
+            </if>
+            <if test="params != null and params.dashboardFilter == 'today'">
+                and t.plan_start_time is not null
+                and DATE(t.plan_start_time) = CURDATE()
+            </if>
+            <if test="params != null and params.dashboardFilter == 'overdue'">
+                and t.plan_end_time is not null
+                and t.plan_end_time &lt; NOW()
+                and (<include refid="effectiveTaskStatusExpr"/>) not in ('2', '3')
             </if>
             <if test="buildingId != null "> and t.building_id = #{buildingId}</if>
         </where>
@@ -260,6 +273,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where task_id = #{taskId}
     </update>
 
+    <update id="updateTaskBriefing">
+        update fire_maintenance_task
+        set maintenance_summary = #{maintenanceSummary},
+            maintenance_time = #{maintenanceTime},
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where task_id = #{taskId}
+    </update>
+
     <delete id="deleteFireMaintenanceTaskByTaskId" parameterType="Long">
         delete from fire_maintenance_task where task_id = #{taskId}
     </delete>
@@ -287,5 +309,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                  or FIND_IN_SET(#{userId}, t.operator_ids) > 0
           )
         order by c.company_name
+    </select>
+
+    <select id="selectManagedCompanyIdsByUserId" resultType="long">
+        select distinct company_id
+        from fire_maintenance_task
+        where manager_id = #{userId}
+          and company_id is not null
     </select>
 </mapper>

@@ -1,15 +1,42 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
 
 <head>
     <th:block th:include="include :: header('维保任务列表')" />
     <style>
+        /* 独立任务分类卡片：与搜索区、列表区同宽对齐，不放入搜索表单 */
+        .task-type-card {
+            width: 100%;
+            background: #fff;
+            border-radius: 6px;
+            margin-top: 10px;
+            padding: 6px 15px 0;
+            box-shadow: 1px 1px 3px rgba(0, 0, 0, .2);
+            box-sizing: border-box;
+        }
+
         .task-tabs {
-            margin-bottom: 20px;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: none;
+            box-sizing: border-box;
         }
 
         .task-tabs .nav-tabs {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+            float: none;
             border-bottom: 2px solid #dc3545;
+            margin: 0;
+            width: 100%;
+        }
+
+        .task-tabs .nav-tabs > li {
+            float: none;
+            flex: 0 0 auto;
+            margin-bottom: 0;
         }
 
         .task-tabs .nav-tabs li a {
@@ -17,6 +44,8 @@
             color: #666;
             padding: 10px 30px;
             font-weight: 500;
+            display: block;
+            white-space: nowrap;
         }
 
         .task-tabs .nav-tabs li.active a {
@@ -100,6 +129,24 @@
             margin-left: 10px;
             color: #1890ff;
         }
+
+        .dashboard-filter-tip {
+            background: #fff7e6;
+            border: 1px solid #ffd591;
+            border-radius: 4px;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+            color: #d48806;
+        }
+
+        .dashboard-filter-tip i {
+            margin-right: 5px;
+        }
+
+        .dashboard-filter-tip a {
+            margin-left: 10px;
+            color: #d48806;
+        }
     </style>
 </head>
 
@@ -113,18 +160,16 @@
                 <a href="javascript:void(0)" onclick="clearCompanyFilter()"><i class="fa fa-times"></i> 清除筛选</a>
             </div>
 
-            <!-- 标签页 -->
-            <div class="task-tabs">
-                <ul class="nav nav-tabs">
-                    <li class="active"><a href="javascript:void(0)" onclick="searchByType('')">全部任务</a></li>
-                    <li><a href="javascript:void(0)" onclick="searchByType('0')">周期任务</a></li>
-                    <li><a href="javascript:void(0)" onclick="searchByType('1')">临时任务</a></li>
-                </ul>
+            <div class="col-sm-12 dashboard-filter-tip" id="dashboardFilterTip" style="display:none;">
+                <i class="fa fa-filter"></i>
+                <span>当前快捷筛选：<span id="dashboardFilterLabel"></span></span>
+                <a href="javascript:void(0)" onclick="clearDashboardFilter()"><i class="fa fa-times"></i> 清除</a>
             </div>
 
             <div class="col-sm-12 search-collapse">
                 <form id="formId">
                     <input type="hidden" name="taskType" id="taskType" />
+                    <input type="hidden" name="params[dashboardFilter]" id="dashboardFilter" value="" />
                     <div class="select-list">
                         <ul>
                             <li>
@@ -160,12 +205,23 @@
                             <li>
                                 <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
                                         class="fa fa-search"></i>&nbsp;搜索</a>
-                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="resetTaskSearch()"><i
                                         class="fa fa-refresh"></i>&nbsp;重置</a>
                             </li>
                         </ul>
                     </div>
                 </form>
+            </div>
+
+            <!-- 独立任务分类卡片：位于搜索卡片与列表卡片之间 -->
+            <div class="col-sm-12 task-type-card">
+                <div class="task-tabs">
+                    <ul class="nav nav-tabs">
+                        <li class="active"><a href="javascript:void(0)" onclick="searchByType('')">全部任务</a></li>
+                        <li><a href="javascript:void(0)" onclick="searchByType('0')">周期任务</a></li>
+                        <li><a href="javascript:void(0)" onclick="searchByType('1')">临时任务</a></li>
+                    </ul>
+                </div>
             </div>
 
             <div class="btn-group-sm" id="toolbar" role="group">
@@ -188,16 +244,140 @@
     <script th:inline="javascript">
         var editFlag = [[${@permission.hasPermi('fire:task:edit') }]];
         var removeFlag = [[${@permission.hasPermi('fire:task:remove') }]];
+        var briefingFlag = [[${@permission.hasPermi('fire:task:briefing') }]];
+        var completeAllFlag = [[${@permission.hasPermi('fire:task:completeAll') }]];
         var detailFlag = [[${@permission.hasPermi('fire:task:detail') }]];
         var taskTypeDatas = [[${@dict.getType('fire_task_type') }]];
         var taskStatusDatas = [[${@dict.getType('fire_task_status') }]];
         var periodTypeDatas = [[${@dict.getType('fire_period_type') }]];
         var prefix = ctx + "fire/task";
 
-        // 从URL获取公司参数
+        var DASHBOARD_FILTERS = ['pending', 'doing', 'today', 'completed', 'overdue', 'mine'];
+        var DASHBOARD_LABELS = { today: '今日任务', overdue: '已逾期' };
+        var TASK_FILTER_STORAGE_KEY = 'fireTaskDashboardFilter';
+        var TASK_FILTER_MSG_TYPE = 'fire-task-dashboard-filter';
+        var taskTableReady = false;
+        var pendingExternalFilter = null;
+
+        // 从URL获取公司参数与首页快捷筛选
         var urlParams = new URLSearchParams(window.location.search);
         var filterCompanyId = urlParams.get('companyId');
         var filterCompanyName = urlParams.get('companyName');
+        var dashboardFilterParam = urlParams.get('dashboardFilter');
+        if (dashboardFilterParam && DASHBOARD_FILTERS.indexOf(dashboardFilterParam) < 0) {
+            dashboardFilterParam = null;
+        }
+
+        function syncDashboardUrl(filter) {
+            var params = new URLSearchParams(window.location.search);
+            if (filter && filter !== 'mine') {
+                params.set('dashboardFilter', filter);
+            } else {
+                params.delete('dashboardFilter');
+            }
+            var qs = params.toString();
+            var newUrl = qs ? window.location.pathname + '?' + qs : window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        function applyDashboardFilter(filter) {
+            $('select[name=taskStatus]').val('');
+            $('#dashboardFilter').val('');
+            $('#dashboardFilterTip').hide();
+            if (!filter || filter === 'mine') {
+                syncDashboardUrl('');
+                return;
+            }
+            if (filter === 'pending') {
+                $('select[name=taskStatus]').val('0');
+            } else if (filter === 'doing') {
+                $('select[name=taskStatus]').val('1');
+            } else if (filter === 'completed') {
+                $('select[name=taskStatus]').val('2');
+            } else if (filter === 'today' || filter === 'overdue') {
+                $('#dashboardFilter').val(filter);
+                $('#dashboardFilterLabel').text(DASHBOARD_LABELS[filter]);
+                $('#dashboardFilterTip').show();
+            }
+            syncDashboardUrl(filter);
+        }
+
+        function applyExternalDashboardFilter(filter) {
+            if (DASHBOARD_FILTERS.indexOf(filter) < 0) {
+                return;
+            }
+            if (!taskTableReady) {
+                pendingExternalFilter = filter;
+                applyDashboardFilter(filter);
+                return;
+            }
+            applyDashboardFilter(filter);
+            $.table.search();
+        }
+
+        function consumeStoredDashboardFilter() {
+            try {
+                var stored = sessionStorage.getItem(TASK_FILTER_STORAGE_KEY);
+                if (stored) {
+                    sessionStorage.removeItem(TASK_FILTER_STORAGE_KEY);
+                    if (DASHBOARD_FILTERS.indexOf(stored) >= 0) {
+                        return stored;
+                    }
+                }
+            } catch (e) {
+                console.warn('读取任务筛选缓存失败:', e);
+            }
+            return null;
+        }
+
+        function clearDashboardFilter() {
+            applyDashboardFilter('mine');
+            $.table.search();
+        }
+
+        function resetTaskSearch() {
+            var currentType = $('#taskType').val();
+            applyDashboardFilter('mine');
+            $('input[name=taskName]').val('');
+            $('select[name=periodType]').val('');
+            $('input[name=periodYear]').val('');
+            if (!filterCompanyId) {
+                $('#companyId').val('');
+            }
+            $('#taskType').val(currentType);
+            $('.task-tabs .nav-tabs li').removeClass('active');
+            if (currentType === '') {
+                $('.task-tabs .nav-tabs li:eq(0)').addClass('active');
+            } else if (currentType === '0') {
+                $('.task-tabs .nav-tabs li:eq(1)').addClass('active');
+            } else {
+                $('.task-tabs .nav-tabs li:eq(2)').addClass('active');
+            }
+            $.table.search();
+        }
+
+        function onDashboardFilterMessage(event) {
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+            var data = event.data;
+            if (!data || data.type !== TASK_FILTER_MSG_TYPE) {
+                return;
+            }
+            applyExternalDashboardFilter(data.filter);
+        }
+
+        if (!window.__fireTaskDashboardFilterListenerBound) {
+            window.addEventListener('message', onDashboardFilterMessage);
+            window.__fireTaskDashboardFilterListenerBound = true;
+        }
+
+        var storedFilter = consumeStoredDashboardFilter();
+        if (storedFilter) {
+            applyDashboardFilter(storedFilter);
+        } else if (dashboardFilterParam) {
+            applyDashboardFilter(dashboardFilterParam);
+        }
 
         $(function () {
             var options = {
@@ -315,21 +495,27 @@
                             // 签到详情按钮
                             actions.push('<a class="btn btn-primary btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="openCheckInList(\'' + row.taskId + '\')"><i class="fa fa-map-marker"></i> 签到详情</a> ');
                             // 维保简报按钮（进行中或已完成状态可编辑）
-                            actions.push('<a class="btn btn-primary btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="editBriefing(\'' + row.taskId + '\')"><i class="fa fa-file-text-o"></i> 维保简报</a> ');
+                            actions.push('<a class="btn btn-primary btn-xs ' + briefingFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="editBriefing(\'' + row.taskId + '\')"><i class="fa fa-file-text-o"></i> 维保简报</a> ');
                         } else {
                             actions.push('<a class="btn btn-default btn-xs disabled" style="margin-bottom: 5px;" href="javascript:void(0)" title="请先下发任务"><i class="fa fa-wrench"></i> 维护</a> ');
                         }
-                        // 未完成的任务显示一键完成按钮
+                        // 未完成的任务显示一键完成按钮（仅超级管理员权限 fire:task:completeAll）
                         if (row.taskStatus == '1') {
-                            actions.push('<a class="btn btn-success btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="completeAllTask(\'' + row.taskId + '\')"><i class="fa fa-check-circle"></i> 一键完成</a> ');
+                            actions.push('<a class="btn btn-success btn-xs ' + completeAllFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="completeAllTask(\'' + row.taskId + '\')"><i class="fa fa-check-circle"></i> 一键完成</a> ');
                         }
-                        actions.push('<a class="btn btn-success btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.taskId + '\')"><i class="fa fa-edit"></i> 编辑</a> ');
-                        actions.push('<a class="btn btn-danger btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.taskId + '\')"><i class="fa fa-remove"></i> 删除</a>');
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.taskId + '\')"><i class="fa fa-edit"></i> 编辑</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.taskId + '\')"><i class="fa fa-remove"></i> 删除</a>');
                         return actions.join('');
                     }
                 }]
             };
             $.table.init(options);
+            taskTableReady = true;
+            if (pendingExternalFilter) {
+                var pending = pendingExternalFilter;
+                pendingExternalFilter = null;
+                applyExternalDashboardFilter(pending);
+            }
 
             // 加载公司下拉列表
             loadCompanyList();
