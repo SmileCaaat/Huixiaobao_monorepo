@@ -21,10 +21,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.exception.user.BlackListException;
 import com.ruoyi.common.exception.user.CaptchaException;
 import com.ruoyi.common.exception.user.RoleBlockedException;
 import com.ruoyi.common.exception.user.UserAuditException;
 import com.ruoyi.common.exception.user.UserBlockedException;
+import com.ruoyi.common.exception.user.UserDeleteException;
 import com.ruoyi.common.exception.user.UserLoginChannelException;
 import com.ruoyi.common.exception.user.UserNotExistsException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
@@ -61,7 +63,12 @@ public class UserRealm extends AuthorizingRealm
     @Override
     public boolean supports(AuthenticationToken token)
     {
-        return token instanceof UsernamePasswordToken || token instanceof WxAuthToken;
+        // 网页密码登录与微信无密码登录分叉；WxAuthToken 不继承 UsernamePasswordToken
+        if (token instanceof WxAuthToken)
+        {
+            return true;
+        }
+        return token != null && token.getClass() == UsernamePasswordToken.class;
     }
 
     /**
@@ -134,7 +141,7 @@ public class UserRealm extends AuthorizingRealm
         {
             throw new ExcessiveAttemptsException(e.getMessage(), e);
         }
-        catch (UserBlockedException e)
+        catch (UserBlockedException | UserDeleteException e)
         {
             throw new LockedAccountException(e.getMessage(), e);
         }
@@ -146,10 +153,14 @@ public class UserRealm extends AuthorizingRealm
         {
             throw new LockedAccountException(e.getMessage(), e);
         }
+        catch (BlackListException e)
+        {
+            throw new LockedAccountException(e.getMessage(), e);
+        }
         catch (Exception e)
         {
-            log.error("对用户[{}]进行登录验证时发生系统异常: {}", username, e.toString(), e);
-            throw new AuthenticationException(ClientSafeMessage.forLogin(e.getMessage(), e), e);
+            logLoginSystemError(username, e);
+            throw new AuthenticationException(ClientSafeMessage.forLogin(safeMsg(e), e), e);
         }
         SimpleAuthenticationInfo info = new SimpleAuthenticationInfo(user, password, getName());
         return info;
@@ -184,10 +195,61 @@ public class UserRealm extends AuthorizingRealm
         }
         catch (Exception e)
         {
-            log.error("微信登录校验发生系统异常, loginName={}", loginName, e);
-            throw new AuthenticationException(ClientSafeMessage.forLogin(e.getMessage(), e), e);
+            logLoginSystemError(loginName, e);
+            throw new AuthenticationException(ClientSafeMessage.forLogin(safeMsg(e), e), e);
         }
         return new SimpleAuthenticationInfo(user, "", getName());
+    }
+
+    private static String safeMsg(Throwable e)
+    {
+        try
+        {
+            return e == null ? null : e.getMessage();
+        }
+        catch (Exception ignored)
+        {
+            return null;
+        }
+    }
+
+    /**
+     * Log full cause chain for login system failures. Never log passwords or captcha.
+     */
+    private void logLoginSystemError(String username, Throwable e)
+    {
+        StringBuilder chain = new StringBuilder();
+        Throwable t = e;
+        Throwable root = e;
+        int depth = 0;
+        while (t != null && depth < 20)
+        {
+            if (depth > 0)
+            {
+                chain.append(" <- ");
+            }
+            chain.append(t.getClass().getName());
+            String m = safeMsg(t);
+            if (m != null && m.length() > 0 && m.length() <= 240)
+            {
+                chain.append(": ").append(m.replaceAll("[\\r\\n]+", " "));
+            }
+            root = t;
+            t = t.getCause();
+            depth++;
+        }
+        StackTraceElement[] stack = root.getStackTrace();
+        String location = (stack != null && stack.length > 0)
+                ? stack[0].getClassName() + "." + stack[0].getMethodName()
+                    + "(" + stack[0].getFileName() + ":" + stack[0].getLineNumber() + ")"
+                : "unknown";
+        log.error("LOGIN_SYSTEM_ERROR user={} type={} rootType={} location={} causeChain={}",
+                username,
+                e.getClass().getName(),
+                root.getClass().getName(),
+                location,
+                chain.toString(),
+                e);
     }
 
     /**

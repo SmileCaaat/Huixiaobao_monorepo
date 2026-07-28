@@ -91,8 +91,27 @@ public class AsyncFactory
      */
     public static TimerTask recordLogininfor(final String username, final String status, final String message, final Object... args)
     {
-        final String userAgent = ServletUtils.getRequest().getHeader("User-Agent");
-        final String ip = ShiroUtils.getIp();
+        String ua = "";
+        String clientIp = "";
+        try
+        {
+            if (ServletUtils.getRequest() != null)
+            {
+                ua = ServletUtils.getRequest().getHeader("User-Agent");
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+        try
+        {
+            clientIp = ShiroUtils.getIp();
+        }
+        catch (Exception ignored)
+        {
+        }
+        final String userAgent = ua;
+        final String ip = clientIp;
         return new TimerTask()
         {
             @Override

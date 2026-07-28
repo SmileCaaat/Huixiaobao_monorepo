@@ -172,7 +172,22 @@ RuoYi `PageUtils.startPage()` 从 URL 查询参数读取 `pageNum/pageSize`，�
 | GET | `/system/dept/registerQrcode/{deptId}` | view | 元数据 + 短码二维码 |
 | POST | `/system/dept/registerQrcode/disable` | manage | 停用 |
 | GET | `/system/dept/registerQrcode/download/{deptId}` | download | 不延期 |
-| POST | `/system/user/audit` | system:user:audit | 乐观更新 WHERE audit_status=1 |
-| POST | `/system/user/registerRecords` | system:user:registerRecord | 注册记录 |
+| GET | `/system/user/registerRecord` | system:user:registerRecord | 注册记录独立页（勿与用户列表混用） |
+| POST | `/system/user/audit` | system:user:audit | 乐观更新 WHERE audit_status=1；按钮挂在注册记录下 |
+| POST | `/system/user/registerRecords` | system:user:registerRecord | 注册记录列表（默认仅 qr/invite_code/direct） |
+
+### 用户管理菜单（避免 C 挂 C）
+
+```text
+系统管理
+└─ 用户管理 (M)
+   ├─ 用户列表 (C) /system/user              system:user:view + 原 F 按钮
+   └─ 注册记录 (C) /system/user/registerRecord  system:user:registerRecord
+        └─ 用户审核 (F) system:user:audit
+```
+
+- 用户列表保留左侧 `sys_dept` 组织树；注册记录为独立全宽页，不嵌入用户列表。
+- 若把注册记录以 C 挂在用户列表 C 下，侧栏会把「用户管理」渲染为仅展开，无法打开带组织树的 `/system/user`。
+- 菜单迁移：`backend/sql/upgrade_user_menu_split_register_record.sql`；回滚：`rollback_user_menu_split_register_record.sql`。
 
 自动通过：有效邀请 + register_mode=0 + 短信通过 + 手机号唯一 → audit_status=0、dispatchable=1、role_key=maintenance_member。

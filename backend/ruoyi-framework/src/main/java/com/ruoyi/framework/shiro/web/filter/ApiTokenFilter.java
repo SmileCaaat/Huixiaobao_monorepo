@@ -54,8 +54,10 @@ public class ApiTokenFilter extends AccessControlFilter {
         if (UserStatus.DISABLE.getCode().equals(user.getStatus())) {
             return false;
         }
-        String auditStatus = user.getAuditStatus();
-        if (StringUtils.isNotEmpty(auditStatus) && !"0".equals(auditStatus)) {
+        // 审核仅约束自主注册员工；历史/后台用户不受 audit_status 空值影响
+        String src = user.getRegisterSource();
+        boolean selfRegistered = "qr".equals(src) || "invite_code".equals(src) || "direct".equals(src);
+        if (selfRegistered && "2".equals(user.getAuditStatus())) {
             return false;
         }
         String allowMini = user.getAllowMiniLogin();

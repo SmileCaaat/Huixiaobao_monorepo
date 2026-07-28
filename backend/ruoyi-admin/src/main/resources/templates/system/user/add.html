@@ -101,6 +101,44 @@
                 </div>
             </div>
             <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">后台访问：</label>
+                        <div class="col-sm-8">
+                            <label class="toggle-switch switch-solid">
+                                <input type="checkbox" id="allowAdminLogin" checked>
+                                <span></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">小程序访问：</label>
+                        <div class="col-sm-8">
+                            <label class="toggle-switch switch-solid">
+                                <input type="checkbox" id="allowMiniLogin" checked>
+                                <span></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="form-group">
+                        <label class="col-sm-4 control-label">审核状态：</label>
+                        <div class="col-sm-8">
+                            <select name="auditStatus" class="form-control">
+                                <option value="0" selected>已通过</option>
+                                <option value="1">待审核</option>
+                                <option value="2">已拒绝</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
             	<div class="col-sm-12">
                     <div class="form-group">
                         <label class="col-xs-2 control-label">岗位：</label>
@@ -218,9 +256,13 @@
 	        if ($.validate.form() && checkpwd(chrtype, password)) {
 	        	var data = $("#form-user-add").serializeArray();
 	        	var status = $("input[id='status']").is(':checked') == true ? 0 : 1;
+	        	var allowAdminLogin = $("input[id='allowAdminLogin']").is(':checked') == true ? 1 : 0;
+	        	var allowMiniLogin = $("input[id='allowMiniLogin']").is(':checked') == true ? 1 : 0;
 	        	var roleIds = $.form.selectCheckeds("role");
 	        	var postIds = $.form.selectSelects("post");
 	        	data.push({"name": "status", "value": status});
+	        	data.push({"name": "allowAdminLogin", "value": allowAdminLogin});
+	        	data.push({"name": "allowMiniLogin", "value": allowMiniLogin});
 	        	data.push({"name": "roleIds", "value": roleIds});
 	        	data.push({"name": "postIds", "value": postIds});
 	        	$.operate.saveTab(prefix + "/add", data);

@@ -28,7 +28,6 @@
 									<option value="qr">二维码</option>
 									<option value="invite_code">邀请码</option>
 									<option value="direct">直接注册</option>
-									<option value="admin">管理员创建</option>
 								</select>
 							</li>
 							<li>
@@ -69,22 +68,26 @@
 					title: '用户编号',
 					visible: false
 				}, {
-					field: 'loginName',
-					title: '登录名'
-				}, {
 					field: 'userName',
 					title: '姓名'
 				}, {
+					field: 'loginName',
+					title: '登录名'
+				}, {
 					field: 'phonenumber',
-					title: '手机号'
+					title: '手机号',
+					formatter: function(v) {
+						if (!v || v.length < 7) return v || '-';
+						return v.substring(0, 3) + '****' + v.substring(v.length - 4);
+					}
 				}, {
 					field: 'dept.deptName',
-					title: '部门'
+					title: '所属部门'
 				}, {
 					field: 'registerSource',
-					title: '来源',
+					title: '注册来源',
 					formatter: function(v) {
-						var map = { qr: '二维码', invite_code: '邀请码', direct: '直接', admin: '管理员' };
+						var map = { qr: '二维码', invite_code: '邀请码', direct: '直接注册' };
 						return map[v] || (v || '-');
 					}
 				}, {
@@ -97,15 +100,17 @@
 						return '-';
 					}
 				}, {
-					field: 'dispatchable',
-					title: '可派工',
-					formatter: function(v) { return v === '0' ? '否' : '是'; }
-				}, {
 					field: 'createTime',
 					title: '注册时间'
 				}, {
+					field: 'auditBy',
+					title: '审核人'
+				}, {
+					field: 'auditTime',
+					title: '审核时间'
+				}, {
 					field: 'auditRemark',
-					title: '审核备注'
+					title: '驳回原因'
 				}, {
 					title: '操作',
 					align: 'center',

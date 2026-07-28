@@ -21,21 +21,24 @@ public final class ClientSafeMessage
     }
 
     /**
-     * Login-facing message. Never returns schema-upgrade wording (it was frequently a false positive
-     * when MyBatis SQL text contained new column names). Real schema issues are logged at startup.
+     * Login-facing message. Prefer business auth messages; only hide SQL/stack details.
      */
     public static String forLogin(String message, Throwable cause)
     {
+        String business = extractBusinessAuthMessage(message, cause);
+        if (StringUtils.isNotEmpty(business))
+        {
+            return business;
+        }
+        if (isSqlOrStackLeak(message, cause))
+        {
+            return SYSTEM_HINT;
+        }
         if (StringUtils.isEmpty(message))
         {
             return DEFAULT_LOGIN_FAIL;
         }
-        if (isUnsafeTechnicalDetail(message, cause) || isSqlError(message, cause))
-        {
-            return SYSTEM_HINT;
-        }
-        // Keep short business messages (captcha / password / locked / channel)
-        if (message.length() <= 80 && !looksTechnical(message))
+        if (message.length() <= 80 && !looksLikeStackOrSql(message))
         {
             return message;
         }
@@ -44,18 +47,86 @@ public final class ClientSafeMessage
 
     public static String forApi(String message, Throwable cause)
     {
-        if (isUnsafeTechnicalDetail(message, cause) || isSqlError(message, cause))
+        if (isSqlOrStackLeak(message, cause))
         {
             return API_BUSY;
         }
         return StringUtils.isEmpty(message) ? OP_FAIL : message;
     }
 
-    private static boolean isSqlError(String message, Throwable cause)
+    private static String extractBusinessAuthMessage(String message, Throwable cause)
     {
-        if (containsIgnoreCase(message, "unknown column")
-                || containsIgnoreCase(message, "SQLSyntaxErrorException")
-                || containsIgnoreCase(message, "BadSqlGrammarException"))
+        if (isBusinessAuthText(message))
+        {
+            return message;
+        }
+        Throwable t = cause;
+        int guard = 0;
+        while (t != null && guard++ < 20)
+        {
+            String name = t.getClass().getName();
+            String msg = safeThrowableMessage(t);
+            if (isBusinessAuthText(msg))
+            {
+                return msg;
+            }
+            if (name.endsWith("IncorrectCredentialsException") || name.endsWith("UnknownAccountException")
+                    || name.endsWith("UserPasswordNotMatchException") || name.endsWith("UserNotExistsException"))
+            {
+                return StringUtils.isNotEmpty(msg) ? msg : DEFAULT_LOGIN_FAIL;
+            }
+            if (name.endsWith("ExcessiveAttemptsException") || name.endsWith("UserPasswordRetryLimitExceedException"))
+            {
+                return StringUtils.isNotEmpty(msg) ? msg
+                        : "\u5bc6\u7801\u8f93\u5165\u9519\u8bef\u6b21\u6570\u8fc7\u591a\uff0c\u5e10\u6237\u5df2\u9501\u5b9a";
+            }
+            if (name.endsWith("CaptchaException"))
+            {
+                return StringUtils.isNotEmpty(msg) ? msg : "\u9a8c\u8bc1\u7801\u9519\u8bef";
+            }
+            if (name.endsWith("LockedAccountException") || name.endsWith("UserBlockedException")
+                    || name.endsWith("UserAuditException") || name.endsWith("UserLoginChannelException")
+                    || name.endsWith("BlackListException") || name.endsWith("RoleBlockedException"))
+            {
+                return StringUtils.isNotEmpty(msg) ? msg : SYSTEM_HINT;
+            }
+            t = t.getCause();
+        }
+        return null;
+    }
+
+    private static boolean isBusinessAuthText(String message)
+    {
+        if (StringUtils.isEmpty(message) || looksLikeStackOrSql(message))
+        {
+            return false;
+        }
+        return message.contains("\u9a8c\u8bc1\u7801")
+                || message.contains("\u5bc6\u7801")
+                || message.contains("\u7528\u6237")
+                || message.contains("\u9501\u5b9a")
+                || message.contains("\u5ba1\u6838")
+                || message.contains("\u5c01\u7981")
+                || message.contains("\u4e0d\u5141\u8bb8")
+                || message.contains("\u9ed1\u540d\u5355")
+                || message.contains("\u5df2\u5220\u9664");
+    }
+
+    private static String safeThrowableMessage(Throwable t)
+    {
+        try
+        {
+            return t.getMessage();
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    private static boolean isSqlOrStackLeak(String message, Throwable cause)
+    {
+        if (looksLikeStackOrSql(message))
         {
             return true;
         }
@@ -64,54 +135,56 @@ public final class ClientSafeMessage
         while (t != null && guard++ < 20)
         {
             String cn = t.getClass().getName();
-            String msg = t.getMessage();
-            if (containsIgnoreCase(msg, "unknown column")
-                    || (cn != null && (cn.contains("SQLSyntaxErrorException") || cn.contains("BadSqlGrammarException"))))
+            String msg = null;
+            try
+            {
+                msg = t.getMessage();
+            }
+            catch (Exception ignored)
+            {
+            }
+            if (looksLikeStackOrSql(msg))
             {
                 return true;
+            }
+            if (cn != null && (cn.contains("SQLSyntaxErrorException") || cn.contains("SQLException")
+                    || cn.contains("PersistenceException") || cn.contains("MyBatisSystemException")
+                    || cn.contains("BadSqlGrammarException") || cn.contains("DataAccessException")))
+            {
+                // Only treat as leak/system when message looks like SQL/stack, or Unknown column
+                if (containsIgnoreCase(msg, "unknown column") || looksLikeStackOrSql(msg))
+                {
+                    return true;
+                }
             }
             t = t.getCause();
         }
         return false;
     }
 
-    private static boolean looksTechnical(String message)
+    private static boolean looksLikeStackOrSql(String message)
     {
+        if (StringUtils.isEmpty(message))
+        {
+            return false;
+        }
         return containsAny(message,
                 "### Error",
-                "Exception",
-                "java.",
+                "### The error",
                 "SQL:",
-                "at ",
+                "Cause:",
+                "java.sql.",
+                "org.apache.ibatis",
+                "PersistenceException",
+                "MyBatisSystemException",
+                "Mapper method",
+                "jdbc:mysql",
                 "C:\\",
                 "file:/",
                 "jar:file:",
-                "jdbc:");
-    }
-
-    public static boolean isUnsafeTechnicalDetail(String message, Throwable cause)
-    {
-        if (looksTechnical(message)
-                || containsAny(message,
-                        "PersistenceException",
-                        "MyBatisSystemException",
-                        "Mapper method",
-                        "Nested exception",
-                        "No message found under code",
-                        "Cannot invoke"))
-        {
-            return true;
-        }
-        if (message != null && message.length() > 180)
-        {
-            return true;
-        }
-        return causeChainContains(cause,
-                "SQLException",
-                "PersistenceException",
-                "MyBatisSystemException",
-                "DataAccessException",
-                "NoSuchMessageException");
+                "Nested exception",
+                "Unknown column")
+                || (message.length() > 180 && (message.contains("at ") || message.contains(".java:")));
     }
 
     private static boolean containsIgnoreCase(String text, String needle)
@@ -131,26 +204,6 @@ public final class ClientSafeMessage
             {
                 return true;
             }
-        }
-        return false;
-    }
-
-    private static boolean causeChainContains(Throwable cause, String... needles)
-    {
-        Throwable t = cause;
-        int guard = 0;
-        while (t != null && guard++ < 20)
-        {
-            String cn = t.getClass().getName();
-            String msg = t.getMessage();
-            for (String n : needles)
-            {
-                if ((cn != null && cn.contains(n)) || (msg != null && msg.contains(n)))
-                {
-                    return true;
-                }
-            }
-            t = t.getCause();
         }
         return false;
     }

@@ -159,12 +159,12 @@ public class SysLoginService
     */
 
     /**
-     * 校验审核状态（0已通过，1待审核可受限登录，2已拒绝禁止；null 视为已通过）
-     * 超级管理员 userId=1 永远放行。
+     * 审核状态仅约束自主注册员工（register_source=qr/invite_code/direct）。
+     * 历史用户、后台创建用户、超级管理员不受 audit_status 空值或默认值影响。
      */
     public void validateAuditStatus(SysUser user, String username)
     {
-        if (user != null && user.isAdmin())
+        if (user == null || user.isAdmin() || !isSelfRegisteredEmployee(user))
         {
             return;
         }
@@ -177,6 +177,17 @@ public class SysLoginService
         String msg = "账号已拒绝，请联系管理员";
         AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, msg));
         throw new UserAuditException(msg);
+    }
+
+    /** 是否员工自主注册来源（与后台手工建号区分） */
+    public boolean isSelfRegisteredEmployee(SysUser user)
+    {
+        if (user == null)
+        {
+            return false;
+        }
+        String src = user.getRegisterSource();
+        return "qr".equals(src) || "invite_code".equals(src) || "direct".equals(src);
     }
 
     /**
@@ -235,16 +246,21 @@ public class SysLoginService
     public void setRolePermission(SysUser user)
     {
         List<SysRole> roles = user.getRoles();
-        if (!roles.isEmpty())
+        if (roles == null || roles.isEmpty())
         {
-            // 设置permissions属性，以便数据权限匹配权限
-            for (SysRole role : roles)
+            return;
+        }
+        // 设置permissions属性，以便数据权限匹配权限
+        for (SysRole role : roles)
+        {
+            if (role == null)
             {
-                if (StringUtils.equals(role.getStatus(), UserConstants.ROLE_NORMAL) && !role.isAdmin())
-                {
-                    Set<String> rolePerms = menuService.selectPermsByRoleId(role.getRoleId());
-                    role.setPermissions(rolePerms);
-                }
+                continue;
+            }
+            if (StringUtils.equals(role.getStatus(), UserConstants.ROLE_NORMAL) && !role.isAdmin())
+            {
+                Set<String> rolePerms = menuService.selectPermsByRoleId(role.getRoleId());
+                role.setPermissions(rolePerms);
             }
         }
     }

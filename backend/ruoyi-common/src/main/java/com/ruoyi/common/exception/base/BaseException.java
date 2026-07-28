@@ -64,9 +64,17 @@ public class BaseException extends RuntimeException
     public String getMessage()
     {
         String message = null;
-        if (!StringUtils.isEmpty(code))
+        try
         {
-            message = MessageUtils.message(code, args);
+            if (!StringUtils.isEmpty(code))
+            {
+                message = MessageUtils.message(code, args);
+            }
+        }
+        catch (Exception e)
+        {
+            // i18n lookup must never break authentication exception handling
+            message = null;
         }
         if (message == null)
         {

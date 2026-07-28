@@ -5,6 +5,10 @@ import java.util.List;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.shiro.SecurityUtils;
+import org.apache.shiro.subject.Subject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
@@ -34,6 +38,8 @@ import com.ruoyi.system.service.ISysMenuService;
  */
 @Controller
 public class SysIndexController extends BaseController {
+    private static final Logger log = LoggerFactory.getLogger(SysIndexController.class);
+
     @Autowired
     private ISysMenuService menuService;
 
@@ -46,12 +52,34 @@ public class SysIndexController extends BaseController {
     // 系统首页
     @GetMapping("/index")
     public String index(ModelMap mmap, HttpServletRequest request) {
+        Subject subject = SecurityUtils.getSubject();
+        String sessionId = "null";
+        try
+        {
+            if (subject.getSession(false) != null && subject.getSession(false).getId() != null)
+            {
+                sessionId = String.valueOf(subject.getSession(false).getId());
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+        log.info("LOGIN_CHAIN phase=get_index host={} uri={} authenticated={} remembered={} sessionId={} cookieHeaderPresent={} referer={}",
+                request.getServerName() + ":" + request.getServerPort(),
+                request.getRequestURI(),
+                subject.isAuthenticated(),
+                subject.isRemembered(),
+                sessionId,
+                StringUtils.isNotEmpty(request.getHeader("Cookie")),
+                request.getHeader("Referer"));
+
         // 取身份信息
         SysUser user = getSysUser();
         // 根据用户id取出菜单
         List<SysMenu> menus = menuService.selectMenusByUser(user);
         mmap.put("menus", menus);
         mmap.put("user", user);
+        mmap.put("displayName", com.ruoyi.web.controller.fire.FireHomeController.resolveDisplayName(user));
         mmap.put("sideTheme", configService.selectConfigByKey("sys.index.sideTheme"));
         mmap.put("skinName", configService.selectConfigByKey("sys.index.skinName"));
         Boolean footer = Convert.toBool(configService.selectConfigByKey("sys.index.footer"), true);

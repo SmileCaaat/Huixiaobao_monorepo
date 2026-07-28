@@ -93,7 +93,6 @@
 		var editFlag = [[${@permission.hasPermi('system:user:edit')}]];
 		var removeFlag = [[${@permission.hasPermi('system:user:remove')}]];
 		var resetPwdFlag = [[${@permission.hasPermi('system:user:resetPwd')}]];
-		var auditFlag = [[${@permission.hasPermi('system:user:audit')}]];
 		var prefix = ctx + "system/user";
 
 		$(function() {
@@ -168,43 +167,6 @@
 		        	}
 		        },
 		        {
-		            field: 'allowAdminLogin',
-		            title: '后台访问',
-		            align: 'center',
-		            formatter: function(value) {
-		                return (value == '0') ? '<span class="label label-warning">禁止</span>' : '<span class="label label-success">允许</span>';
-		            }
-		        },
-		        {
-		            field: 'allowMiniLogin',
-		            title: '小程序访问',
-		            align: 'center',
-		            formatter: function(value) {
-		                return (value == '0') ? '<span class="label label-warning">禁止</span>' : '<span class="label label-success">允许</span>';
-		            }
-		        },
-		        {
-		            field: 'auditStatus',
-		            title: '审核状态',
-		            align: 'center',
-		            formatter: function(value) {
-		                if (value == '1') return '<span class="label label-info">待审核</span>';
-		                if (value == '2') return '<span class="label label-danger">已拒绝</span>';
-		                return '<span class="label label-success">已通过</span>';
-		            }
-		        },
-		        {
-		            field: 'openid',
-		            title: '微信绑定',
-		            align: 'center',
-		            formatter: function(value, row) {
-		                if (value) {
-		                    return '<span class="label label-primary">已绑定</span>';
-		                }
-		                return '<span class="label label-default">未绑定</span>';
-		            }
-		        },
-		        {
 		            field: 'createTime',
 		            title: '创建时间',
 		            sortable: true
@@ -220,14 +182,7 @@
 			                var more = [];
 			                more.push("<a class='btn btn-default btn-xs " + resetPwdFlag + "' href='javascript:void(0)' onclick='resetPwd(" + row.userId + ")'><i class='fa fa-key'></i>重置密码</a> ");
 			                more.push("<a class='btn btn-default btn-xs " + editFlag + "' href='javascript:void(0)' onclick='authRole(" + row.userId + ")'><i class='fa fa-check-square-o'></i>分配角色</a>");
-			                if (row.openid) {
-			                    more.push("<a class='btn btn-default btn-xs " + editFlag + "' href='javascript:void(0)' onclick='unbindWx(" + row.userId + ")'><i class='fa fa-wechat'></i>解绑微信</a> ");
-			                }
 			                actions.push('<a tabindex="0" class="btn btn-info btn-xs" role="button" data-container="body" data-placement="left" data-toggle="popover" data-html="true" data-trigger="hover" data-content="' + more.join('') + '"><i class="fa fa-chevron-circle-right"></i>更多操作</a>');
-			                if (row.auditStatus == '1') {
-			                    actions.push(' <a class="btn btn-warning btn-xs ' + auditFlag + '" href="javascript:void(0)" onclick="auditPass(\'' + row.userId + '\')"><i class="fa fa-check"></i>审核通过</a>');
-			                    actions.push(' <a class="btn btn-default btn-xs ' + auditFlag + '" href="javascript:void(0)" onclick="auditReject(\'' + row.userId + '\')"><i class="fa fa-close"></i>拒绝</a>');
-			                }
 			                return actions.join('');
 		            	} else {
 		                    return "";
@@ -320,24 +275,6 @@
 			$.modal.confirm("确认要启用用户吗？", function() {
 				$.operate.post(prefix + "/changeStatus", { "userId": userId, "status": 0 });
 		    })
-		}
-
-		function unbindWx(userId) {
-			$.modal.confirm("确认解绑该用户的微信吗？", function() {
-				$.operate.post(prefix + "/unbindWx/" + userId);
-			});
-		}
-
-		function auditPass(userId) {
-			$.modal.confirm("确认审核通过？请在编辑页完善部门/角色/端访问开关。", function() {
-				$.operate.editTab(userId);
-			});
-		}
-
-		function auditReject(userId) {
-			$.modal.confirm("确认拒绝该用户注册申请？", function() {
-				$.operate.post(prefix + "/audit", { userId: userId, auditAction: "reject" });
-			});
 		}
 	</script>
 </body>

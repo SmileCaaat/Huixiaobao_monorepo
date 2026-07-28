@@ -6,6 +6,8 @@ import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.authc.UsernamePasswordToken;
 import org.apache.shiro.subject.Subject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
@@ -29,6 +31,8 @@ import com.ruoyi.framework.web.service.ConfigService;
 @Controller
 public class SysLoginController extends BaseController
 {
+    private static final Logger log = LoggerFactory.getLogger(SysLoginController.class);
+
     /**
      * 是否开启记住我功能
      */
@@ -65,14 +69,27 @@ public class SysLoginController extends BaseController
 
     @PostMapping(value = "/login", produces = "application/json;charset=UTF-8")
     @ResponseBody
-    public AjaxResult ajaxLogin(String username, String password, Boolean rememberMe)
+    public AjaxResult ajaxLogin(HttpServletRequest request, String username, String password, Boolean rememberMe)
     {
         boolean remember = Boolean.TRUE.equals(rememberMe);
         UsernamePasswordToken token = new UsernamePasswordToken(username, password, remember);
         Subject subject = SecurityUtils.getSubject();
+        String preSessionId = safeSessionId(subject);
         try
         {
             subject.login(token);
+            String postSessionId = safeSessionId(subject);
+            // 诊断用：不记录密码/验证码；仅跟踪 Session 是否在登录后仍可用
+            log.info("LOGIN_CHAIN phase=post_login host={} uri={} username={} rememberMe={} authenticated={} remembered={} sessionIdBefore={} sessionIdAfter={} cookieHeaderPresent={}",
+                    request.getServerName() + ":" + request.getServerPort(),
+                    request.getRequestURI(),
+                    username,
+                    remember,
+                    subject.isAuthenticated(),
+                    subject.isRemembered(),
+                    preSessionId,
+                    postSessionId,
+                    StringUtils.isNotEmpty(request.getHeader("Cookie")));
             return success();
         }
         catch (AuthenticationException e)
@@ -82,7 +99,31 @@ public class SysLoginController extends BaseController
             {
                 msg = ClientSafeMessage.forLogin(e.getMessage(), e);
             }
+            log.info("LOGIN_CHAIN phase=post_login_fail host={} uri={} username={} msg={} sessionId={} authenticated={}",
+                    request.getServerName() + ":" + request.getServerPort(),
+                    request.getRequestURI(),
+                    username,
+                    msg,
+                    safeSessionId(subject),
+                    subject.isAuthenticated());
             return error(msg);
+        }
+    }
+
+    private static String safeSessionId(Subject subject)
+    {
+        try
+        {
+            if (subject == null || subject.getSession(false) == null)
+            {
+                return "null";
+            }
+            Object id = subject.getSession(false).getId();
+            return id == null ? "null" : String.valueOf(id);
+        }
+        catch (Exception e)
+        {
+            return "err";
         }
     }
 

@@ -472,7 +472,31 @@ app.post("/local/devices", express.json({ limit: "2mb" }), async (req, res) => {
 });
 
 const proxy = makeProxy();
-["/api", "/fire", "/public", "/captcha", "/profile", "/login", "/logout", "/druid", "/register"].forEach((p) => {
+// Admin UI paths must be proxied; otherwise POST /login may succeed on backend
+// while GET /index is served by the dashboard SPA and looks like "stuck on login".
+[
+  "/api",
+  "/fire",
+  "/public",
+  "/captcha",
+  "/profile",
+  "/login",
+  "/logout",
+  "/index",
+  "/system",
+  "/monitor",
+  "/tool",
+  "/common",
+  "/druid",
+  "/register",
+  "/css",
+  "/js",
+  "/ruoyi",
+  "/ajax",
+  "/img",
+  "/fonts",
+  "/html"
+].forEach((p) => {
   app.use(p, proxy);
 });
 

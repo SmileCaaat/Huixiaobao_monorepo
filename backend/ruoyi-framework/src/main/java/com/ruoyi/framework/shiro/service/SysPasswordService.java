@@ -5,6 +5,8 @@ import javax.annotation.PostConstruct;
 import org.apache.shiro.cache.Cache;
 import org.apache.shiro.cache.CacheManager;
 import org.apache.shiro.crypto.hash.Md5Hash;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
@@ -34,6 +36,8 @@ import com.ruoyi.system.service.ISysUserService;
  */
 @Component
 public class SysPasswordService {
+    private static final Logger log = LoggerFactory.getLogger(SysPasswordService.class);
+
     @Autowired
     private CacheManager cacheManager;
 
@@ -95,12 +99,26 @@ public class SysPasswordService {
             return false;
         }
         if (isBCryptHash(stored)) {
-            // 新式 BCrypt 匹配
-            return bCryptEncoder.matches(rawPassword, stored);
+            try {
+                return bCryptEncoder.matches(rawPassword, stored);
+            }
+            catch (Exception e) {
+                String prefix = stored.length() >= 7 ? stored.substring(0, 7) : stored;
+                log.error("BCrypt matches failed, userId={}, loginName={}, hashPrefix={}",
+                        user.getUserId(), user.getLoginName(), prefix, e);
+                return false;
+            }
         }
         // 旧式 MD5 匹配（loginName + password + salt）
-        String legacyHash = new Md5Hash(user.getLoginName() + rawPassword + user.getSalt()).toHex();
-        return stored.equals(legacyHash);
+        try {
+            String legacyHash = new Md5Hash(user.getLoginName() + rawPassword + user.getSalt()).toHex();
+            return stored.equals(legacyHash);
+        }
+        catch (Exception e) {
+            log.error("Legacy MD5 matches failed, userId={}, loginName={}",
+                    user.getUserId(), user.getLoginName(), e);
+            return false;
+        }
     }
 
     /**
