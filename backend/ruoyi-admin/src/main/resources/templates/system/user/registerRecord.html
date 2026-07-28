@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
+<head>
+	<th:block th:include="include :: header('注册记录')" />
+</head>
+<body class="gray-bg">
+	<div class="container-div">
+		<div class="row">
+			<div class="col-sm-12 search-collapse">
+				<form id="register-record-form">
+					<div class="select-list">
+						<ul>
+							<li>登录名：<input type="text" name="loginName"/></li>
+							<li>手机号：<input type="text" name="phonenumber"/></li>
+							<li>
+								审核状态：
+								<select name="auditStatus">
+									<option value="">全部</option>
+									<option value="1">待审核</option>
+									<option value="0">已通过</option>
+									<option value="2">已拒绝</option>
+								</select>
+							</li>
+							<li>
+								注册来源：
+								<select name="registerSource">
+									<option value="">全部</option>
+									<option value="qr">二维码</option>
+									<option value="invite_code">邀请码</option>
+									<option value="direct">直接注册</option>
+									<option value="admin">管理员创建</option>
+								</select>
+							</li>
+							<li>
+								<a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i class="fa fa-search"></i>&nbsp;搜索</a>
+								<a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
+							</li>
+						</ul>
+					</div>
+				</form>
+			</div>
+
+			<div class="btn-group-sm" id="toolbar" role="group">
+				<a class="btn btn-info" onclick="viewMyDeptQr()" shiro:hasPermission="system:dept:registerQrcode:view">
+					<i class="fa fa-qrcode"></i> 查看本部门注册二维码
+				</a>
+			</div>
+
+			<div class="col-sm-12 select-table table-striped">
+				<table id="bootstrap-table"></table>
+			</div>
+		</div>
+	</div>
+	<th:block th:include="include :: footer" />
+	<script th:inline="javascript">
+		var auditFlag = [[${@permission.hasPermi('system:user:audit')}]];
+		var prefix = ctx + "system/user";
+		var currentDeptId = [[${currentDeptId}]];
+		var qrPrefix = ctx + "system/dept/registerQrcode";
+
+		$(function() {
+			var options = {
+				url: prefix + "/registerRecords",
+				modalName: "注册记录",
+				columns: [{
+					checkbox: true
+				}, {
+					field: 'userId',
+					title: '用户编号',
+					visible: false
+				}, {
+					field: 'loginName',
+					title: '登录名'
+				}, {
+					field: 'userName',
+					title: '姓名'
+				}, {
+					field: 'phonenumber',
+					title: '手机号'
+				}, {
+					field: 'dept.deptName',
+					title: '部门'
+				}, {
+					field: 'registerSource',
+					title: '来源',
+					formatter: function(v) {
+						var map = { qr: '二维码', invite_code: '邀请码', direct: '直接', admin: '管理员' };
+						return map[v] || (v || '-');
+					}
+				}, {
+					field: 'auditStatus',
+					title: '审核状态',
+					formatter: function(v) {
+						if (v === '0') return '<span class="label label-success">已通过</span>';
+						if (v === '1') return '<span class="label label-warning">待审核</span>';
+						if (v === '2') return '<span class="label label-danger">已拒绝</span>';
+						return '-';
+					}
+				}, {
+					field: 'dispatchable',
+					title: '可派工',
+					formatter: function(v) { return v === '0' ? '否' : '是'; }
+				}, {
+					field: 'createTime',
+					title: '注册时间'
+				}, {
+					field: 'auditRemark',
+					title: '审核备注'
+				}, {
+					title: '操作',
+					align: 'center',
+					formatter: function(value, row) {
+						if (row.auditStatus !== '1') {
+							return '-';
+						}
+						var actions = [];
+						actions.push('<a class="btn btn-success btn-xs ' + auditFlag + '" href="javascript:void(0)" onclick="auditPass(\'' + row.userId + '\',\'' + (row.deptId||'') + '\')">通过</a> ');
+						actions.push('<a class="btn btn-danger btn-xs ' + auditFlag + '" href="javascript:void(0)" onclick="auditReject(\'' + row.userId + '\')">驳回</a>');
+						return actions.join('');
+					}
+				}]
+			};
+			$.table.init(options);
+		});
+
+		function auditPass(userId, deptId) {
+			$.modal.confirm("确认通过该用户审核？", function() {
+				$.post(prefix + "/audit", {
+					userId: userId,
+					deptId: deptId,
+					auditAction: 'pass'
+				}, function(r) {
+					if (r.code == 0 || r.code == 200) {
+						$.modal.msgSuccess("已通过");
+						$.table.refresh();
+					} else {
+						$.modal.msgError(r.msg);
+					}
+				});
+			});
+		}
+
+		function auditReject(userId) {
+			layer.prompt({ title: '请输入驳回原因', formType: 2 }, function(text, index) {
+				layer.close(index);
+				$.post(prefix + "/audit", {
+					userId: userId,
+					auditAction: 'reject',
+					auditRemark: text
+				}, function(r) {
+					if (r.code == 0 || r.code == 200) {
+						$.modal.msgSuccess("已拒绝");
+						$.table.refresh();
+					} else {
+						$.modal.msgError(r.msg);
+					}
+				});
+			});
+		}
+
+		function viewMyDeptQr() {
+			if (!currentDeptId) {
+				$.modal.msgWarning("当前账号未绑定部门");
+				return;
+			}
+			$.get(qrPrefix + "/" + currentDeptId, function(r) {
+				if (r.code != 0 && r.code != 200) {
+					$.modal.msgError(r.msg || "加载失败");
+					return;
+				}
+				var data = r.data;
+				if (!data) {
+					$.modal.msgWarning("本部门暂无有效注册码，请到部门管理生成");
+					return;
+				}
+				var html = '<div style="padding:10px;text-align:center;">'
+					+ '<p>公司：' + (data.companyName||'-') + '；部门：' + (data.deptName||'-') + '</p>'
+					+ '<p>邀请码：<b>' + (data.inviteCode||'-') + '</b></p>'
+					+ (data.qrBase64 ? '<img src="data:image/png;base64,' + data.qrBase64 + '" style="max-width:220px"/>' : '')
+					+ '<p style="word-break:break-all;margin-top:8px;">' + (data.registerUrl||'') + '</p>'
+					+ '</div>';
+				layer.open({ type: 1, title: '本部门注册二维码', area: ['420px', '480px'], content: html });
+			});
+		}
+	</script>
+</body>
+</html>

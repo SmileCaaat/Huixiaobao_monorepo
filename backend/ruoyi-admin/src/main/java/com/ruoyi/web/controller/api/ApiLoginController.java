@@ -11,15 +11,16 @@ import org.springframework.web.bind.annotation.*;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.enums.UserStatus;
+import com.ruoyi.common.utils.ClientSafeMessage;
 import com.ruoyi.common.utils.ShiroUtils;
+import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.shiro.service.SysLoginService;
 import com.ruoyi.framework.shiro.service.SysPasswordService;
 import com.ruoyi.system.service.ISysUserService;
 
 /**
  * 小程序端登录API控制器
- * 
- * @author ruoyi
  */
 @RestController
 @RequestMapping("/api")
@@ -43,33 +44,60 @@ public class ApiLoginController extends BaseController {
         String password = loginBody.get("password");
 
         try {
-            // 创建Token
             UsernamePasswordToken token = new UsernamePasswordToken(username, password, false);
             Subject subject = SecurityUtils.getSubject();
             subject.login(token);
 
-            // 获取用户信息
             SysUser user = ShiroUtils.getSysUser();
+            String denyMsg = validateMiniLoginUser(user);
+            if (denyMsg != null) {
+                subject.logout();
+                return AjaxResult.error(denyMsg);
+            }
 
-            // 生成API Token（使用sessionId作为token）
             String apiToken = subject.getSession().getId().toString();
-
-            Map<String, Object> data = new HashMap<>();
-            data.put("token", apiToken);
-            data.put("userId", user.getUserId());
-            data.put("userName", user.getUserName());
-            data.put("loginName", user.getLoginName());
-            data.put("phonenumber", user.getPhonenumber());
-            data.put("avatar", user.getAvatar());
-
+            Map<String, Object> data = buildUserLoginData(apiToken, user);
             return AjaxResult.success("登录成功", data);
         } catch (AuthenticationException e) {
             String msg = "用户名或密码错误";
             if (e.getMessage() != null) {
-                msg = e.getMessage();
+                msg = ClientSafeMessage.forLogin(e.getMessage(), e);
             }
             return AjaxResult.error(msg);
         }
+    }
+
+    private String validateMiniLoginUser(SysUser user) {
+        if (user == null) {
+            return "用户未登录";
+        }
+        if (UserStatus.DISABLE.getCode().equals(user.getStatus())) {
+            return "账号已停用";
+        }
+        String auditStatus = user.getAuditStatus();
+        if ("2".equals(auditStatus)) {
+            return "账号已拒绝，请联系管理员";
+        }
+        // 待审（1）允许受限登录；业务菜单由角色/权限收窄
+        String allowMini = user.getAllowMiniLogin();
+        if (StringUtils.isNotEmpty(allowMini) && !"1".equals(allowMini)) {
+            return "不允许小程序登录";
+        }
+        return null;
+    }
+
+    private Map<String, Object> buildUserLoginData(String apiToken, SysUser user) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("token", apiToken);
+        data.put("userId", user.getUserId());
+        data.put("userName", user.getUserName());
+        data.put("loginName", user.getLoginName());
+        data.put("phonenumber", user.getPhonenumber());
+        data.put("avatar", user.getAvatar());
+        data.put("auditStatus", user.getAuditStatus());
+        data.put("allowMiniLogin", user.getAllowMiniLogin());
+        data.put("wxBound", StringUtils.isNotEmpty(user.getOpenid()));
+        return data;
     }
 
     /**
@@ -92,6 +120,10 @@ public class ApiLoginController extends BaseController {
             data.put("sex", user.getSex());
             data.put("avatar", user.getAvatar());
             data.put("deptId", user.getDeptId());
+            data.put("auditStatus", user.getAuditStatus());
+            data.put("allowMiniLogin", user.getAllowMiniLogin());
+            data.put("wxBound", StringUtils.isNotEmpty(user.getOpenid()));
+            data.put("wxBindTime", user.getWxBindTime());
             if (user.getDept() != null) {
                 data.put("deptName", user.getDept().getDeptName());
             }
@@ -138,7 +170,7 @@ public class ApiLoginController extends BaseController {
         }
 
         user.setPassword(passwordService.encryptPassword(newPassword));
-        user.setSalt(""); // BCrypt 自带 salt，数据库字段置空
+        user.setSalt("");
         user.setPwdUpdateDate(new java.util.Date());
 
         if (userService.resetUserPwd(user) > 0) {
@@ -158,8 +190,13 @@ public class ApiLoginController extends BaseController {
             return AjaxResult.error("用户未登录").put(AjaxResult.CODE_TAG, 401);
         }
 
-        currentUser.setUserName(user.getUserName());
-        currentUser.setPhonenumber(user.getPhonenumber());
+        // 仅允许更新本人资料；禁止用空串或纯昵称风格覆盖（空则保留原姓名）
+        if (StringUtils.isNotEmpty(user.getUserName())) {
+            currentUser.setUserName(user.getUserName().trim());
+        }
+        if (StringUtils.isNotEmpty(user.getPhonenumber())) {
+            currentUser.setPhonenumber(user.getPhonenumber().trim());
+        }
         currentUser.setEmail(user.getEmail());
         currentUser.setSex(user.getSex());
 

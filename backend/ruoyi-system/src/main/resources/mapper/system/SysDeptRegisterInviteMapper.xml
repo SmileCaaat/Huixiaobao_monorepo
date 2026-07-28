@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.SysDeptRegisterInviteMapper">
+
+    <resultMap id="SysDeptRegisterInviteResult" type="SysDeptRegisterInvite">
+        <id     property="inviteId"       column="invite_id" />
+        <result property="companyDeptId"  column="company_dept_id" />
+        <result property="deptId"         column="dept_id" />
+        <result property="tokenHash"      column="token_hash" />
+        <result property="inviteCode"     column="invite_code" />
+        <result property="registerMode"   column="register_mode" />
+        <result property="status"         column="status" />
+        <result property="expireTime"     column="expire_time" />
+        <result property="useCount"       column="use_count" />
+        <result property="useLimit"       column="use_limit" />
+        <result property="createBy"       column="create_by" />
+        <result property="createTime"     column="create_time" />
+        <result property="lastUseTime"    column="last_use_time" />
+        <result property="remark"         column="remark" />
+        <result property="companyName"    column="company_name" />
+        <result property="deptName"       column="dept_name" />
+    </resultMap>
+
+    <sql id="selectInviteVo">
+        select i.invite_id, i.company_dept_id, i.dept_id, i.token_hash, i.invite_code,
+               i.register_mode, i.status, i.expire_time, i.use_count, i.use_limit,
+               i.create_by, i.create_time, i.last_use_time, i.remark,
+               d.dept_name as dept_name,
+               c.dept_name as company_name
+        from sys_dept_register_invite i
+        left join sys_dept d on d.dept_id = i.dept_id
+        left join sys_dept c on c.dept_id = i.company_dept_id
+    </sql>
+
+    <select id="selectInviteById" parameterType="Long" resultMap="SysDeptRegisterInviteResult">
+        <include refid="selectInviteVo"/>
+        where i.invite_id = #{inviteId}
+    </select>
+
+    <select id="selectActiveByDeptId" parameterType="Long" resultMap="SysDeptRegisterInviteResult">
+        <include refid="selectInviteVo"/>
+        where i.dept_id = #{deptId} and i.status = '0'
+        order by i.invite_id desc
+        limit 1
+    </select>
+
+    <select id="selectByTokenHash" parameterType="String" resultMap="SysDeptRegisterInviteResult">
+        <include refid="selectInviteVo"/>
+        where i.token_hash = #{tokenHash}
+        limit 1
+    </select>
+
+    <select id="selectByInviteCode" parameterType="String" resultMap="SysDeptRegisterInviteResult">
+        <include refid="selectInviteVo"/>
+        where i.invite_code = #{inviteCode}
+        limit 1
+    </select>
+
+    <select id="selectInviteList" parameterType="SysDeptRegisterInvite" resultMap="SysDeptRegisterInviteResult">
+        <include refid="selectInviteVo"/>
+        <where>
+            <if test="deptId != null">and i.dept_id = #{deptId}</if>
+            <if test="companyDeptId != null">and i.company_dept_id = #{companyDeptId}</if>
+            <if test="status != null and status != ''">and i.status = #{status}</if>
+            <if test="inviteCode != null and inviteCode != ''">and i.invite_code = #{inviteCode}</if>
+        </where>
+        order by i.invite_id desc
+    </select>
+
+    <insert id="insertInvite" parameterType="SysDeptRegisterInvite" useGeneratedKeys="true" keyProperty="inviteId">
+        insert into sys_dept_register_invite(
+            company_dept_id, dept_id, token_hash, invite_code, register_mode, status,
+            expire_time, use_count, use_limit, create_by, create_time, remark
+        ) values (
+            #{companyDeptId}, #{deptId}, #{tokenHash}, #{inviteCode}, #{registerMode}, #{status},
+            #{expireTime}, #{useCount}, #{useLimit}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateInvite" parameterType="SysDeptRegisterInvite">
+        update sys_dept_register_invite
+        <set>
+            <if test="registerMode != null and registerMode != ''">register_mode = #{registerMode},</if>
+            <if test="status != null and status != ''">status = #{status},</if>
+            <if test="expireTime != null">expire_time = #{expireTime},</if>
+            <if test="useLimit != null">use_limit = #{useLimit},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="lastUseTime != null">last_use_time = #{lastUseTime},</if>
+            <if test="useCount != null">use_count = #{useCount},</if>
+        </set>
+        where invite_id = #{inviteId}
+    </update>
+
+    <update id="disableInvite">
+        update sys_dept_register_invite
+        set status = '1'
+        where invite_id = #{inviteId}
+    </update>
+
+    <update id="disableActiveByDeptId">
+        update sys_dept_register_invite
+        set status = '1'
+        where dept_id = #{deptId} and status = '0'
+    </update>
+
+    <update id="increaseUseCount" parameterType="Long">
+        update sys_dept_register_invite
+        set use_count = ifnull(use_count, 0) + 1,
+            last_use_time = sysdate()
+        where invite_id = #{inviteId}
+    </update>
+</mapper>

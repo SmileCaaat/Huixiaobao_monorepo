@@ -138,6 +138,11 @@ public class SysUserServiceImpl implements ISysUserService {
         return userMapper.selectUserByPhoneNumber(phoneNumber);
     }
 
+    @Override
+    public SysUser selectUserByOpenid(String openid) {
+        return userMapper.selectUserByOpenid(openid);
+    }
+
     /**
      * 通过邮箱查询用户
      * 
@@ -268,6 +273,11 @@ public class SysUserServiceImpl implements ISysUserService {
     @Override
     public int updateUserInfo(SysUser user) {
         return userMapper.updateUser(user);
+    }
+
+    @Override
+    public int updateUserAuditOptimistic(SysUser user) {
+        return userMapper.updateUserAuditOptimistic(user);
     }
 
     /**

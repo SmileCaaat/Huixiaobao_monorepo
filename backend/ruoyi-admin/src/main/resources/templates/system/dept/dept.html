@@ -44,13 +44,55 @@
 	        </div>
 	    </div>
 	</div>
+
+	<!-- 注册二维码弹窗 -->
+	<div class="modal fade" id="qrcodeModal" tabindex="-1" role="dialog">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+					<h4 class="modal-title">部门注册二维码</h4>
+				</div>
+				<div class="modal-body">
+					<input type="hidden" id="qrDeptId" />
+					<p>公司：<span id="qrCompanyName">-</span></p>
+					<p>部门：<span id="qrDeptName">-</span></p>
+					<p>邀请短码：<code id="qrInviteCode">-</code>
+						<a href="javascript:void(0)" onclick="copyInviteCode()">复制</a>
+					</p>
+					<p>注册模式：
+						<select id="qrRegisterMode" class="form-control" style="width:auto;display:inline-block;">
+							<option value="0">自动通过</option>
+							<option value="1">人工审核</option>
+						</select>
+					</p>
+					<p>状态：<span id="qrStatus">-</span>　失效时间：<span id="qrExpire">-</span></p>
+					<p>使用次数：<span id="qrUseCount">-</span>　剩余：<span id="qrRemain">不限</span></p>
+					<div class="text-center" style="margin:12px 0;">
+						<img id="qrImage" alt="二维码" style="max-width:240px;display:none;" />
+						<p id="qrEmpty" class="text-muted">暂无有效二维码，请生成</p>
+					</div>
+					<p class="text-muted" style="word-break:break-all;">链接：<span id="qrUrl">-</span></p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-success" onclick="generateQrcode()" shiro:hasPermission="system:dept:registerQrcode:manage">生成/重新生成</button>
+					<button type="button" class="btn btn-warning" onclick="disableQrcode()" shiro:hasPermission="system:dept:registerQrcode:manage">停用</button>
+					<button type="button" class="btn btn-info" onclick="downloadQrcode()" shiro:hasPermission="system:dept:registerQrcode:download">下载</button>
+					<button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<th:block th:include="include :: footer" />
 	<script th:inline="javascript">
 		var addFlag = [[${@permission.hasPermi('system:dept:add')}]];
 		var editFlag = [[${@permission.hasPermi('system:dept:edit')}]];
 		var removeFlag = [[${@permission.hasPermi('system:dept:remove')}]];
+		var qrViewFlag = [[${@permission.hasPermi('system:dept:registerQrcode:view')}]];
 		var datas = [[${@dict.getType('sys_normal_disable')}]];
 		var prefix = ctx + "system/dept"
+		var qrPrefix = ctx + "system/dept/registerQrcode"
 
 		$(function() {
 		    var options = {
@@ -97,6 +139,7 @@
 		                    var actions = [];
 		                    actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.deptId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
 		                    actions.push('<a class="btn btn-info  btn-xs ' + addFlag + '" href="javascript:void(0)" onclick="$.operate.add(\'' + row.deptId + '\')"><i class="fa fa-plus"></i>新增</a> ');
+		                    actions.push('<a class="btn btn-primary btn-xs ' + qrViewFlag + '" href="javascript:void(0)" onclick="openQrcode(\'' + row.deptId + '\',\'' + (row.deptName||'') + '\')"><i class="fa fa-qrcode"></i>注册二维码</a> ');
 		                    actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.deptId + '\')"><i class="fa fa-trash"></i>删除</a>');
 		                    return actions.join('');
 		                } else {
@@ -107,6 +150,107 @@
 		    };
 		    $.treeTable.init(options);
 		});
+
+		function openQrcode(deptId, deptName) {
+			$('#qrDeptId').val(deptId);
+			$('#qrDeptName').text(deptName || '-');
+			loadQrcode(deptId);
+			$('#qrcodeModal').modal('show');
+		}
+
+		function loadQrcode(deptId) {
+			$.get(qrPrefix + "/" + deptId, function(r) {
+				if (r.code != 0 && r.code != 200) {
+					$.modal.msgError(r.msg);
+					return;
+				}
+				fillQrMeta(r.data);
+			});
+		}
+
+		function fillQrMeta(data) {
+			if (!data) {
+				$('#qrEmpty').show();
+				$('#qrImage').hide().attr('src', '');
+				$('#qrInviteCode').text('-');
+				$('#qrStatus').text('无');
+				$('#qrExpire').text('-');
+				$('#qrUseCount').text('-');
+				$('#qrRemain').text('-');
+				$('#qrUrl').text('-');
+				$('#qrCompanyName').text('-');
+				return;
+			}
+			$('#qrEmpty').hide();
+			$('#qrCompanyName').text(data.companyName || '-');
+			$('#qrDeptName').text(data.deptName || $('#qrDeptName').text());
+			$('#qrInviteCode').text(data.inviteCode || '-');
+			$('#qrRegisterMode').val(data.registerMode || '0');
+			$('#qrStatus').text(data.status === '0' ? '启用' : '停用');
+			$('#qrExpire').text(data.expireTime || '-');
+			$('#qrUseCount').text(data.useCount != null ? data.useCount : '-');
+			$('#qrRemain').text(data.remainCount != null && data.remainCount >= 0 ? data.remainCount : '不限');
+			$('#qrUrl').text(data.registerUrl || data.registerUrlHint || '-');
+			if (data.qrBase64) {
+				$('#qrImage').attr('src', 'data:image/png;base64,' + data.qrBase64).show();
+			}
+		}
+
+		function generateQrcode() {
+			var deptId = $('#qrDeptId').val();
+			$.modal.confirm("重新生成将停用旧码并重新计 7 天有效期，是否继续？", function() {
+				$.post(qrPrefix + "/generate", {
+					deptId: deptId,
+					registerMode: $('#qrRegisterMode').val()
+				}, function(r) {
+					if (r.code == 0 || r.code == 200) {
+						$.modal.msgSuccess("生成成功（明文 Token 仅本次可见，请尽快下载/复制）");
+						fillQrMeta(r.data);
+					} else {
+						$.modal.msgError(r.msg);
+					}
+				});
+			});
+		}
+
+		function disableQrcode() {
+			var deptId = $('#qrDeptId').val();
+			$.modal.confirm("确认停用当前注册二维码？", function() {
+				$.post(qrPrefix + "/disable", { deptId: deptId }, function(r) {
+					if (r.code == 0 || r.code == 200) {
+						$.modal.msgSuccess("已停用");
+						loadQrcode(deptId);
+					} else {
+						$.modal.msgError(r.msg);
+					}
+				});
+			});
+		}
+
+		function downloadQrcode() {
+			var src = $('#qrImage').attr('src');
+			if (!src) {
+				$.modal.msgWarning("暂无二维码可下载");
+				return;
+			}
+			var a = document.createElement('a');
+			a.href = src;
+			a.download = 'dept-register-qrcode.png';
+			a.click();
+		}
+
+		function copyInviteCode() {
+			var code = $('#qrInviteCode').text();
+			if (!code || code === '-') {
+				return;
+			}
+			if (navigator.clipboard) {
+				navigator.clipboard.writeText(code);
+				$.modal.msgSuccess("已复制邀请码");
+			} else {
+				$.modal.msg(code);
+			}
+		}
 	</script>
 </body>
 </html>

@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.text.Convert;
+import com.ruoyi.common.utils.ClientSafeMessage;
 import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.web.service.ConfigService;
@@ -62,11 +63,12 @@ public class SysLoginController extends BaseController
         return "login";
     }
 
-    @PostMapping("/login")
+    @PostMapping(value = "/login", produces = "application/json;charset=UTF-8")
     @ResponseBody
     public AjaxResult ajaxLogin(String username, String password, Boolean rememberMe)
     {
-        UsernamePasswordToken token = new UsernamePasswordToken(username, password, rememberMe);
+        boolean remember = Boolean.TRUE.equals(rememberMe);
+        UsernamePasswordToken token = new UsernamePasswordToken(username, password, remember);
         Subject subject = SecurityUtils.getSubject();
         try
         {
@@ -78,7 +80,7 @@ public class SysLoginController extends BaseController
             String msg = "用户或密码错误";
             if (StringUtils.isNotEmpty(e.getMessage()))
             {
-                msg = e.getMessage();
+                msg = ClientSafeMessage.forLogin(e.getMessage(), e);
             }
             return error(msg);
         }

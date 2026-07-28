@@ -53,6 +53,11 @@ public interface SysUserMapper
     public SysUser selectUserByPhoneNumber(String phoneNumber);
 
     /**
+     * 通过微信 openid 查询用户
+     */
+    public SysUser selectUserByOpenid(String openid);
+
+    /**
      * 通过邮箱查询用户
      * 
      * @param email 邮箱
@@ -161,4 +166,12 @@ public interface SysUserMapper
      * @return 结果
      */
     public SysUser checkEmailUnique(String email);
+
+    /**
+     * 乐观更新审核状态（仅 audit_status=1 时生效）
+     *
+     * @param user 用户
+     * @return 影响行数
+     */
+    public int updateUserAuditOptimistic(SysUser user);
 }

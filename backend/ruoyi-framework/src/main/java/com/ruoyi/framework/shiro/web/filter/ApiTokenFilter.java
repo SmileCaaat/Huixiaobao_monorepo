@@ -11,19 +11,58 @@ import org.apache.shiro.web.util.WebUtils;
 import org.springframework.http.HttpStatus;
 import com.alibaba.fastjson.JSON;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.enums.UserStatus;
+import com.ruoyi.common.utils.ShiroUtils;
+import com.ruoyi.common.utils.StringUtils;
+import com.ruoyi.common.utils.spring.SpringUtils;
+import com.ruoyi.system.service.ISysUserService;
 
 /**
  * API Token认证过滤器
  * 用于小程序等移动端的Token认证
- * 
- * @author ruoyi
  */
 public class ApiTokenFilter extends AccessControlFilter {
 
     @Override
     protected boolean isAccessAllowed(ServletRequest request, ServletResponse response, Object mappedValue) {
         Subject subject = SecurityUtils.getSubject();
-        return subject.isAuthenticated();
+        if (!subject.isAuthenticated()) {
+            return false;
+        }
+        SysUser sessionUser = ShiroUtils.getSysUser();
+        if (sessionUser == null || sessionUser.getUserId() == null) {
+            subject.logout();
+            return false;
+        }
+        ISysUserService userService = SpringUtils.getBean(ISysUserService.class);
+        SysUser user = userService.selectUserById(sessionUser.getUserId());
+        if (!isMiniApiUserAllowed(user)) {
+            subject.logout();
+            return false;
+        }
+        if (user != null) {
+            ShiroUtils.setSysUser(user);
+        }
+        return true;
+    }
+
+    private boolean isMiniApiUserAllowed(SysUser user) {
+        if (user == null) {
+            return false;
+        }
+        if (UserStatus.DISABLE.getCode().equals(user.getStatus())) {
+            return false;
+        }
+        String auditStatus = user.getAuditStatus();
+        if (StringUtils.isNotEmpty(auditStatus) && !"0".equals(auditStatus)) {
+            return false;
+        }
+        String allowMini = user.getAllowMiniLogin();
+        if (StringUtils.isNotEmpty(allowMini) && !"1".equals(allowMini)) {
+            return false;
+        }
+        return true;
     }
 
     @Override

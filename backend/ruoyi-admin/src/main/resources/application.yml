@@ -25,6 +25,10 @@ server:
   servlet:
     # 应用的访问路径
     context-path: /
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
   tomcat:
     # tomcat的URI编码
     uri-encoding: UTF-8
@@ -69,6 +73,7 @@ spring:
   messages:
     # 国际化资源文件路径
     basename: static/i18n/messages
+    encoding: UTF-8
   jackson:
     time-zone: GMT+8
     date-format: yyyy-MM-dd HH:mm:ss
@@ -155,7 +160,19 @@ csrf:
   # 过滤开关
   enabled: true
   # 白名单（API接口用Token认证无需CSRF校验，多个用逗号分隔）
-  whites: /druid,/api/**,/captcha/captchaImage
+  whites: /druid,/api/**,/captcha/captchaImage,/register,/register/invite/resolve,/register/sms/send
+
+# 短信验证码（可插拔；默认关闭。本地调试可 sms.enabled=true + provider=log）
+sms:
+  enabled: false
+  provider: log
+  code-ttl-seconds: 300
+  resend-interval-seconds: 60
+  max-send-per-hour: 10
+  access-key:
+  access-secret:
+  sign-name:
+  template-code:
 
 # Swagger配置
 swagger:

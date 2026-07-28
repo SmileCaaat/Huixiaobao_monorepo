@@ -100,7 +100,12 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         validateDispatchAuthority(repair);
         // 全部已注册、状态正常、未删除的系统用户
         List<SysUser> users = userService.selectActiveRegisteredUserList();
-        return users != null ? users : java.util.Collections.emptyList();
+        if (users == null) {
+            return java.util.Collections.emptyList();
+        }
+        return users.stream()
+                .filter(u -> u != null && u.isDispatchableUser() && "0".equals(u.getAuditStatus()))
+                .collect(java.util.stream.Collectors.toList());
     }
 
     @Override
@@ -121,12 +126,7 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         }
 
         SysUser repairUser = userService.selectUserById(repairUserId);
-        if (repairUser == null || "2".equals(repairUser.getDelFlag())) {
-            throw new ServiceException("处理人不存在或已删除");
-        }
-        if ("1".equals(repairUser.getStatus())) {
-            throw new ServiceException("处理人账号已停用");
-        }
+        fireDataPermissionService.assertUserDispatchable(repairUser);
 
         validateDispatchUser(repair, repairUserId);
 

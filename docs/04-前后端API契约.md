@@ -156,3 +156,23 @@ RuoYi `PageUtils.startPage()` 从 URL 查询参数读取 `pageNum/pageSize`，�
 
 统一 REST API 成功码为一个值，建议保持 RuoYi 现状统一到 `200` 或完整统一到 `0`，不要长期在新代码中同时兼容。
 
+
+## 员工注册邀请
+
+组织公司/部门 = `sys_dept`（不是 `fire_company`）。注册不写入 `fire_user_company`。
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/register/invite/resolve` | anon | inviteToken 或 inviteCode → 公司/部门名与模式（不返回可篡改组织 ID） |
+| POST | `/register/sms/send` | anon | phonenumber；限流；依赖 `sms.*` |
+| POST | `/register` | anon+captcha | 姓名/手机/短信/密码/邀请 |
+| POST | `/api/register` | anon | JSON；忽略前端 deptId |
+| GET/POST | `/api/register/invite/resolve`, `/api/register/sms/send` | anon | 小程序 |
+| POST | `/system/dept/registerQrcode/generate` | manage | 7 天有效；明文 token 仅返回一次 |
+| GET | `/system/dept/registerQrcode/{deptId}` | view | 元数据 + 短码二维码 |
+| POST | `/system/dept/registerQrcode/disable` | manage | 停用 |
+| GET | `/system/dept/registerQrcode/download/{deptId}` | download | 不延期 |
+| POST | `/system/user/audit` | system:user:audit | 乐观更新 WHERE audit_status=1 |
+| POST | `/system/user/registerRecords` | system:user:registerRecord | 注册记录 |
+
+自动通过：有效邀请 + register_mode=0 + 短信通过 + 手机号唯一 → audit_status=0、dispatchable=1、role_key=maintenance_member。

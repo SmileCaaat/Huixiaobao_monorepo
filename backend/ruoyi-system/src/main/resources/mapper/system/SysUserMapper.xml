@@ -17,6 +17,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<result property="password"      column="password"        />
 		<result property="salt"          column="salt"            />
 		<result property="status"        column="status"          />
+		<result property="allowAdminLogin" column="allow_admin_login" />
+		<result property="allowMiniLogin"  column="allow_mini_login" />
+		<result property="auditStatus"     column="audit_status" />
+		<result property="registerSource"  column="register_source" />
+		<result property="registerInviteId" column="register_invite_id" />
+		<result property="auditBy"         column="audit_by" />
+		<result property="auditTime"       column="audit_time" />
+		<result property="auditRemark"     column="audit_remark" />
+		<result property="dispatchable"    column="dispatchable" />
+		<result property="openid"          column="openid" />
+		<result property="unionId"         column="union_id" />
+		<result property="wxBindTime"      column="wx_bind_time" />
 		<result property="delFlag"       column="del_flag"        />
 		<result property="loginIp"       column="login_ip"        />
 		<result property="loginDate"     column="login_date"      />
@@ -50,7 +62,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</resultMap>
 	
 	<sql id="selectUserVo">
-        select  u.user_id, u.dept_id, u.login_name, u.user_name, u.user_type, u.email, u.avatar, u.phonenumber, u.sex, u.password, u.salt, u.status, u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark,
+        select  u.user_id, u.dept_id, u.login_name, u.user_name, u.user_type, u.email, u.avatar, u.phonenumber, u.sex, u.password, u.salt, u.status,
+                u.allow_admin_login, u.allow_mini_login, u.audit_status, u.register_source, u.register_invite_id,
+                u.audit_by, u.audit_time, u.audit_remark, u.dispatchable, u.openid, u.union_id, u.wx_bind_time,
+                u.del_flag, u.login_ip, u.login_date, u.pwd_update_date, u.create_by, u.create_time, u.update_by, u.update_time, u.remark,
        		    d.dept_id, d.parent_id, d.ancestors, d.dept_name, d.order_num, d.leader, d.status as dept_status,
        		    r.role_id, r.role_name, r.role_key, r.role_sort, r.data_scope, r.status as role_status
 		from sys_user u
@@ -60,7 +75,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </sql>
 	
 	<select id="selectUserList" parameterType="SysUser" resultMap="SysUserResult">
-		select u.user_id, u.dept_id, u.login_name, u.user_name, u.user_type, u.email, u.avatar, u.phonenumber, u.password, u.sex, u.salt, u.status, u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader from sys_user u
+		select u.user_id, u.dept_id, u.login_name, u.user_name, u.user_type, u.email, u.avatar, u.phonenumber, u.password, u.sex, u.salt, u.status,
+		       u.allow_admin_login, u.allow_mini_login, u.audit_status, u.register_source, u.register_invite_id,
+		       u.audit_by, u.audit_time, u.audit_remark, u.dispatchable, u.openid, u.union_id, u.wx_bind_time,
+		       u.del_flag, u.login_ip, u.login_date, u.create_by, u.create_time, u.remark, d.dept_name, d.leader
+		  from sys_user u
 		left join sys_dept d on u.dept_id = d.dept_id
 		where u.del_flag = '0'
 		<if test="userId != null and userId != 0">
@@ -75,6 +94,21 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<if test="phonenumber != null and phonenumber != ''">
 			AND u.phonenumber like concat('%', #{phonenumber}, '%')
 		</if>
+		<if test="auditStatus != null and auditStatus != ''">
+			AND u.audit_status = #{auditStatus}
+		</if>
+		<if test="registerSource != null and registerSource != ''">
+			AND u.register_source = #{registerSource}
+		</if>
+		<if test="params.registerSourceIn != null and params.registerSourceIn.length > 0">
+			AND u.register_source in
+			<foreach collection="params.registerSourceIn" item="src" open="(" separator="," close=")">
+				#{src}
+			</foreach>
+		</if>
+		<if test="dispatchable != null and dispatchable != ''">
+			AND u.dispatchable = #{dispatchable}
+		</if>
 		<if test="params.beginTime != null and params.beginTime != ''"><!-- 开始时间检索 -->
 			AND date_format(u.create_time,'%Y%m%d') &gt;= date_format(#{params.beginTime},'%Y%m%d')
 		</if>
@@ -87,7 +121,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		<!-- 数据范围过滤 -->
 		${params.dataScope}
 	</select>
-	
+
 	<select id="selectAllocatedList" parameterType="SysUser" resultMap="SysUserResult">
 	    select distinct u.user_id, u.dept_id, u.login_name, u.user_name, u.user_type, u.email, u.avatar, u.phonenumber, u.status, u.create_time
 	    from sys_user u
@@ -195,6 +229,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="password != null and password != ''">password = #{password},</if>
  			<if test="salt != null and salt != ''">salt = #{salt},</if>
  			<if test="status != null and status != ''">status = #{status},</if>
+ 			<if test="allowAdminLogin != null and allowAdminLogin != ''">allow_admin_login = #{allowAdminLogin},</if>
+ 			<if test="allowMiniLogin != null and allowMiniLogin != ''">allow_mini_login = #{allowMiniLogin},</if>
+ 			<if test="auditStatus != null and auditStatus != ''">audit_status = #{auditStatus},</if>
+ 			<if test="registerSource != null">register_source = #{registerSource},</if>
+ 			<if test="registerInviteId != null">register_invite_id = #{registerInviteId},</if>
+ 			<if test="auditBy != null">audit_by = #{auditBy},</if>
+ 			<if test="auditTime != null">audit_time = #{auditTime},</if>
+ 			<if test="auditRemark != null">audit_remark = #{auditRemark},</if>
+ 			<if test="dispatchable != null and dispatchable != ''">dispatchable = #{dispatchable},</if>
+ 			<if test="openid != null">openid = #{openid},</if>
+ 			<if test="unionId != null">union_id = #{unionId},</if>
+ 			<if test="wxBindTime != null">wx_bind_time = #{wxBindTime},</if>
  			<if test="loginIp != null and loginIp != ''">login_ip = #{loginIp},</if>
  			<if test="loginDate != null">login_date = #{loginDate},</if>
  			<if test="pwdUpdateDate != null">pwd_update_date = #{pwdUpdateDate},</if>
@@ -219,6 +265,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="password != null and password != ''">password,</if>
  			<if test="salt != null and salt != ''">salt,</if>
  			<if test="status != null and status != ''">status,</if>
+ 			<if test="allowAdminLogin != null and allowAdminLogin != ''">allow_admin_login,</if>
+ 			<if test="allowMiniLogin != null and allowMiniLogin != ''">allow_mini_login,</if>
+ 			<if test="auditStatus != null and auditStatus != ''">audit_status,</if>
+ 			<if test="registerSource != null and registerSource != ''">register_source,</if>
+ 			<if test="registerInviteId != null">register_invite_id,</if>
+ 			<if test="auditBy != null and auditBy != ''">audit_by,</if>
+ 			<if test="auditTime != null">audit_time,</if>
+ 			<if test="auditRemark != null and auditRemark != ''">audit_remark,</if>
+ 			<if test="dispatchable != null and dispatchable != ''">dispatchable,</if>
+ 			<if test="openid != null and openid != ''">openid,</if>
+ 			<if test="unionId != null and unionId != ''">union_id,</if>
+ 			<if test="wxBindTime != null">wx_bind_time,</if>
  			<if test="pwdUpdateDate != null">pwd_update_date,</if>
  			<if test="createBy != null and createBy != ''">create_by,</if>
  			<if test="remark != null and remark != ''">remark,</if>
@@ -236,11 +294,45 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
  			<if test="password != null and password != ''">#{password},</if>
  			<if test="salt != null and salt != ''">#{salt},</if>
  			<if test="status != null and status != ''">#{status},</if>
+ 			<if test="allowAdminLogin != null and allowAdminLogin != ''">#{allowAdminLogin},</if>
+ 			<if test="allowMiniLogin != null and allowMiniLogin != ''">#{allowMiniLogin},</if>
+ 			<if test="auditStatus != null and auditStatus != ''">#{auditStatus},</if>
+ 			<if test="registerSource != null and registerSource != ''">#{registerSource},</if>
+ 			<if test="registerInviteId != null">#{registerInviteId},</if>
+ 			<if test="auditBy != null and auditBy != ''">#{auditBy},</if>
+ 			<if test="auditTime != null">#{auditTime},</if>
+ 			<if test="auditRemark != null and auditRemark != ''">#{auditRemark},</if>
+ 			<if test="dispatchable != null and dispatchable != ''">#{dispatchable},</if>
+ 			<if test="openid != null and openid != ''">#{openid},</if>
+ 			<if test="unionId != null and unionId != ''">#{unionId},</if>
+ 			<if test="wxBindTime != null">#{wxBindTime},</if>
  			<if test="pwdUpdateDate != null">#{pwdUpdateDate},</if>
  			<if test="createBy != null and createBy != ''">#{createBy},</if>
  			<if test="remark != null and remark != ''">#{remark},</if>
  			sysdate()
  		)
 	</insert>
+
+	<select id="selectUserByOpenid" parameterType="String" resultMap="SysUserResult">
+		<include refid="selectUserVo"/>
+		where u.openid = #{openid} and u.del_flag = '0'
+		limit 1
+	</select>
+
+	<!-- 乐观审核：仅当仍为待审时更新 -->
+	<update id="updateUserAuditOptimistic" parameterType="SysUser">
+		update sys_user
+		set audit_status = #{auditStatus},
+		    audit_by = #{auditBy},
+		    audit_time = #{auditTime},
+		    audit_remark = #{auditRemark},
+		    dispatchable = #{dispatchable},
+		    <if test="deptId != null">dept_id = #{deptId},</if>
+		    update_by = #{updateBy},
+		    update_time = sysdate()
+		where user_id = #{userId}
+		  and audit_status = '1'
+		  and del_flag = '0'
+	</update>
 	
 </mapper> 

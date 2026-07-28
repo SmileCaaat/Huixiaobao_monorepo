@@ -26,6 +26,7 @@ import com.ruoyi.fire.mapper.FireMaintenanceTaskMapper;
 import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
 import com.ruoyi.system.domain.FireReportRecord;
+import com.ruoyi.system.service.ISysUserService;
 
 /**
  * 消防业务数据权限：超级管理员 / 系统项目经理(全局) / 项目负责人 / 项目成员 / 任务干系人
@@ -44,6 +45,9 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
 
     @Autowired(required = false)
     private IFireMaintenanceTaskService taskService;
+
+    @Autowired
+    private ISysUserService userService;
 
     @Override
     public boolean hasGlobalBizDataScope(SysUser user) {
@@ -469,6 +473,31 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
         }
         if (!canAccessReport(user, report)) {
             throw new ServiceException("\u65e0\u6743\u8bbf\u95ee\u8be5\u62a5\u544a");
+        }
+    }
+
+    @Override
+    public void assertUserDispatchable(Long targetUserId) {
+        if (targetUserId == null) {
+            throw new ServiceException("\u5904\u7406\u4eba\u4e0d\u80fd\u4e3a\u7a7a");
+        }
+        assertUserDispatchable(userService.selectUserById(targetUserId));
+    }
+
+    @Override
+    public void assertUserDispatchable(SysUser targetUser) {
+        if (targetUser == null || "2".equals(targetUser.getDelFlag())) {
+            throw new ServiceException("\u5904\u7406\u4eba\u4e0d\u5b58\u5728\u6216\u5df2\u5220\u9664");
+        }
+        if ("1".equals(targetUser.getStatus())) {
+            throw new ServiceException("\u5904\u7406\u4eba\u8d26\u53f7\u5df2\u505c\u7528");
+        }
+        String audit = targetUser.getAuditStatus();
+        if (StringUtils.isNotEmpty(audit) && !"0".equals(audit)) {
+            throw new ServiceException("\u8be5\u7528\u6237\u5c1a\u672a\u901a\u8fc7\u5ba1\u6838\uff0c\u4e0d\u53ef\u6d3e\u5de5");
+        }
+        if (!targetUser.isDispatchableUser()) {
+            throw new ServiceException("\u8be5\u7528\u6237\u4e0d\u53ef\u6d3e\u5de5");
         }
     }
 

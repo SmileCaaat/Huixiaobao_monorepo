@@ -23,12 +23,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.exception.user.CaptchaException;
 import com.ruoyi.common.exception.user.RoleBlockedException;
+import com.ruoyi.common.exception.user.UserAuditException;
 import com.ruoyi.common.exception.user.UserBlockedException;
+import com.ruoyi.common.exception.user.UserLoginChannelException;
 import com.ruoyi.common.exception.user.UserNotExistsException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import com.ruoyi.common.exception.user.UserPasswordRetryLimitExceedException;
+import com.ruoyi.common.utils.ClientSafeMessage;
 import com.ruoyi.common.utils.ShiroUtils;
 import com.ruoyi.framework.shiro.service.SysLoginService;
+import com.ruoyi.framework.shiro.token.WxAuthToken;
+import com.ruoyi.system.service.ISysUserService;
 import com.ruoyi.system.service.ISysMenuService;
 import com.ruoyi.system.service.ISysRoleService;
 
@@ -49,6 +54,15 @@ public class UserRealm extends AuthorizingRealm
 
     @Autowired
     private SysLoginService loginService;
+
+    @Autowired
+    private ISysUserService userService;
+
+    @Override
+    public boolean supports(AuthenticationToken token)
+    {
+        return token instanceof UsernamePasswordToken || token instanceof WxAuthToken;
+    }
 
     /**
      * 授权
@@ -86,6 +100,11 @@ public class UserRealm extends AuthorizingRealm
     @Override
     protected AuthenticationInfo doGetAuthenticationInfo(AuthenticationToken token) throws AuthenticationException
     {
+        if (token instanceof WxAuthToken)
+        {
+            return authenticateWx((WxAuthToken) token);
+        }
+
         UsernamePasswordToken upToken = (UsernamePasswordToken) token;
         String username = upToken.getUsername();
         String password = "";
@@ -119,17 +138,56 @@ public class UserRealm extends AuthorizingRealm
         {
             throw new LockedAccountException(e.getMessage(), e);
         }
+        catch (UserAuditException | UserLoginChannelException e)
+        {
+            throw new LockedAccountException(e.getMessage(), e);
+        }
         catch (RoleBlockedException e)
         {
             throw new LockedAccountException(e.getMessage(), e);
         }
         catch (Exception e)
         {
-            log.info("对用户[" + username + "]进行登录验证..验证未通过{}", e.getMessage());
-            throw new AuthenticationException(e.getMessage(), e);
+            log.error("对用户[{}]进行登录验证时发生系统异常: {}", username, e.toString(), e);
+            throw new AuthenticationException(ClientSafeMessage.forLogin(e.getMessage(), e), e);
         }
         SimpleAuthenticationInfo info = new SimpleAuthenticationInfo(user, password, getName());
         return info;
+    }
+
+    private AuthenticationInfo authenticateWx(WxAuthToken wxToken) throws AuthenticationException
+    {
+        String loginName = wxToken.getLoginName();
+        SysUser user = userService.selectUserByLoginName(loginName);
+        if (user == null)
+        {
+            throw new UnknownAccountException("用户不存在");
+        }
+        try
+        {
+            loginService.validateAuditStatus(user, loginName);
+            loginService.validateMiniLoginAllowed(user, loginName);
+            if (com.ruoyi.common.enums.UserStatus.DISABLE.getCode().equals(user.getStatus()))
+            {
+                throw new LockedAccountException("账号已停用");
+            }
+            loginService.setRolePermission(user);
+            loginService.recordLoginInfo(user.getUserId());
+        }
+        catch (AuthenticationException e)
+        {
+            throw e;
+        }
+        catch (UserAuditException | UserLoginChannelException | UserBlockedException e)
+        {
+            throw new LockedAccountException(e.getMessage(), e);
+        }
+        catch (Exception e)
+        {
+            log.error("微信登录校验发生系统异常, loginName={}", loginName, e);
+            throw new AuthenticationException(ClientSafeMessage.forLogin(e.getMessage(), e), e);
+        }
+        return new SimpleAuthenticationInfo(user, "", getName());
     }
 
     /**

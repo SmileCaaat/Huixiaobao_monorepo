@@ -307,12 +307,17 @@ public class ShiroConfig {
         filterChainDefinitionMap.put("/logout", "logout");
         // 不需要拦截的访问
         filterChainDefinitionMap.put("/login", "anon,captchaValidate");
-        // 注册相关
+        // 注册相关（更具体的路径放在 /register 之前）
+        filterChainDefinitionMap.put("/register/invite/resolve", "anon");
+        filterChainDefinitionMap.put("/register/sms/send", "anon");
         filterChainDefinitionMap.put("/register", "anon,captchaValidate");
         // 小程序注册接口（公开）
+        filterChainDefinitionMap.put("/api/register/invite/resolve", "anon");
+        filterChainDefinitionMap.put("/api/register/sms/send", "anon");
         filterChainDefinitionMap.put("/api/register", "anon");
         // 小程序登录接口（公开）
         filterChainDefinitionMap.put("/api/login", "anon");
+        filterChainDefinitionMap.put("/api/wx/login", "anon");
         // 小程序注册页面需要的公开接口（未登录可访问）
         filterChainDefinitionMap.put("/api/fire/dept/list", "anon");
         // 小程序其他API接口（需要登录，使用apiToken过滤器）

@@ -72,6 +72,42 @@ public class SysUser extends BaseEntity
     @Excel(name = "账号状态", readConverterExp = "0=正常,1=停用")
     private String status;
 
+    /** 是否允许后台登录（0否 1是） */
+    private String allowAdminLogin;
+
+    /** 是否允许小程序登录（0否 1是） */
+    private String allowMiniLogin;
+
+    /** 审核状态（0已通过 1待审核 2已拒绝） */
+    private String auditStatus;
+
+    /** 注册来源：qr / invite_code / direct / admin */
+    private String registerSource;
+
+    /** 注册邀请 ID */
+    private Long registerInviteId;
+
+    /** 审核人 */
+    private String auditBy;
+
+    /** 审核时间 */
+    private Date auditTime;
+
+    /** 审核备注/驳回原因 */
+    private String auditRemark;
+
+    /** 是否可派工（0否 1是） */
+    private String dispatchable;
+
+    /** 微信 openid */
+    private String openid;
+
+    /** 微信 unionid */
+    private String unionId;
+
+    /** 微信绑定时间 */
+    private Date wxBindTime;
+
     /** 删除标志（0代表存在 2代表删除） */
     private String delFlag;
 
@@ -269,6 +305,132 @@ public class SysUser extends BaseEntity
     public void setStatus(String status)
     {
         this.status = status;
+    }
+
+    public String getAllowAdminLogin()
+    {
+        return allowAdminLogin;
+    }
+
+    public void setAllowAdminLogin(String allowAdminLogin)
+    {
+        this.allowAdminLogin = allowAdminLogin;
+    }
+
+    public String getAllowMiniLogin()
+    {
+        return allowMiniLogin;
+    }
+
+    public void setAllowMiniLogin(String allowMiniLogin)
+    {
+        this.allowMiniLogin = allowMiniLogin;
+    }
+
+    public String getAuditStatus()
+    {
+        return auditStatus;
+    }
+
+    public void setAuditStatus(String auditStatus)
+    {
+        this.auditStatus = auditStatus;
+    }
+
+    public String getRegisterSource()
+    {
+        return registerSource;
+    }
+
+    public void setRegisterSource(String registerSource)
+    {
+        this.registerSource = registerSource;
+    }
+
+    public Long getRegisterInviteId()
+    {
+        return registerInviteId;
+    }
+
+    public void setRegisterInviteId(Long registerInviteId)
+    {
+        this.registerInviteId = registerInviteId;
+    }
+
+    public String getAuditBy()
+    {
+        return auditBy;
+    }
+
+    public void setAuditBy(String auditBy)
+    {
+        this.auditBy = auditBy;
+    }
+
+    public Date getAuditTime()
+    {
+        return auditTime;
+    }
+
+    public void setAuditTime(Date auditTime)
+    {
+        this.auditTime = auditTime;
+    }
+
+    public String getAuditRemark()
+    {
+        return auditRemark;
+    }
+
+    public void setAuditRemark(String auditRemark)
+    {
+        this.auditRemark = auditRemark;
+    }
+
+    public String getDispatchable()
+    {
+        return dispatchable;
+    }
+
+    public void setDispatchable(String dispatchable)
+    {
+        this.dispatchable = dispatchable;
+    }
+
+    /** 是否可被派为处理人 */
+    public boolean isDispatchableUser()
+    {
+        return dispatchable == null || "1".equals(dispatchable);
+    }
+
+    public String getOpenid()
+    {
+        return openid;
+    }
+
+    public void setOpenid(String openid)
+    {
+        this.openid = openid;
+    }
+
+    public String getUnionId()
+    {
+        return unionId;
+    }
+
+    public void setUnionId(String unionId)
+    {
+        this.unionId = unionId;
+    }
+
+    public Date getWxBindTime()
+    {
+        return wxBindTime;
+    }
+
+    public void setWxBindTime(Date wxBindTime)
+    {
+        this.wxBindTime = wxBindTime;
     }
 
     public String getDelFlag()

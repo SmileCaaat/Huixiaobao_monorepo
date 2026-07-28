@@ -216,6 +216,9 @@ public class FireMaintenanceTaskController extends BaseController {
     @PostMapping("/add")
     @ResponseBody
     public AjaxResult add(FireMaintenanceTask fireMaintenanceTask) {
+        if (fireMaintenanceTask.getManagerId() != null) {
+            fireDataPermissionService.assertUserDispatchable(fireMaintenanceTask.getManagerId());
+        }
         return toAjax(fireMaintenanceTaskService.insertFireMaintenanceTask(fireMaintenanceTask));
     }
 
@@ -227,6 +230,9 @@ public class FireMaintenanceTaskController extends BaseController {
     @PostMapping("/edit")
     @ResponseBody
     public AjaxResult edit(FireMaintenanceTask fireMaintenanceTask) {
+        if (fireMaintenanceTask.getManagerId() != null) {
+            fireDataPermissionService.assertUserDispatchable(fireMaintenanceTask.getManagerId());
+        }
         try {
             if (fireMaintenanceTask.getTaskId() == null) {
                 return error("任务ID不能为空");

@@ -90,6 +90,11 @@ public interface IFireDataPermissionService {
 
     void assertCanAccessReport(SysUser user, FireReportRecord report);
 
+    /** 断言目标用户可被派工（审核通过且 dispatchable=1） */
+    void assertUserDispatchable(Long targetUserId);
+
+    void assertUserDispatchable(SysUser targetUser);
+
     /** \u4e3a\u4efb\u52a1\u5217\u8868\u67e5\u8be2\u6ce8\u5165\u53ef\u89c1\u8303\u56f4\uff08\u975e\u7ba1\u7406\u5458\uff09 */
     void applyTaskListScope(FireMaintenanceTask query, SysUser user);
 

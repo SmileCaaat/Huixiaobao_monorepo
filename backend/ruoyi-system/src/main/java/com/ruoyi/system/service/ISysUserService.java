@@ -60,6 +60,11 @@ public interface ISysUserService
     public SysUser selectUserByPhoneNumber(String phoneNumber);
 
     /**
+     * 通过微信 openid 查询用户
+     */
+    public SysUser selectUserByOpenid(String openid);
+
+    /**
      * 通过邮箱查询用户
      * 
      * @param email 邮箱
@@ -238,4 +243,12 @@ public interface ISysUserService
      * @return 结果
      */
     public int changeStatus(SysUser user);
+
+    /**
+     * 乐观审核更新（仅待审用户）
+     *
+     * @param user 用户信息
+     * @return 影响行数，0 表示已被他人处理
+     */
+    public int updateUserAuditOptimistic(SysUser user);
 }

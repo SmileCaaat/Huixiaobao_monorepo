@@ -14,6 +14,8 @@ import com.ruoyi.common.exception.user.BlackListException;
 import com.ruoyi.common.exception.user.CaptchaException;
 import com.ruoyi.common.exception.user.UserBlockedException;
 import com.ruoyi.common.exception.user.UserDeleteException;
+import com.ruoyi.common.exception.user.UserAuditException;
+import com.ruoyi.common.exception.user.UserLoginChannelException;
 import com.ruoyi.common.exception.user.UserNotExistsException;
 import com.ruoyi.common.exception.user.UserPasswordNotMatchException;
 import com.ruoyi.common.utils.DateUtils;
@@ -122,6 +124,12 @@ public class SysLoginService
             throw new UserBlockedException();
         }
 
+        validateAuditStatus(user, username);
+        if (isAdminLoginRequest())
+        {
+            validateAdminLoginAllowed(user, username);
+        }
+
         passwordService.validate(user, password);
 
         AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_SUCCESS, MessageUtils.message("user.login.success")));
@@ -149,6 +157,75 @@ public class SysLoginService
         return true;
     }
     */
+
+    /**
+     * 校验审核状态（0已通过，1待审核可受限登录，2已拒绝禁止；null 视为已通过）
+     * 超级管理员 userId=1 永远放行。
+     */
+    public void validateAuditStatus(SysUser user, String username)
+    {
+        if (user != null && user.isAdmin())
+        {
+            return;
+        }
+        String auditStatus = user.getAuditStatus();
+        if (StringUtils.isEmpty(auditStatus) || "0".equals(auditStatus) || "1".equals(auditStatus))
+        {
+            // 待审允许登录；业务权限靠无角色/菜单收窄 + 后端 dispatchable 校验
+            return;
+        }
+        String msg = "账号已拒绝，请联系管理员";
+        AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, msg));
+        throw new UserAuditException(msg);
+    }
+
+    /**
+     * 校验后台登录开关（null 或 1 允许）
+     * 超级管理员 userId=1 永远放行。
+     */
+    public void validateAdminLoginAllowed(SysUser user, String username)
+    {
+        if (user != null && user.isAdmin())
+        {
+            return;
+        }
+        if (StringUtils.isEmpty(user.getAllowAdminLogin()) || "1".equals(user.getAllowAdminLogin()))
+        {
+            return;
+        }
+        String msg = "不允许后台登录";
+        AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, msg));
+        throw new UserLoginChannelException(msg);
+    }
+
+    /**
+     * 校验小程序登录开关（null 或 1 允许）
+     * 超级管理员 userId=1 永远放行。
+     */
+    public void validateMiniLoginAllowed(SysUser user, String username)
+    {
+        if (user != null && user.isAdmin())
+        {
+            return;
+        }
+        if (StringUtils.isEmpty(user.getAllowMiniLogin()) || "1".equals(user.getAllowMiniLogin()))
+        {
+            return;
+        }
+        String msg = "不允许小程序登录";
+        AsyncManager.me().execute(AsyncFactory.recordLogininfor(username, Constants.LOGIN_FAIL, msg));
+        throw new UserLoginChannelException(msg);
+    }
+
+    private boolean isAdminLoginRequest()
+    {
+        if (ServletUtils.getRequest() == null)
+        {
+            return true;
+        }
+        String uri = ServletUtils.getRequest().getRequestURI();
+        return uri == null || !uri.contains("/api/login");
+    }
 
     /**
      * 设置角色权限

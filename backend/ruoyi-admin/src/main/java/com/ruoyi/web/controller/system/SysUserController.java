@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.system;
 
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.ArrayUtils;
@@ -30,6 +31,7 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.framework.shiro.service.SysPasswordService;
 import com.ruoyi.framework.shiro.util.AuthorizationUtils;
+import com.ruoyi.system.mapper.SysRoleMapper;
 import com.ruoyi.system.service.ISysDeptService;
 import com.ruoyi.system.service.ISysPostService;
 import com.ruoyi.system.service.ISysRoleService;
@@ -60,10 +62,40 @@ public class SysUserController extends BaseController {
     @Autowired
     private SysPasswordService passwordService;
 
+    @Autowired
+    private SysRoleMapper roleMapper;
+
     @RequiresPermissions("system:user:view")
     @GetMapping()
     public String user() {
         return prefix + "/user";
+    }
+
+    /**
+     * 注册记录页
+     */
+    @RequiresPermissions("system:user:registerRecord")
+    @GetMapping("/registerRecord")
+    public String registerRecord(ModelMap mmap) {
+        SysUser current = getSysUser();
+        mmap.put("currentDeptId", current != null ? current.getDeptId() : null);
+        return prefix + "/registerRecord";
+    }
+
+    /**
+     * 注册记录列表
+     */
+    @RequiresPermissions("system:user:registerRecord")
+    @PostMapping("/registerRecords")
+    @ResponseBody
+    public TableDataInfo registerRecords(SysUser user) {
+        startPage();
+        // Self-register sources by default; admin-created users stay on user list page.
+        if (StringUtils.isEmpty(user.getRegisterSource())) {
+            user.getParams().put("registerSourceIn", new String[] { "qr", "invite_code", "direct" });
+        }
+        List<SysUser> list = userService.selectUserList(user);
+        return getDataTable(list);
     }
 
     @RequiresPermissions("system:user:list")
@@ -136,6 +168,7 @@ public class SysUserController extends BaseController {
         user.setSalt(""); // BCrypt 自带 salt，数据库字段置空
         user.setPwdUpdateDate(DateUtils.getNowDate());
         user.setCreateBy(getLoginName());
+        applyDefaultPhaseBFields(user, true);
         return toAjax(userService.insertUser(user));
     }
 
@@ -306,8 +339,7 @@ public class SysUserController extends BaseController {
     @GetMapping("/deptTreeData")
     @ResponseBody
     public List<Ztree> deptTreeData() {
-        List<Ztree> ztrees = deptService.selectDeptTree(new SysDept());
-        return ztrees;
+        return deptService.selectDeptTree(new SysDept());
     }
 
     /**
@@ -320,5 +352,115 @@ public class SysUserController extends BaseController {
     public String selectDeptTree(@PathVariable("deptId") Long deptId, ModelMap mmap) {
         mmap.put("dept", deptService.selectDeptById(deptId));
         return prefix + "/deptTree";
+    }
+
+    /**
+     * 解绑微信
+     */
+    @RequiresPermissions("system:user:edit")
+    @Log(title = "用户管理", businessType = BusinessType.UPDATE)
+    @PostMapping("/unbindWx/{userId}")
+    @ResponseBody
+    public AjaxResult unbindWx(@PathVariable("userId") Long userId) {
+        userService.checkUserAllowed(new SysUser(userId));
+        userService.checkUserDataScope(userId);
+        SysUser update = new SysUser();
+        update.setUserId(userId);
+        update.setOpenid("");
+        update.setUnionId("");
+        update.setUpdateBy(getLoginName());
+        return toAjax(userService.updateUserInfo(update));
+    }
+
+    /**
+     * 用户审核（通过/拒绝）— 乐观更新，仅待审可处理
+     */
+    @RequiresPermissions("system:user:audit")
+    @Log(title = "用户审核", businessType = BusinessType.UPDATE)
+    @PostMapping("/audit")
+    @ResponseBody
+    public AjaxResult audit(@Validated SysUser user, String auditAction, String auditRemark) {
+        userService.checkUserDataScope(user.getUserId());
+        SysUser existing = userService.selectUserById(user.getUserId());
+        if (existing == null) {
+            return error("用户不存在");
+        }
+        if (!"1".equals(existing.getAuditStatus())) {
+            return error("该用户已由他人处理或无需审核");
+        }
+
+        Date now = new Date();
+        if ("reject".equals(auditAction)) {
+            if (StringUtils.isEmpty(auditRemark)) {
+                return error("驳回时必须填写原因");
+            }
+            SysUser update = new SysUser();
+            update.setUserId(user.getUserId());
+            update.setAuditStatus("2");
+            update.setDispatchable("0");
+            update.setAuditBy(getLoginName());
+            update.setAuditTime(now);
+            update.setAuditRemark(auditRemark);
+            update.setUpdateBy(getLoginName());
+            int rows = userService.updateUserAuditOptimistic(update);
+            if (rows == 0) {
+                return error("已由他人处理");
+            }
+            return success();
+        }
+        if ("pass".equals(auditAction)) {
+            Long deptId = user.getDeptId() != null ? user.getDeptId() : existing.getDeptId();
+            if (deptId != null) {
+                deptService.checkDeptDataScope(deptId);
+            }
+            if (user.getRoleIds() != null && user.getRoleIds().length > 0) {
+                roleService.checkRoleDataScope(user.getRoleIds());
+            }
+            SysUser update = new SysUser();
+            update.setUserId(user.getUserId());
+            update.setAuditStatus("0");
+            update.setDispatchable("1");
+            update.setAuditBy(getLoginName());
+            update.setAuditTime(now);
+            update.setAuditRemark(StringUtils.isNotEmpty(auditRemark) ? auditRemark : "人工审核通过");
+            update.setDeptId(deptId);
+            update.setUpdateBy(getLoginName());
+            int rows = userService.updateUserAuditOptimistic(update);
+            if (rows == 0) {
+                return error("已由他人处理");
+            }
+            // 赋角色：若前端指定则用指定；否则默认 maintenance_member
+            Long[] roleIds = user.getRoleIds();
+            if (roleIds == null || roleIds.length == 0) {
+                SysRole memberRole = roleMapper.checkRoleKeyUnique("maintenance_member");
+                if (memberRole != null && memberRole.getRoleId() != null) {
+                    roleIds = new Long[] { memberRole.getRoleId() };
+                }
+            }
+            if (roleIds != null && roleIds.length > 0) {
+                userService.insertUserAuth(user.getUserId(), roleIds);
+            }
+            AuthorizationUtils.clearAllCachedAuthorizationInfo();
+            return success();
+        }
+        return error("无效的审核操作");
+    }
+
+    private void applyDefaultPhaseBFields(SysUser user, boolean adminCreated) {
+        if (StringUtils.isEmpty(user.getAllowAdminLogin())) {
+            user.setAllowAdminLogin(adminCreated ? "1" : "0");
+        }
+        if (StringUtils.isEmpty(user.getAllowMiniLogin())) {
+            user.setAllowMiniLogin("1");
+        }
+        if (StringUtils.isEmpty(user.getAuditStatus())) {
+            user.setAuditStatus(adminCreated ? "0" : "1");
+        }
+        if (StringUtils.isEmpty(user.getDispatchable())) {
+            user.setDispatchable(adminCreated || "0".equals(user.getAuditStatus()) ? "1" : "0");
+        }
+        if (StringUtils.isEmpty(user.getRegisterSource()) && adminCreated) {
+            user.setRegisterSource("admin");
+        }
     }
 }
