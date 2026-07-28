@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
 
 <head>
@@ -46,7 +46,9 @@
                             </li>
                             <li>
                                 <label>签到人：</label>
-                                <input type="text" name="userName" />
+                                <select name="userId" id="userId">
+                                    <option value="">全部</option>
+                                </select>
                             </li>
                             <li>
                                 <label>签到类型：</label>
@@ -93,7 +95,10 @@
     </div>
     <th:block th:include="include :: footer" />
     <script th:inline="javascript">
-        var detailFlag = [[${@permission.hasPermi('fire:checkIn:detail') }]];
+        // hasPermi 返回 '' 表示有权限，'hidden' 表示无；有 detail 或 list 即可看详情
+        var detailHasDetail = [[${@permission.hasPermi('fire:checkIn:detail') }]];
+        var detailHasList = [[${@permission.hasPermi('fire:checkIn:list') }]];
+        var detailFlag = (detailHasDetail === '' || detailHasList === '') ? '' : 'hidden';
         var editFlag = [[${@permission.hasPermi('fire:checkIn:edit') }]];
         var removeFlag = [[${@permission.hasPermi('fire:checkIn:remove') }]];
         var checkInTypeDatas = [[${@dict.getType('fire_check_in_type') }]];
@@ -175,8 +180,11 @@
             };
             $.table.init(options);
 
-            // 加载公司下拉列表
+            // 加载有权客户下拉（后端按身份过滤）
             loadCompanyList();
+            $('#companyId').on('change', function () {
+                loadUserList($(this).val());
+            });
 
             // 如果有URL参数，自动设置并显示提示
             if (filterCompanyId) {
@@ -185,10 +193,10 @@
             }
         });
 
-        // 加载公司列表
+        // 加载公司列表（仅可见项目）
         function loadCompanyList() {
             $.ajax({
-                url: ctx + 'fire/company/all',
+                url: prefix + '/filterCompanies',
                 type: 'POST',
                 success: function (res) {
                     if (res.code == 0 && res.data) {
@@ -198,12 +206,36 @@
                             html += '<option value="' + company.companyId + '"' + selected + '>' + company.companyName + '</option>';
                         });
                         $('#companyId').html(html);
+                        loadUserList($('#companyId').val());
 
                         // 如果有URL参数，自动搜索
                         if (filterCompanyId) {
                             $.table.search();
                         }
                     }
+                }
+            });
+        }
+
+        // 加载签到人下拉（按所选项目成员；未选项目时仅「全部」）
+        function loadUserList(companyId) {
+            var html = '<option value="">全部</option>';
+            if (!companyId) {
+                $('#userId').html(html);
+                return;
+            }
+            $.ajax({
+                url: prefix + '/filterUsers',
+                type: 'POST',
+                data: { companyId: companyId },
+                success: function (res) {
+                    if (res.code == 0 && res.data) {
+                        res.data.forEach(function (u) {
+                            var name = u.userName || u.loginName || u.userId;
+                            html += '<option value="' + u.userId + '">' + name + '</option>';
+                        });
+                    }
+                    $('#userId').html(html);
                 }
             });
         }

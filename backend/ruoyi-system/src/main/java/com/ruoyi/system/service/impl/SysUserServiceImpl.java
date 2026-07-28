@@ -139,6 +139,14 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
+    public boolean isPhonenumberTaken(String phonenumber) {
+        if (StringUtils.isEmpty(phonenumber)) {
+            return false;
+        }
+        return userMapper.countByPhonenumberAll(phonenumber) > 0;
+    }
+
+    @Override
     public SysUser selectUserByOpenid(String openid) {
         return userMapper.selectUserByOpenid(openid);
     }

@@ -1,9 +1,12 @@
 package com.ruoyi.web.controller.fire;
 
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import org.apache.shiro.authz.annotation.Logical;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -19,6 +22,7 @@ import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.ShiroUtils;
@@ -26,8 +30,12 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.fire.domain.FireCheckIn;
 import com.ruoyi.fire.domain.FireCheckInImage;
+import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
+import com.ruoyi.fire.domain.FireUserCompany;
 import com.ruoyi.fire.service.IFireCheckInService;
+import com.ruoyi.fire.service.IFireCompanyService;
+import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
 
 /**
@@ -46,6 +54,12 @@ public class FireCheckInController extends BaseController {
     @Autowired
     private IFireMaintenanceTaskService fireMaintenanceTaskService;
 
+    @Autowired
+    private IFireCompanyService companyService;
+
+    @Autowired
+    private IFireDataPermissionService fireDataPermissionService;
+
     @RequiresPermissions("fire:checkIn:list")
     @GetMapping()
     public String checkIn() {
@@ -56,6 +70,7 @@ public class FireCheckInController extends BaseController {
     @PostMapping("/list")
     @ResponseBody
     public TableDataInfo list(FireCheckIn fireCheckIn) {
+        fireDataPermissionService.applyCheckInListScope(fireCheckIn, ShiroUtils.getSysUser());
         startPage();
         List<FireCheckIn> list = fireCheckInService.selectFireCheckInList(fireCheckIn);
         return getDataTable(list);
@@ -66,9 +81,63 @@ public class FireCheckInController extends BaseController {
     @PostMapping("/export")
     @ResponseBody
     public AjaxResult export(FireCheckIn fireCheckIn) {
+        fireDataPermissionService.applyCheckInListScope(fireCheckIn, ShiroUtils.getSysUser());
         List<FireCheckIn> list = fireCheckInService.selectFireCheckInList(fireCheckIn);
         ExcelUtil<FireCheckIn> util = new ExcelUtil<FireCheckIn>(FireCheckIn.class);
         return util.exportExcel(list, "维保签到数据");
+    }
+
+    /**
+     * 筛选用客户列表：管理员全量；项目负责人仅负责项目；普通员工仅本人可见范围内的客户
+     */
+    @RequiresPermissions("fire:checkIn:list")
+    @PostMapping("/filterCompanies")
+    @ResponseBody
+    public AjaxResult filterCompanies() {
+        SysUser user = ShiroUtils.getSysUser();
+        if (user == null) {
+            return AjaxResult.error("未登录");
+        }
+        if (fireDataPermissionService.hasGlobalBizDataScope(user)) {
+            return AjaxResult.success(companyService.selectCompanyAll());
+        }
+        List<Long> leadIds = fireDataPermissionService.listLeadCompanyIds(user);
+        if (!leadIds.isEmpty()) {
+            List<FireCompany> all = companyService.selectCompanyAll();
+            List<FireCompany> filtered = all.stream()
+                    .filter(c -> c.getCompanyId() != null && leadIds.contains(c.getCompanyId()))
+                    .collect(Collectors.toList());
+            return AjaxResult.success(filtered);
+        }
+        List<FireCompany> mine = companyService.selectCompanyListByUserId(user.getUserId());
+        return AjaxResult.success(mine != null ? mine : Collections.emptyList());
+    }
+
+    /**
+     * 筛选用员工列表：仅管理员或该项目负责人可看项目成员；普通员工仅返回本人
+     */
+    @RequiresPermissions("fire:checkIn:list")
+    @PostMapping("/filterUsers")
+    @ResponseBody
+    public AjaxResult filterUsers(Long companyId) {
+        SysUser user = ShiroUtils.getSysUser();
+        if (user == null) {
+            return AjaxResult.error("未登录");
+        }
+        if (companyId == null) {
+            return AjaxResult.success(Collections.emptyList());
+        }
+        boolean global = fireDataPermissionService.hasGlobalBizDataScope(user);
+        boolean lead = fireDataPermissionService.listLeadCompanyIds(user).contains(companyId);
+        if (!global && !lead) {
+            Map<String, Object> self = new HashMap<>();
+            self.put("userId", user.getUserId());
+            self.put("userName", user.getUserName());
+            self.put("loginName", user.getLoginName());
+            return AjaxResult.success(Collections.singletonList(self));
+        }
+        List<FireUserCompany> members = companyService.selectActiveUserListByCompanyId(companyId);
+        return AjaxResult.success(members != null ? members : Collections.emptyList());
     }
 
     @GetMapping("/add")
@@ -79,10 +148,20 @@ public class FireCheckInController extends BaseController {
     @PostMapping("/listTasksByCompany")
     @ResponseBody
     public AjaxResult listTasksByCompany(Long companyId) {
+        SysUser user = ShiroUtils.getSysUser();
+        if (user == null) {
+            return AjaxResult.error("未登录");
+        }
+        if (companyId != null && !fireDataPermissionService.hasGlobalBizDataScope(user)
+                && !fireDataPermissionService.listLeadCompanyIds(user).contains(companyId)
+                && !fireDataPermissionService.canAccessCompany(user, companyId)) {
+            return AjaxResult.error("无权访问该客户任务");
+        }
         FireMaintenanceTask query = new FireMaintenanceTask();
         if (companyId != null) {
             query.setCompanyId(companyId);
         }
+        fireDataPermissionService.applyTaskListScope(query, user);
         List<FireMaintenanceTask> taskList = fireMaintenanceTaskService.selectFireMaintenanceTaskList(query);
         return AjaxResult.success(taskList);
     }
@@ -107,6 +186,11 @@ public class FireCheckInController extends BaseController {
     @GetMapping("/edit/{checkInId}")
     public String edit(@PathVariable("checkInId") Long checkInId, ModelMap mmap) {
         FireCheckIn checkIn = fireCheckInService.selectFireCheckInById(checkInId);
+        try {
+            fireDataPermissionService.assertCanAccessCheckIn(ShiroUtils.getSysUser(), checkIn);
+        } catch (ServiceException e) {
+            return "error/unauth";
+        }
         mmap.put("checkIn", checkIn);
         return prefix + "/edit";
     }
@@ -118,6 +202,8 @@ public class FireCheckInController extends BaseController {
     public AjaxResult editSave(FireCheckIn fireCheckIn, String imageUrls,
             @RequestParam(value = "addressMode", required = false) String addressMode) {
         try {
+            FireCheckIn existing = fireCheckInService.selectFireCheckInById(fireCheckIn.getCheckInId());
+            fireDataPermissionService.assertCanAccessCheckIn(ShiroUtils.getSysUser(), existing);
             if (StringUtils.isNotEmpty(imageUrls)) {
                 fireCheckIn.setImages(parseImageUrls(imageUrls));
             } else {
@@ -135,10 +221,16 @@ public class FireCheckInController extends BaseController {
         }
     }
 
-    @RequiresPermissions("fire:checkIn:detail")
+    /** 有列表权限即可进详情页，单条数据范围仍由 assertCanAccessCheckIn 强制校验 */
+    @RequiresPermissions(value = { "fire:checkIn:detail", "fire:checkIn:list" }, logical = Logical.OR)
     @GetMapping("/detail/{checkInId}")
     public String detail(@PathVariable("checkInId") Long checkInId, ModelMap mmap) {
         FireCheckIn checkIn = fireCheckInService.selectFireCheckInById(checkInId);
+        try {
+            fireDataPermissionService.assertCanAccessCheckIn(ShiroUtils.getSysUser(), checkIn);
+        } catch (ServiceException e) {
+            return "error/unauth";
+        }
         mmap.put("checkIn", checkIn);
         Map<String, FireCheckIn> pair = fireCheckInService.resolvePairRecords(checkIn);
         mmap.put("checkInRecord", pair.get("checkInRecord"));
@@ -152,7 +244,17 @@ public class FireCheckInController extends BaseController {
     @PostMapping("/remove")
     @ResponseBody
     public AjaxResult remove(String ids) {
-        return toAjax(fireCheckInService.deleteFireCheckInByIds(convertStrToLongArray(ids)));
+        Long[] idArr = convertStrToLongArray(ids);
+        SysUser user = ShiroUtils.getSysUser();
+        for (Long id : idArr) {
+            FireCheckIn checkIn = fireCheckInService.selectFireCheckInById(id);
+            try {
+                fireDataPermissionService.assertCanAccessCheckIn(user, checkIn);
+            } catch (ServiceException e) {
+                return error(e.getMessage());
+            }
+        }
+        return toAjax(fireCheckInService.deleteFireCheckInByIds(idArr));
     }
 
     // =========== 移动端API接口 ===========
@@ -183,6 +285,8 @@ public class FireCheckInController extends BaseController {
             if (fireCheckIn.getCheckInId() == null) {
                 return AjaxResult.error("签到ID不能为空");
             }
+            FireCheckIn existing = fireCheckInService.selectFireCheckInById(fireCheckIn.getCheckInId());
+            fireDataPermissionService.assertCanAccessCheckIn(ShiroUtils.getSysUser(), existing);
             // 移动端不信任请求体 userId/userName
             fireCheckIn.setUserId(ShiroUtils.getUserId());
             fireCheckIn.setUserName(null);
@@ -200,8 +304,10 @@ public class FireCheckInController extends BaseController {
     @ResponseBody
     public AjaxResult apiDetail(@PathVariable("checkInId") Long checkInId) {
         FireCheckIn checkIn = fireCheckInService.selectFireCheckInById(checkInId);
-        if (checkIn == null) {
-            return AjaxResult.error("签到记录不存在");
+        try {
+            fireDataPermissionService.assertCanAccessCheckIn(ShiroUtils.getSysUser(), checkIn);
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
         }
         AjaxResult ajax = AjaxResult.success(checkIn);
         Map<String, FireCheckIn> pair = fireCheckInService.resolvePairRecords(checkIn);
@@ -214,6 +320,7 @@ public class FireCheckInController extends BaseController {
     @PostMapping("/api/list")
     @ResponseBody
     public AjaxResult apiList(@RequestBody FireCheckIn fireCheckIn) {
+        fireDataPermissionService.applyCheckInListScope(fireCheckIn, ShiroUtils.getSysUser());
         List<FireCheckIn> list = fireCheckInService.selectFireCheckInList(fireCheckIn);
         return AjaxResult.success(list);
     }

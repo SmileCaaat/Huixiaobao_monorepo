@@ -164,10 +164,9 @@ RuoYi `PageUtils.startPage()` 从 URL 查询参数读取 `pageNum/pageSize`，�
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/register/invite/resolve` | anon | inviteToken 或 inviteCode → 公司/部门名与模式（不返回可篡改组织 ID） |
-| POST | `/register/sms/send` | anon | phonenumber；限流；依赖 `sms.*` |
-| POST | `/register` | anon+captcha | 姓名/手机/短信/密码/邀请 |
-| POST | `/api/register` | anon | JSON；忽略前端 deptId |
-| GET/POST | `/api/register/invite/resolve`, `/api/register/sms/send` | anon | 小程序 |
+| POST | `/register` | anon+captcha | 姓名/手机/密码/邀请；**不再要求短信**；邀请码或邀请 token 必填 |
+| POST | `/api/register` | anon | JSON；忽略前端 deptId；同 PC，无短信 |
+| GET/POST | `/api/register/invite/resolve` | anon | 小程序解析邀请 |
 | POST | `/system/dept/registerQrcode/generate` | manage | 7 天有效；明文 token 仅返回一次 |
 | GET | `/system/dept/registerQrcode/{deptId}` | view | 元数据 + 短码二维码 |
 | POST | `/system/dept/registerQrcode/disable` | manage | 停用 |
@@ -175,6 +174,8 @@ RuoYi `PageUtils.startPage()` 从 URL 查询参数读取 `pageNum/pageSize`，�
 | GET | `/system/user/registerRecord` | system:user:registerRecord | 注册记录独立页（勿与用户列表混用） |
 | POST | `/system/user/audit` | system:user:audit | 乐观更新 WHERE audit_status=1；按钮挂在注册记录下 |
 | POST | `/system/user/registerRecords` | system:user:registerRecord | 注册记录列表（默认仅 qr/invite_code/direct） |
+
+已移除：`POST /register/sms/send`、`/api/register/sms/send`（员工注册不再走短信校验）。
 
 ### 用户管理菜单（避免 C 挂 C）
 
@@ -190,4 +191,6 @@ RuoYi `PageUtils.startPage()` 从 URL 查询参数读取 `pageNum/pageSize`，�
 - 若把注册记录以 C 挂在用户列表 C 下，侧栏会把「用户管理」渲染为仅展开，无法打开带组织树的 `/system/user`。
 - 菜单迁移：`backend/sql/upgrade_user_menu_split_register_record.sql`；回滚：`rollback_user_menu_split_register_record.sql`。
 
-自动通过：有效邀请 + register_mode=0 + 短信通过 + 手机号唯一 → audit_status=0、dispatchable=1、role_key=maintenance_member。
+自动通过：有效邀请 + `register_mode=0` + 手机号唯一（含软删除行，见 `uk_sys_user_phonenumber`）→ `audit_status=0`、`dispatchable=1`、组员角色。
+
+重复手机号应返回业务提示「该手机号已注册」，不应再被脱敏成「系统繁忙」。开关：`sys.account.registerUser=true` 才开放 PC/小程序注册入口。

@@ -26,6 +26,24 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="taskId != null "> and task_id = #{taskId}</if>
             <if test="taskName != null  and taskName != ''"> and task_name like concat('%', #{taskName}, '%')</if>
             <if test="reportName != null  and reportName != ''"> and report_name like concat('%', #{reportName}, '%')</if>
+            <if test="params.scopeUserId != null">
+                and exists (
+                    select 1 from fire_maintenance_task t
+                    where t.task_id = fire_report_record.task_id
+                      and (
+                        t.manager_id = #{params.scopeUserId}
+                        or t.executor_id = #{params.scopeUserId}
+                        or find_in_set(#{params.scopeUserId}, t.operator_ids)
+                        or exists (
+                            select 1 from fire_user_company uc
+                            where uc.user_id = #{params.scopeUserId}
+                              and uc.company_id = t.company_id
+                              and (uc.status is null or uc.status = '0')
+                              and uc.role_type in ('1','2','3')
+                        )
+                      )
+                )
+            </if>
         </where>
         order by create_time desc
     </select>

@@ -82,9 +82,9 @@ public interface IFireCompanyService {
     List<FireUserCompany> selectActiveUserListByCompanyId(Long companyId);
 
     /**
-     * 分配用户到公司
+     * 分配用户到公司（按成员 upsert，支持每人独立职责/业务线/状态）
      */
-    int assignUsers(Long companyId, Long[] userIds, String roleType, String createBy);
+    int assignUsers(Long companyId, List<FireUserCompany> members, String createBy);
 
     /**
      * 取消用户与公司的关联

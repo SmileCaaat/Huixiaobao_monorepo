@@ -60,6 +60,11 @@ public interface ISysUserService
     public SysUser selectUserByPhoneNumber(String phoneNumber);
 
     /**
+     * Phone uniqueness including soft-deleted rows (matches unique index).
+     */
+    public boolean isPhonenumberTaken(String phonenumber);
+
+    /**
      * 通过微信 openid 查询用户
      */
     public SysUser selectUserByOpenid(String openid);

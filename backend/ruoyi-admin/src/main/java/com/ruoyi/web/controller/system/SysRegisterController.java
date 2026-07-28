@@ -9,15 +9,17 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import com.ruoyi.common.constant.ShiroConstants;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.domain.entity.SysUser;
+import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.shiro.service.EmployeeRegisterService;
 import com.ruoyi.system.service.ISysConfigService;
 
 /**
- * 注册验证（PC + 小程序），统一走员工邀请/短信注册流程
+ * 注册验证（PC + 小程序），统一走员工邀请注册流程（图片验证码，无短信）。
  */
 @Controller
 public class SysRegisterController extends BaseController
@@ -38,10 +40,9 @@ public class SysRegisterController extends BaseController
     @ResponseBody
     public AjaxResult ajaxRegister(SysUser user,
             @RequestParam(value = "inviteToken", required = false) String inviteToken,
-            @RequestParam(value = "inviteCode", required = false) String inviteCode,
-            @RequestParam(value = "smsCode", required = false) String smsCode)
+            @RequestParam(value = "inviteCode", required = false) String inviteCode)
     {
-        return doRegister(user, inviteToken, inviteCode, smsCode);
+        return doRegister(user, inviteToken, inviteCode);
     }
 
     /**
@@ -52,29 +53,33 @@ public class SysRegisterController extends BaseController
     public AjaxResult apiRegister(@RequestBody Map<String, String> params)
     {
         SysUser user = new SysUser();
-        String loginName = params.get("loginName");
         String userName = params.get("userName");
         String phonenumber = params.get("phonenumber");
         if (StringUtils.isEmpty(phonenumber))
         {
             phonenumber = params.get("phone");
         }
-        user.setLoginName(StringUtils.isNotEmpty(loginName) ? loginName : phonenumber);
+        // loginName 统一由后端使用手机号
+        user.setLoginName(phonenumber);
         user.setUserName(userName);
         user.setPhonenumber(phonenumber);
         user.setPassword(params.get("password"));
-        // 忽略客户端 deptId，防篡改
-        return doRegister(user, params.get("inviteToken"), params.get("inviteCode"), params.get("smsCode"));
+        return doRegister(user, params.get("inviteToken"), params.get("inviteCode"));
     }
 
-    private AjaxResult doRegister(SysUser user, String inviteToken, String inviteCode, String smsCode)
+    private AjaxResult doRegister(SysUser user, String inviteToken, String inviteCode)
     {
         if (!("true".equals(configService.selectConfigByKey("sys.account.registerUser"))))
         {
             return error("当前系统没有开启注册功能！");
         }
+        if (ShiroConstants.CAPTCHA_ERROR
+                .equals(ServletUtils.getRequest().getAttribute(ShiroConstants.CURRENT_CAPTCHA)))
+        {
+            return error("验证码错误");
+        }
         Map<String, Object> extra = new HashMap<>();
-        String msg = employeeRegisterService.register(user, inviteToken, inviteCode, smsCode, extra);
+        String msg = employeeRegisterService.register(user, inviteToken, inviteCode, extra);
         if (StringUtils.isNotEmpty(msg))
         {
             return error(msg);

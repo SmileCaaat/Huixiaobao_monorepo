@@ -76,6 +76,41 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <if test="companyId != null">
             and c.company_id = #{companyId}
         </if>
+        <!-- 数据权限：普通员工仅本人；项目负责人本人 + 负责项目下成员/任务干系人签到 -->
+        <if test="params != null and params.scopeMode != null and params.scopeMode == 'self'">
+            and c.user_id = #{params.scopeUserId}
+        </if>
+        <if test="params != null and params.scopeMode != null and params.scopeMode == 'leadOrSelf'">
+            and (
+                c.user_id = #{params.scopeUserId}
+                <if test="params.leadCompanyIds != null and params.leadCompanyIds.size() &gt; 0">
+                or (
+                    c.company_id in
+                    <foreach collection="params.leadCompanyIds" item="cid" open="(" separator="," close=")">
+                        #{cid}
+                    </foreach>
+                    and (
+                        exists (
+                            select 1 from fire_user_company uc
+                            where uc.company_id = c.company_id
+                              and uc.user_id = c.user_id
+                              and (uc.status is null or uc.status = '' or uc.status = '0')
+                        )
+                        or exists (
+                            select 1 from fire_maintenance_task mt
+                            where mt.task_id = c.task_id
+                              and mt.company_id = c.company_id
+                              and (
+                                  mt.manager_id = c.user_id
+                                  or mt.executor_id = c.user_id
+                                  or find_in_set(c.user_id, mt.operator_ids)
+                              )
+                        )
+                    )
+                )
+                </if>
+            )
+        </if>
         order by c.check_in_time desc
     </select>
 

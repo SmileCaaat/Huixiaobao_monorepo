@@ -16,30 +16,57 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="col-sm-3 control-label">角色类型：</label>
+                <label class="col-sm-3 control-label">成员配置：</label>
                 <div class="col-sm-8">
-                    <select id="roleType" class="form-control">
-                        <option value="0">普通巡检员</option>
-                        <option value="1">项目负责人</option>
-                        <option value="2">管理员</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">选择人员：</label>
-                <div class="col-sm-8">
-                    <div class="checkbox-list"
-                        style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e6e7; padding: 10px; border-radius: 4px;">
-                        <th:block th:each="user : ${users}">
-                            <div class="checkbox">
-                                <label>
-                                    <input type="checkbox" name="userIds" th:value="${user.userId}"
-                                        th:checked="${#lists.contains(assignedUsers.![userId], user.userId)}">
-                                    <span th:text="${' (' + user.userName + ')'}"></span>
-                                </label>
-                            </div>
-                        </th:block>
+                    <div style="max-height: 420px; overflow-y: auto;">
+                        <table class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th width="50">参与</th>
+                                    <th>用户</th>
+                                    <th width="140">职责</th>
+                                    <th width="120">业务线</th>
+                                    <th width="100">状态</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="user : ${users}"
+                                    th:with="assigned=${assignedMap[user.userId]}">
+                                    <td>
+                                        <input type="checkbox" class="member-check"
+                                            th:value="${user.userId}"
+                                            th:checked="${assigned != null}">
+                                    </td>
+                                    <td>
+                                        <span th:text="${user.userName}"></span>
+                                        <small class="text-muted" th:text="${'(' + user.loginName + ')'}"></small>
+                                    </td>
+                                    <td>
+                                        <select class="form-control input-sm role-type">
+                                            <option value="0" th:selected="${assigned != null && assigned.roleType == '0'}">组员</option>
+                                            <option value="1" th:selected="${assigned != null && assigned.roleType == '1'}">项目负责人</option>
+                                            <option value="2" th:selected="${assigned != null && assigned.roleType == '2'}">客户管理员</option>
+                                            <option value="3" th:selected="${assigned != null && assigned.roleType == '3'}">维保组长</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-control input-sm biz-line">
+                                            <option value="all" th:selected="${assigned == null || assigned.bizLine == 'all'}">全部</option>
+                                            <option value="inner" th:selected="${assigned != null && assigned.bizLine == 'inner'}">内勤</option>
+                                            <option value="outer" th:selected="${assigned != null && assigned.bizLine == 'outer'}">外勤</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        <select class="form-control input-sm member-status">
+                                            <option value="0" th:selected="${assigned == null || assigned.status == '0'}">有效</option>
+                                            <option value="1" th:selected="${assigned != null && assigned.status == '1'}">退出</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
+                    <p class="help-block">勾选参与分配的成员；未勾选的用户不会变更现有关联。</p>
                 </div>
             </div>
         </form>
@@ -50,10 +77,19 @@
 
         function submitHandler() {
             var companyId = $("#companyId").val();
-            var roleType = $("#roleType").val();
-            var userIds = [];
-            $("input[name='userIds']:checked").each(function () {
-                userIds.push($(this).val());
+            var members = [];
+            $("#form-assign-users tbody tr").each(function () {
+                var row = $(this);
+                var checkbox = row.find(".member-check");
+                if (!checkbox.is(":checked")) {
+                    return;
+                }
+                members.push({
+                    userId: parseInt(checkbox.val(), 10),
+                    roleType: row.find(".role-type").val(),
+                    bizLine: row.find(".biz-line").val(),
+                    status: row.find(".member-status").val()
+                });
             });
 
             $.ajax({
@@ -61,8 +97,7 @@
                 url: prefix + "/assignUsers",
                 data: {
                     companyId: companyId,
-                    userIds: userIds.join(","),
-                    roleType: roleType
+                    membersJson: JSON.stringify(members)
                 },
                 success: function (result) {
                     if (result.code == 0) {

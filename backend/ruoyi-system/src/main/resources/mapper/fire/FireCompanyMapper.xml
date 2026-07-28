@@ -62,6 +62,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="userId"       column="user_id"      />
         <result property="companyId"    column="company_id"   />
         <result property="roleType"     column="role_type"    />
+        <result property="bizLine"      column="biz_line"     />
+        <result property="status"       column="status"       />
+        <result property="joinTime"     column="join_time"    />
+        <result property="leaveTime"    column="leave_time"   />
         <result property="createBy"     column="create_by"    />
         <result property="createTime"   column="create_time"  />
         <result property="userName"     column="user_name"    />
@@ -451,12 +455,14 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                c.check_in_address, c.contact_person, c.contact_phone, c.status
         from fire_company c
         inner join fire_user_company uc on c.company_id = uc.company_id
-        where uc.user_id = #{userId} and c.del_flag = '0' and c.status = '0'
+        where uc.user_id = #{userId}
+          and (uc.status is null or uc.status = '0')
+          and c.del_flag = '0' and c.status = '0'
         order by c.company_name
     </select>
 
     <select id="selectUserListByCompanyId" parameterType="Long" resultMap="FireUserCompanyResult">
-        select uc.id, uc.user_id, uc.company_id, uc.role_type, uc.create_time,
+        select uc.id, uc.user_id, uc.company_id, uc.role_type, uc.biz_line, uc.status, uc.join_time, uc.leave_time, uc.create_time,
                u.user_name, u.login_name, u.phonenumber
         from fire_user_company uc
         left join sys_user u on uc.user_id = u.user_id
@@ -465,27 +471,63 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </select>
 
     <select id="selectActiveUserListByCompanyId" parameterType="Long" resultMap="FireUserCompanyResult">
-        select uc.id, uc.user_id, uc.company_id, uc.role_type, uc.create_time,
+        select uc.id, uc.user_id, uc.company_id, uc.role_type, uc.biz_line, uc.status, uc.join_time, uc.leave_time, uc.create_time,
                u.user_name, u.login_name, u.phonenumber
         from fire_user_company uc
         inner join sys_user u on uc.user_id = u.user_id
         where uc.company_id = #{companyId}
+          and (uc.status is null or uc.status = '0')
           and u.del_flag = '0'
           and u.status = '0'
         order by u.user_name, u.login_name
     </select>
 
+    <select id="selectUserCompany" resultMap="FireUserCompanyResult">
+        select uc.id, uc.user_id, uc.company_id, uc.role_type, uc.biz_line, uc.status, uc.join_time, uc.leave_time, uc.create_time,
+               u.user_name, u.login_name, u.phonenumber, c.company_name
+        from fire_user_company uc
+        left join sys_user u on uc.user_id = u.user_id
+        left join fire_company c on uc.company_id = c.company_id
+        where uc.user_id = #{userId} and uc.company_id = #{companyId}
+          and (uc.status is null or uc.status = '0')
+        limit 1
+    </select>
+
+    <select id="selectActiveMembershipsByUserId" parameterType="Long" resultMap="FireUserCompanyResult">
+        select uc.id, uc.user_id, uc.company_id, uc.role_type, uc.biz_line, uc.status, uc.join_time, uc.leave_time, uc.create_time,
+               c.company_name
+        from fire_user_company uc
+        left join fire_company c on uc.company_id = c.company_id
+        where uc.user_id = #{userId}
+          and (uc.status is null or uc.status = '0')
+    </select>
+
     <insert id="insertUserCompany" parameterType="com.ruoyi.fire.domain.FireUserCompany">
-        insert into fire_user_company (user_id, company_id, role_type, create_by, create_time)
-        values (#{userId}, #{companyId}, #{roleType}, #{createBy}, sysdate())
+        insert into fire_user_company (user_id, company_id, role_type, biz_line, status, join_time, create_by, create_time)
+        values (#{userId}, #{companyId}, #{roleType},
+                IFNULL(#{bizLine}, 'all'), IFNULL(#{status}, '0'),
+                IFNULL(#{joinTime}, sysdate()), #{createBy}, sysdate())
     </insert>
 
     <insert id="batchInsertUserCompany" parameterType="java.util.List">
-        insert into fire_user_company (user_id, company_id, role_type, create_by, create_time) values
+        insert into fire_user_company (user_id, company_id, role_type, biz_line, status, join_time, create_by, create_time) values
         <foreach collection="list" item="item" separator=",">
-            (#{item.userId}, #{item.companyId}, #{item.roleType}, #{item.createBy}, sysdate())
+            (#{item.userId}, #{item.companyId}, #{item.roleType},
+             IFNULL(#{item.bizLine}, 'all'), IFNULL(#{item.status}, '0'),
+             IFNULL(#{item.joinTime}, sysdate()), #{item.createBy}, sysdate())
         </foreach>
     </insert>
+
+    <update id="upsertUserCompany" parameterType="com.ruoyi.fire.domain.FireUserCompany">
+        insert into fire_user_company (user_id, company_id, role_type, biz_line, status, join_time, create_by, create_time)
+        values (#{userId}, #{companyId}, #{roleType}, IFNULL(#{bizLine}, 'all'), IFNULL(#{status}, '0'), sysdate(), #{createBy}, sysdate())
+        on duplicate key update
+            role_type = values(role_type),
+            biz_line = values(biz_line),
+            status = values(status),
+            leave_time = IF(values(status) = '1', sysdate(), null),
+            join_time = ifnull(join_time, values(join_time))
+    </update>
 
     <delete id="deleteUserCompanyByCompanyId" parameterType="Long">
         delete from fire_user_company where company_id = #{companyId}

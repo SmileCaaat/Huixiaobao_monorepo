@@ -9,9 +9,6 @@ const register = (data) => {
 const resolveRegisterInvite = (params) => {
   return utils_request.get("/api/register/invite/resolve", params);
 };
-const sendRegisterSms = (data) => {
-  return utils_request.post("/api/register/sms/send", data);
-};
 const getUserInfo = () => {
   return utils_request.get("/api/user/info");
 };
@@ -204,7 +201,6 @@ const api = {
   login,
   register,
   resolveRegisterInvite,
-  sendRegisterSms,
   getUserInfo,
   logout,
   getMenus,

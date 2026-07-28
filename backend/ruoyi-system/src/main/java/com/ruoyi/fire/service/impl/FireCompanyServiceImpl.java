@@ -189,24 +189,29 @@ public class FireCompanyServiceImpl implements IFireCompanyService {
 
     @Override
     @Transactional
-    public int assignUsers(Long companyId, Long[] userIds, String roleType, String createBy) {
-        // 先删除原有关联
-        companyMapper.deleteUserCompanyByCompanyId(companyId);
-
-        // 批量新增
-        if (userIds != null && userIds.length > 0) {
-            List<FireUserCompany> list = new ArrayList<>();
-            for (Long userId : userIds) {
-                FireUserCompany uc = new FireUserCompany();
-                uc.setCompanyId(companyId);
-                uc.setUserId(userId);
-                uc.setRoleType(roleType != null ? roleType : "0");
-                uc.setCreateBy(createBy);
-                list.add(uc);
-            }
-            return companyMapper.batchInsertUserCompany(list);
+    public int assignUsers(Long companyId, List<FireUserCompany> members, String createBy) {
+        if (members == null || members.isEmpty()) {
+            return 0;
         }
-        return 0;
+        int count = 0;
+        for (FireUserCompany member : members) {
+            if (member == null || member.getUserId() == null) {
+                continue;
+            }
+            member.setCompanyId(companyId);
+            member.setCreateBy(createBy);
+            if (StringUtils.isEmpty(member.getRoleType())) {
+                member.setRoleType(FireUserCompany.ROLE_MEMBER);
+            }
+            if (StringUtils.isEmpty(member.getBizLine())) {
+                member.setBizLine("all");
+            }
+            if (StringUtils.isEmpty(member.getStatus())) {
+                member.setStatus("0");
+            }
+            count += companyMapper.upsertUserCompany(member);
+        }
+        return count;
     }
 
     @Override

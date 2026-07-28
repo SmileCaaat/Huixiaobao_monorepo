@@ -544,22 +544,29 @@ $(function() {
     // 右移按扭
     $('.tabRight').on('click', scrollTabRight);
 
-    // 顶部【返回】：关闭当前页签并回到来源页签（不用浏览器历史）
+    // 顶部【返回】：优先回到来源页签；无历史则回首页（不用浏览器历史）
     $('.tabBack').on('click', function() {
+        var $home = $('.page-tabs-content').children("[data-id]:first");
+        var homeId = $home.data('id');
+        var activateHome = function() {
+            if ($home.length) {
+                $home.trigger('click');
+            }
+        };
         var $active = $('.page-tabs-content').find('.active');
         if (!$active.length) {
+            activateHome();
             return false;
         }
-        var homeId = $('.page-tabs-content').children("[data-id]:first").data('id');
         var currentId = $active.data('id');
         if (currentId === homeId || !$active.find('i.fa-times-circle').length) {
-            $.modal.msg("已在首页，无法再返回");
+            activateHome();
             return false;
         }
         var panelUrl = $active.data('panel');
         var iframeWin = $('.mainContent .RuoYi_iframe[data-id="' + currentId + '"]')[0];
         if (iframeWin && iframeWin.contentWindow && typeof iframeWin.contentWindow.goBackPage === 'function') {
-            iframeWin.contentWindow.goBackPage(panelUrl);
+            iframeWin.contentWindow.goBackPage(panelUrl || homeId);
             return false;
         }
         if ($.common.isNotEmpty(panelUrl)) {
@@ -574,16 +581,21 @@ $(function() {
                         return false;
                     }
                 });
+                syncMenuTab(panelUrl);
             } else {
                 var $menu = $('a.menuItem[href="' + panelUrl + '"], a.menuItem[href$="' + panelUrl + '"]').first();
                 if ($menu.length) {
                     $menu.trigger('click');
+                } else {
+                    activateHome();
                 }
             }
-            syncMenuTab(panelUrl);
             return false;
         }
         $active.find('i.fa-times-circle').trigger('click');
+        if (!$('.page-tabs-content').find('.active').length) {
+            activateHome();
+        }
         return false;
     });
 

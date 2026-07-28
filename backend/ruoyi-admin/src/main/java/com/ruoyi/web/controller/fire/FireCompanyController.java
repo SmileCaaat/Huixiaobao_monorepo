@@ -4,7 +4,9 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,10 +32,12 @@ import com.ruoyi.fire.domain.FireBuilding;
 import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireContract;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
+import com.alibaba.fastjson.JSON;
 import com.ruoyi.fire.domain.FireUserCompany;
 import com.ruoyi.fire.service.IFireBuildingService;
 import com.ruoyi.fire.service.IFireCompanyService;
 import com.ruoyi.fire.service.IFireContractService;
+import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
 import com.ruoyi.system.service.ISysUserService;
 
@@ -60,6 +64,9 @@ public class FireCompanyController extends BaseController {
 
     @Autowired
     private IFireMaintenanceTaskService maintenanceTaskService;
+
+    @Autowired
+    private IFireDataPermissionService dataPermissionService;
 
     @RequiresPermissions("fire:company:view")
     @GetMapping()
@@ -197,9 +204,12 @@ public class FireCompanyController extends BaseController {
     /**
      * 分配人员页面
      */
-    @RequiresPermissions("fire:company:edit")
+    @RequiresPermissions("fire:company:assign")
     @GetMapping("/assignUsers/{companyId}")
     public String assignUsers(@PathVariable("companyId") Long companyId, ModelMap mmap) {
+        if (!dataPermissionService.canManageCompanyMembers(ShiroUtils.getSysUser(), companyId)) {
+            return "error/unauth";
+        }
         FireCompany company = companyService.selectFireCompanyById(companyId);
         mmap.put("company", company);
 
@@ -208,19 +218,27 @@ public class FireCompanyController extends BaseController {
 
         List<FireUserCompany> assignedUsers = companyService.selectUserListByCompanyId(companyId);
         mmap.put("assignedUsers", assignedUsers);
+        Map<Long, FireUserCompany> assignedMap = new HashMap<>();
+        for (FireUserCompany uc : assignedUsers) {
+            assignedMap.put(uc.getUserId(), uc);
+        }
+        mmap.put("assignedMap", assignedMap);
         return prefix + "/assignUsers";
     }
 
     /**
      * 保存分配人员
      */
-    @RequiresPermissions("fire:company:edit")
+    @RequiresPermissions("fire:company:assign")
     @Log(title = "分配客户人员", businessType = BusinessType.UPDATE)
     @PostMapping("/assignUsers")
     @ResponseBody
-    public AjaxResult assignUsersSave(Long companyId, String userIds, String roleType) {
-        Long[] userIdArray = convertStrToLongArray(userIds);
-        return toAjax(companyService.assignUsers(companyId, userIdArray, roleType, ShiroUtils.getLoginName()));
+    public AjaxResult assignUsersSave(Long companyId, String membersJson) {
+        if (!dataPermissionService.canManageCompanyMembers(ShiroUtils.getSysUser(), companyId)) {
+            return error("无权限管理该客户成员");
+        }
+        List<FireUserCompany> members = JSON.parseArray(membersJson, FireUserCompany.class);
+        return toAjax(companyService.assignUsers(companyId, members, ShiroUtils.getLoginName()));
     }
 
     /**

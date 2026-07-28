@@ -17,29 +17,24 @@
       <view class="input-icon data-v-12565c11">?</view>
       <input class="input data-v-12565c11" type="text" placeholder="请输入您的姓名" value="{{c}}" bindinput="{{d}}"/>
     </view>
-    <view class="input-group sms-row data-v-12565c11">
+    <view class="input-group data-v-12565c11">
       <view class="input-icon data-v-12565c11">?</view>
-      <input class="input data-v-12565c11" type="number" placeholder="短信验证码" maxlength="6" value="{{i}}" bindinput="{{j}}"/>
-      <view class="sms-btn data-v-12565c11" bindtap="{{l}}">{{k}}</view>
+      <input class="input data-v-12565c11" type="{{i}}" placeholder="请设置密码（5位以上）" value="{{j}}" bindinput="{{k}}"/>
+      <view class="eye-btn data-v-12565c11" bindtap="{{m}}">{{l}}</view>
     </view>
     <view class="input-group data-v-12565c11">
       <view class="input-icon data-v-12565c11">?</view>
-      <input class="input data-v-12565c11" type="{{m}}" placeholder="请设置密码＆位以上）" value="{{n}}" bindinput="{{o}}"/>
-      <view class="eye-btn data-v-12565c11" bindtap="{{q}}">{{p}}</view>
+      <input class="input data-v-12565c11" type="{{n}}" placeholder="请再次输入密码" value="{{o}}" bindinput="{{p}}"/>
+      <view class="eye-btn data-v-12565c11" bindtap="{{r}}">{{q}}</view>
     </view>
     <view class="input-group data-v-12565c11">
       <view class="input-icon data-v-12565c11">?</view>
-      <input class="input data-v-12565c11" type="{{r}}" placeholder="请再次输入密码" value="{{s}}" bindinput="{{t}}"/>
-      <view class="eye-btn data-v-12565c11" bindtap="{{v}}">{{u}}</view>
+      <input class="input data-v-12565c11" type="text" placeholder="请输入部门邀请码" maxlength="16" value="{{s}}" bindinput="{{t}}" bindblur="{{u}}"/>
     </view>
-    <view class="input-group data-v-12565c11">
-      <view class="input-icon data-v-12565c11">?</view>
-      <input class="input data-v-12565c11" type="text" placeholder="邀请码（可选）" maxlength="16" value="{{w}}" bindinput="{{x}}" bindblur="{{y}}"/>
-    </view>
-    <button class="{{['submit-btn', 'data-v-12565c11', z && 'active']}}" bindtap="{{A}}"> 注 册 </button>
+    <button class="{{['submit-btn', 'data-v-12565c11', v && 'active']}}" bindtap="{{w}}"> 注 册 </button>
     <view class="login-link data-v-12565c11">
       <text class="data-v-12565c11">已有账号？</text>
-      <text class="link data-v-12565c11" bindtap="{{B}}">立即登录</text>
+      <text class="link data-v-12565c11" bindtap="{{x}}">立即登录</text>
     </view>
   </view>
 </view>

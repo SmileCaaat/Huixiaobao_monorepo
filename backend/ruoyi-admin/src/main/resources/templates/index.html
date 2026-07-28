@@ -13,9 +13,9 @@
 	<link th:href="@{/css/jquery.contextMenu.min.css}" rel="stylesheet" />
 	<link th:href="@{/css/font-awesome.min.css}" rel="stylesheet" />
 	<link th:href="@{/css/animate.min.css}" rel="stylesheet" />
-	<link th:href="@{/css/style.min.css}" rel="stylesheet" />
+	<link th:href="@{/css/style.min.css?v=20260728}" rel="stylesheet" />
 	<link th:href="@{/css/skins.css}" rel="stylesheet" />
-	<link th:href="@{/ruoyi/css/ry-ui.css?v=4.8.2}" rel="stylesheet" />
+	<link th:href="@{/ruoyi/css/ry-ui.css?v=4.8.2-font14}" rel="stylesheet" />
 </head>
 
 <body class="fixed-sidebar full-height-layout gray-bg" th:classappend="${isMobile} ? 'canvas-menu'"
@@ -220,7 +220,7 @@
 					</div>
 					<ul class="nav navbar-top-links navbar-right welcome-message">
 						<li><a data-toggle="tooltip" data-trigger="hover" data-placement="bottom" title="消防首页"
-								th:href="@{/fire/home}" class="menuItem"><i class="fa fa-fire"></i> 首页</a></li>
+								th:href="@{/system/main}" class="menuItem"><i class="fa fa-fire"></i> 首页</a></li>
 						<li><a data-toggle="tooltip" data-trigger="hover" data-placement="bottom" title="锁定屏幕"
 								href="javascript:;" id="lockScreen"><i class="fa fa-lock"></i> 锁屏</a></li>
 						<li><a data-toggle="tooltip" data-trigger="hover" data-placement="bottom" title="全屏显示"
@@ -229,7 +229,7 @@
 							<a href="javascript:void(0)" class="dropdown-toggle" data-hover="dropdown">
 								<img th:src="(${#strings.isEmpty(user.avatar)}) ? @{/img/profile.jpg} : @{${user.avatar}}"
 									th:onerror="this.src='img/profile.jpg'" class="user-image">
-								<span class="hidden-xs">[[${#strings.defaultString(user.userName, '-')}]]</span>
+								<span class="hidden-xs">[[${#strings.defaultString(displayName != null ? displayName : user.userName, '-')}]]</span>
 							</a>
 							<ul class="dropdown-menu">
 								<li class="mt5">
@@ -259,19 +259,19 @@
 				</nav>
 			</div>
 			<div class="row content-tabs" th:classappend="${#bools.isFalse(tagsView)} ? |hide|">
-				<button type="button" class="roll-nav roll-left tabLeft" title="向左滚动标签">
+				<button type="button" class="roll-nav tabLeft" title="向左滚动标签">
 					<i class="fa fa-angle-double-left"></i>
 				</button>
+				<a href="javascript:void(0);" class="tabBack" title="返回上一页签">返回</a>
 				<nav class="page-tabs menuTabs">
 					<div class="page-tabs-content">
 						<a href="javascript:;" class="menuTab" th:data-id="@{/system/main}">首页</a>
 					</div>
 				</nav>
-				<button type="button" class="roll-nav roll-right tabRight" title="向右滚动标签">
+				<button type="button" class="roll-nav tabRight" title="向右滚动标签">
 					<i class="fa fa-angle-double-right"></i>
 				</button>
-				<a href="javascript:void(0);" class="roll-nav roll-right tabBack" title="返回上一页签"><i class="fa fa-reply"></i> 返回</a>
-				<a href="javascript:void(0);" class="roll-nav roll-right tabReload" title="刷新当前页签"><i class="fa fa-refresh"></i> 刷新</a>
+				<a href="javascript:void(0);" class="roll-nav tabReload" title="刷新当前页签"><i class="fa fa-refresh"></i> 刷新</a>
 			</div>
 
 			<a id="ax_close_max" class="ax_close_max" href="javascript:;" title="关闭全屏"> <i

@@ -292,21 +292,21 @@
             transform: translateY(0);
         }
 
-        .register-link {
-            text-align: center;
-            margin-top: 25px;
+        .register-entry {
+            margin: 0 0 20px 0;
             font-size: 14px;
             color: #6c757d;
+            text-align: left;
         }
 
-        .register-link a {
+        .register-entry a {
             color: #dc3545;
             text-decoration: none;
             font-weight: 600;
             cursor: pointer;
         }
 
-        .register-link a:hover {
+        .register-entry a:hover {
             text-decoration: underline;
             color: #c82333;
         }
@@ -417,6 +417,10 @@
                         </a>
                     </div>
                 </div>
+                <div class="register-entry" th:if="${isAllowRegister}">
+                    <span>还没有账号？</span>
+                    <a th:href="@{/register}">立即注册</a>
+                </div>
                 <div class="remember-me" th:if="${isRemembered}">
                     <input type="checkbox" id="rememberme" name="rememberme">
                     <label for="rememberme">记住我</label>
@@ -425,9 +429,6 @@
                     <i class="fa fa-sign-in"></i> 登录系统
                 </button>
             </form>
-            <div class="register-link" th:if="${isAllowRegister}">
-                还没有账号？ <a th:href="@{/register}">立即注册</a>
-            </div>
         </div>
     </div>
     <!-- 备案信息 -->

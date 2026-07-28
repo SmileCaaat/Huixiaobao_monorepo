@@ -53,6 +53,11 @@ public interface SysUserMapper
     public SysUser selectUserByPhoneNumber(String phoneNumber);
 
     /**
+     * Count rows with the phone including soft-deleted (unique index scope).
+     */
+    public int countByPhonenumberAll(String phonenumber);
+
+    /**
      * 通过微信 openid 查询用户
      */
     public SysUser selectUserByOpenid(String openid);

@@ -1,7 +1,11 @@
 package com.ruoyi.framework.shiro.service;
 
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -10,30 +14,34 @@ import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.domain.entity.SysRole;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.utils.DateUtils;
+import com.ruoyi.common.utils.IpUtils;
 import com.ruoyi.common.utils.MessageUtils;
+import com.ruoyi.common.utils.ServletUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.framework.manager.AsyncManager;
 import com.ruoyi.framework.manager.factory.AsyncFactory;
 import com.ruoyi.system.domain.SysDeptRegisterInvite;
 import com.ruoyi.system.mapper.SysRoleMapper;
-import com.ruoyi.system.service.ISmsCodeService;
 import com.ruoyi.system.service.ISysDeptRegisterInviteService;
 import com.ruoyi.system.service.ISysUserService;
 
 /**
- * Employee self-register (invite token/code + SMS). Creates SysUser only.
+ * Employee self-register via invite token/code + image captcha (no SMS).
  */
 @Component
 public class EmployeeRegisterService
 {
+    private static final int MAX_REG_PER_IP_HOUR = 20;
+    private static final int MAX_REG_PER_PHONE_HOUR = 5;
+    private static final int MAX_REG_PER_INVITE_HOUR = 30;
+
+    private final Map<String, HourCounter> rateCounters = new ConcurrentHashMap<>();
+
     @Autowired
     private ISysUserService userService;
 
     @Autowired
     private SysPasswordService passwordService;
-
-    @Autowired
-    private ISmsCodeService smsCodeService;
 
     @Autowired
     private ISysDeptRegisterInviteService inviteService;
@@ -45,7 +53,7 @@ public class EmployeeRegisterService
      * @return empty string on success; otherwise error message
      */
     @Transactional(rollbackFor = Exception.class)
-    public String register(SysUser form, String inviteToken, String inviteCode, String smsCode, Map<String, Object> result)
+    public String register(SysUser form, String inviteToken, String inviteCode, Map<String, Object> result)
     {
         String userName = form.getUserName();
         String phonenumber = form.getPhonenumber();
@@ -68,33 +76,44 @@ public class EmployeeRegisterService
         {
             return "\u5bc6\u7801\u957f\u5ea6\u5fc5\u987b\u57285\u523020\u4e2a\u5b57\u7b26\u4e4b\u95f4";
         }
-        if (StringUtils.isEmpty(smsCode))
-        {
-            return "\u8bf7\u8f93\u5165\u77ed\u4fe1\u9a8c\u8bc1\u7801";
-        }
-        if (!smsCodeService.verifyAndConsume(phonenumber, smsCode))
-        {
-            return "\u77ed\u4fe1\u9a8c\u8bc1\u7801\u9519\u8bef\u6216\u5df2\u8fc7\u671f";
-        }
 
-        // Ignore client-side org ids; invite token resolution is authoritative.
+        // Ignore client-side org ids; invite resolution is authoritative.
         form.setDeptId(null);
 
-        SysUser phoneExists = userService.selectUserByPhoneNumber(phonenumber);
-        if (phoneExists != null)
+        String clientIp = safeClientIp();
+        if (!allowRate("ip:" + clientIp, MAX_REG_PER_IP_HOUR))
+        {
+            return "\u6ce8\u518c\u8bf7\u6c42\u8fc7\u4e8e\u9891\u7e41\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5";
+        }
+        if (!allowRate("phone:" + phonenumber, MAX_REG_PER_PHONE_HOUR))
+        {
+            return "\u8be5\u624b\u673a\u53f7\u63d0\u4ea4\u8fc7\u4e8e\u9891\u7e41\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5";
+        }
+
+        if (userService.isPhonenumberTaken(phonenumber))
         {
             return "\u8be5\u624b\u673a\u53f7\u5df2\u6ce8\u518c";
         }
 
-        String loginName = StringUtils.isNotEmpty(form.getLoginName()) ? form.getLoginName() : phonenumber;
+        String loginName = phonenumber;
         form.setLoginName(loginName);
         if (!userService.checkLoginNameUnique(form))
         {
             return "\u6ce8\u518c\u8d26\u53f7\u5df2\u5b58\u5728";
         }
 
+        // After removing SMS, a valid invite is mandatory.
         SysDeptRegisterInvite invite = inviteService.validateForRegister(inviteToken, inviteCode);
-        boolean autoPass = invite != null && "0".equals(invite.getRegisterMode());
+        if (invite == null)
+        {
+            return "\u8bf7\u8f93\u5165\u6709\u6548\u7684\u90e8\u95e8\u9080\u8bf7\u7801";
+        }
+        if (!allowRate("invite:" + invite.getInviteId(), MAX_REG_PER_INVITE_HOUR))
+        {
+            return "\u8be5\u9080\u8bf7\u7801\u4f7f\u7528\u8fc7\u4e8e\u9891\u7e41\uff0c\u8bf7\u7a0d\u540e\u518d\u8bd5";
+        }
+
+        boolean autoPass = "0".equals(invite.getRegisterMode());
 
         SysUser user = new SysUser();
         user.setLoginName(loginName);
@@ -106,16 +125,9 @@ public class EmployeeRegisterService
         user.setStatus("0");
         user.setAllowAdminLogin("0");
         user.setAllowMiniLogin("1");
-        if (invite != null)
-        {
-            user.setDeptId(invite.getDeptId());
-            user.setRegisterInviteId(invite.getInviteId());
-            user.setRegisterSource(StringUtils.isNotEmpty(inviteToken) ? "qr" : "invite_code");
-        }
-        else
-        {
-            user.setRegisterSource("direct");
-        }
+        user.setDeptId(invite.getDeptId());
+        user.setRegisterInviteId(invite.getInviteId());
+        user.setRegisterSource(StringUtils.isNotEmpty(inviteToken) ? "qr" : "invite_code");
 
         if (autoPass)
         {
@@ -131,7 +143,24 @@ public class EmployeeRegisterService
             user.setDispatchable("0");
         }
 
-        boolean ok = userService.registerUser(user);
+        boolean ok;
+        try
+        {
+            ok = userService.registerUser(user);
+        }
+        catch (org.springframework.dao.DuplicateKeyException e)
+        {
+            String em = e.getMessage() == null ? "" : e.getMessage();
+            if (em.contains("phonenumber") || em.contains("uk_sys_user_phonenumber"))
+            {
+                return "\u8be5\u624b\u673a\u53f7\u5df2\u6ce8\u518c";
+            }
+            if (em.contains("login_name") || em.contains("uk_"))
+            {
+                return "\u6ce8\u518c\u8d26\u53f7\u5df2\u5b58\u5728";
+            }
+            return "\u6ce8\u518c\u5931\u8d25,\u8bf7\u8054\u7cfb\u7cfb\u7edf\u7ba1\u7406\u4eba\u5458";
+        }
         if (!ok)
         {
             return "\u6ce8\u518c\u5931\u8d25,\u8bf7\u8054\u7cfb\u7cfb\u7edf\u7ba1\u7406\u4eba\u5458";
@@ -147,10 +176,7 @@ public class EmployeeRegisterService
         {
             assignMaintenanceMember(registered.getUserId());
         }
-        if (invite != null)
-        {
-            inviteService.markUsed(invite.getInviteId());
-        }
+        inviteService.markUsed(invite.getInviteId());
 
         AsyncManager.me().execute(AsyncFactory.recordLogininfor(loginName, Constants.REGISTER,
                 MessageUtils.message("user.register.success")));
@@ -170,6 +196,69 @@ public class EmployeeRegisterService
         if (memberRole != null && memberRole.getRoleId() != null)
         {
             userService.insertUserAuth(userId, new Long[] { memberRole.getRoleId() });
+        }
+    }
+
+    private String safeClientIp()
+    {
+        try
+        {
+            HttpServletRequest request = ServletUtils.getRequest();
+            if (request != null)
+            {
+                return IpUtils.getIpAddr(request);
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+        return "unknown";
+    }
+
+    private boolean allowRate(String key, int maxPerHour)
+    {
+        long now = System.currentTimeMillis();
+        HourCounter counter = rateCounters.computeIfAbsent(key, k -> new HourCounter());
+        cleanupRate(now);
+        return counter.tryIncrement(now, maxPerHour);
+    }
+
+    private void cleanupRate(long now)
+    {
+        Iterator<Map.Entry<String, HourCounter>> it = rateCounters.entrySet().iterator();
+        while (it.hasNext())
+        {
+            Map.Entry<String, HourCounter> e = it.next();
+            if (e.getValue().expired(now))
+            {
+                it.remove();
+            }
+        }
+    }
+
+    private static final class HourCounter
+    {
+        private long windowStart;
+        private final AtomicInteger count = new AtomicInteger(0);
+
+        synchronized boolean tryIncrement(long now, int max)
+        {
+            if (windowStart == 0 || now - windowStart > 3600_000L)
+            {
+                windowStart = now;
+                count.set(0);
+            }
+            if (count.get() >= max)
+            {
+                return false;
+            }
+            count.incrementAndGet();
+            return true;
+        }
+
+        synchronized boolean expired(long now)
+        {
+            return windowStart > 0 && now - windowStart > 7200_000L;
         }
     }
 }

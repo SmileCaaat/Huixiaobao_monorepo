@@ -86,6 +86,13 @@ public interface FireCompanyMapper {
      */
     List<FireUserCompany> selectActiveUserListByCompanyId(Long companyId);
 
+    FireUserCompany selectUserCompany(@org.apache.ibatis.annotations.Param("userId") Long userId,
+            @org.apache.ibatis.annotations.Param("companyId") Long companyId);
+
+    List<FireUserCompany> selectActiveMembershipsByUserId(Long userId);
+
+    int upsertUserCompany(FireUserCompany userCompany);
+
     /**
      * 新增用户公司关联
      */
