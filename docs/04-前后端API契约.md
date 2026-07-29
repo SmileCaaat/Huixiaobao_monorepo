@@ -167,13 +167,13 @@ RuoYi `PageUtils.startPage()` 从 URL 查询参数读取 `pageNum/pageSize`，�
 | POST | `/register` | anon+captcha | 姓名/手机/密码/邀请；**不再要求短信**；邀请码或邀请 token 必填 |
 | POST | `/api/register` | anon | JSON；忽略前端 deptId；同 PC，无短信 |
 | GET/POST | `/api/register/invite/resolve` | anon | 小程序解析邀请 |
-| POST | `/system/dept/registerQrcode/generate` | manage | 7 天有效；明文 token 仅返回一次 |
-| GET | `/system/dept/registerQrcode/{deptId}` | view | 元数据 + 短码二维码 |
+| POST | `/system/dept/registerQrcode/generate` | manage | 7 天有效；明文 token 仅返回一次；**注册码唯一入口在部门管理** |
+| GET | `/system/dept/registerQrcode/{deptId}` | view | 元数据 + 短码二维码（由部门管理页调用） |
 | POST | `/system/dept/registerQrcode/disable` | manage | 停用 |
 | GET | `/system/dept/registerQrcode/download/{deptId}` | download | 不延期 |
-| GET | `/system/user/registerRecord` | system:user:registerRecord | 注册记录独立页（勿与用户列表混用） |
-| POST | `/system/user/audit` | system:user:audit | 乐观更新 WHERE audit_status=1；按钮挂在注册记录下 |
-| POST | `/system/user/registerRecords` | system:user:registerRecord | 注册记录列表（默认仅 qr/invite_code/direct） |
+| GET | `/system/user/registerRecord` | system:user:registerRecord | 注册记录独立页（仅审核列表；无本部门二维码入口） |
+| POST | `/system/user/audit` | system:user:audit | 乐观更新 WHERE audit_status=1；驳回**不强制** `auditRemark`；按钮挂在注册记录下 |
+| POST | `/system/user/registerRecords` | system:user:registerRecord | 注册记录列表（默认仅 qr/invite_code/direct；不展示 auditRemark） |
 
 已移除：`POST /register/sms/send`、`/api/register/sms/send`（员工注册不再走短信校验）。
 
@@ -188,9 +188,13 @@ RuoYi `PageUtils.startPage()` 从 URL 查询参数读取 `pageNum/pageSize`，�
 ```
 
 - 用户列表保留左侧 `sys_dept` 组织树；注册记录为独立全宽页，不嵌入用户列表。
+- 注册二维码的生成 / 查看 / 停用 / 下载**唯一入口**在部门管理；注册记录页只负责通过 / 驳回，不混入发码。
+- 审核驳回：确认后直接 `auditAction=reject`，不强制 `auditRemark`（可写固定备注如「人工驳回」或置空）；`audit_remark` 库字段保留，列表不展示。
 - 若把注册记录以 C 挂在用户列表 C 下，侧栏会把「用户管理」渲染为仅展开，无法打开带组织树的 `/system/user`。
 - 菜单迁移：`backend/sql/upgrade_user_menu_split_register_record.sql`；回滚：`rollback_user_menu_split_register_record.sql`。
 
-自动通过：有效邀请 + `register_mode=0` + 手机号唯一（含软删除行，见 `uk_sys_user_phonenumber`）→ `audit_status=0`、`dispatchable=1`、组员角色。
+自动通过：有效邀请 + `register_mode=0` + 手机号唯一（含软删除行，见 `uk_sys_user_phonenumber`）→ `audit_status=0`、`dispatchable=1`、组员角色（`audit_remark` 可写「系统自动」，仅库内保留）；默认 `allow_admin_login=1`、`allow_mini_login=1`（可登 PC，权限仍由 `maintenance_member` 菜单约束，不等于管理员）。
 
 重复手机号应返回业务提示「该手机号已注册」，不应再被脱敏成「系统繁忙」。开关：`sys.account.registerUser=true` 才开放 PC/小程序注册入口。
+
+历史邀请码数据修复（示例 LQK78RXF）：`backend/sql/fix_invite_LQK78RXF_allow_admin_login.sql`。

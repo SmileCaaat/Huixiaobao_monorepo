@@ -123,7 +123,7 @@ public class EmployeeRegisterService
         user.setSalt("");
         user.setPassword(passwordService.encryptPassword(password));
         user.setStatus("0");
-        user.setAllowAdminLogin("0");
+        user.setAllowAdminLogin("1");
         user.setAllowMiniLogin("1");
         user.setDeptId(invite.getDeptId());
         user.setRegisterInviteId(invite.getInviteId());

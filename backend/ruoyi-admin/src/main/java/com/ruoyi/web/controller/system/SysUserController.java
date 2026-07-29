@@ -76,9 +76,7 @@ public class SysUserController extends BaseController {
      */
     @RequiresPermissions("system:user:registerRecord")
     @GetMapping("/registerRecord")
-    public String registerRecord(ModelMap mmap) {
-        SysUser current = getSysUser();
-        mmap.put("currentDeptId", current != null ? current.getDeptId() : null);
+    public String registerRecord() {
         return prefix + "/registerRecord";
     }
 

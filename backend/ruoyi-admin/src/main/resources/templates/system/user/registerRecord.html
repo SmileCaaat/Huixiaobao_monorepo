@@ -39,12 +39,6 @@
 				</form>
 			</div>
 
-			<div class="btn-group-sm" id="toolbar" role="group">
-				<a class="btn btn-info" onclick="viewMyDeptQr()" shiro:hasPermission="system:dept:registerQrcode:view">
-					<i class="fa fa-qrcode"></i> 查看本部门注册二维码
-				</a>
-			</div>
-
 			<div class="col-sm-12 select-table table-striped">
 				<table id="bootstrap-table"></table>
 			</div>
@@ -54,8 +48,6 @@
 	<script th:inline="javascript">
 		var auditFlag = [[${@permission.hasPermi('system:user:audit')}]];
 		var prefix = ctx + "system/user";
-		var currentDeptId = [[${currentDeptId}]];
-		var qrPrefix = ctx + "system/dept/registerQrcode";
 
 		$(function() {
 			var options = {
@@ -160,31 +152,6 @@
 						$.modal.msgError(r.msg);
 					}
 				});
-			});
-		}
-
-		function viewMyDeptQr() {
-			if (!currentDeptId) {
-				$.modal.msgWarning("当前账号未绑定部门");
-				return;
-			}
-			$.get(qrPrefix + "/" + currentDeptId, function(r) {
-				if (r.code != 0 && r.code != 200) {
-					$.modal.msgError(r.msg || "加载失败");
-					return;
-				}
-				var data = r.data;
-				if (!data) {
-					$.modal.msgWarning("本部门暂无有效注册码，请到部门管理生成");
-					return;
-				}
-				var html = '<div style="padding:10px;text-align:center;">'
-					+ '<p>公司：' + (data.companyName||'-') + '；部门：' + (data.deptName||'-') + '</p>'
-					+ '<p>邀请码：<b>' + (data.inviteCode||'-') + '</b></p>'
-					+ (data.qrBase64 ? '<img src="data:image/png;base64,' + data.qrBase64 + '" style="max-width:220px"/>' : '')
-					+ '<p style="word-break:break-all;margin-top:8px;">' + (data.registerUrl||'') + '</p>'
-					+ '</div>';
-				layer.open({ type: 1, title: '本部门注册二维码', area: ['420px', '480px'], content: html });
 			});
 		}
 	</script>
