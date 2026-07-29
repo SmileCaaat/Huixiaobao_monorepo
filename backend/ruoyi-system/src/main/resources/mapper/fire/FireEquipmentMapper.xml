@@ -83,6 +83,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="projectCategory != null and projectCategory != ''">
                 AND e.project_category = #{projectCategory}
             </if>
+            <!-- 与首页 countExpiringSoon 一致：有效期内且 30 天内到期 -->
+            <if test="params != null and params.expireFilter == 'expiringSoon'">
+                AND e.expire_date is not null
+                AND e.expire_date &gt;= CURDATE()
+                AND e.expire_date &lt;= DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+            </if>
         </where>
         order by e.create_time desc
     </select>

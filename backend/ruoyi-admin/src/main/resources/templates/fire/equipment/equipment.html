@@ -21,6 +21,24 @@
             margin-left: 10px;
             color: #1890ff;
         }
+
+        .expire-filter-tip {
+            background: #fff7e6;
+            border: 1px solid #ffd591;
+            border-radius: 4px;
+            padding: 8px 15px;
+            margin-bottom: 10px;
+            color: #d46b08;
+        }
+
+        .expire-filter-tip i {
+            margin-right: 5px;
+        }
+
+        .expire-filter-tip a {
+            margin-left: 10px;
+            color: #d46b08;
+        }
     </style>
 </head>
 
@@ -33,9 +51,16 @@
                 <span>当前仅显示【<span id="filterCompanyName"></span>】的设备数据</span>
                 <a href="javascript:void(0)" onclick="clearCompanyFilter()"><i class="fa fa-times"></i> 清除筛选</a>
             </div>
+            <!-- 首页「即将过期」快捷筛选提示 -->
+            <div class="col-sm-12 expire-filter-tip" id="expireFilterTip" style="display:none;">
+                <i class="fa fa-exclamation-triangle"></i>
+                <span>当前快捷筛选：即将过期（有效期内且 30 天内到期）</span>
+                <a href="javascript:void(0)" onclick="clearExpireFilter()"><i class="fa fa-times"></i> 清除筛选</a>
+            </div>
 
             <div class="col-sm-12 search-collapse">
                 <form id="equipment-form">
+                    <input type="hidden" name="params[expireFilter]" id="expireFilter" value="" />
                     <div class="select-list">
                         <ul>
                             <li>
@@ -59,7 +84,7 @@
                             <li>
                                 <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
                                         class="fa fa-search"></i>&nbsp;搜索</a>
-                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="resetEquipmentSearch()"><i
                                         class="fa fa-refresh"></i>&nbsp;重置</a>
                             </li>
                         </ul>
@@ -107,10 +132,104 @@
         var statusDatas = [[${@dict.getType('sys_normal_disable') }]];
         var prefix = ctx + "fire/equipment";
 
-        // 从URL获取公司参数
+        var EXPIRE_FILTERS = ['expiringSoon'];
+        var EQUIP_FILTER_STORAGE_KEY = 'fireEquipmentExpireFilter';
+        var EQUIP_FILTER_MSG_TYPE = 'fire-equipment-expire-filter';
+        var equipmentTableReady = false;
+        var pendingExpireFilter = null;
+
+        // 从URL获取公司参数与首页到期筛选
         var urlParams = new URLSearchParams(window.location.search);
         var filterCompanyId = urlParams.get('companyId');
         var filterCompanyName = urlParams.get('companyName');
+        var expireFilterParam = urlParams.get('expireFilter');
+        if (expireFilterParam && EXPIRE_FILTERS.indexOf(expireFilterParam) < 0) {
+            expireFilterParam = null;
+        }
+
+        function syncExpireUrl(filter) {
+            var params = new URLSearchParams(window.location.search);
+            if (filter && EXPIRE_FILTERS.indexOf(filter) >= 0) {
+                params.set('expireFilter', filter);
+            } else {
+                params.delete('expireFilter');
+            }
+            var qs = params.toString();
+            var newUrl = qs ? window.location.pathname + '?' + qs : window.location.pathname;
+            window.history.replaceState({}, '', newUrl);
+        }
+
+        function applyExpireFilter(filter) {
+            if (filter && EXPIRE_FILTERS.indexOf(filter) >= 0) {
+                $('#expireFilter').val(filter);
+                $('#expireFilterTip').show();
+                syncExpireUrl(filter);
+            } else {
+                $('#expireFilter').val('');
+                $('#expireFilterTip').hide();
+                syncExpireUrl('');
+            }
+        }
+
+        function applyExternalExpireFilter(filter) {
+            if (filter && EXPIRE_FILTERS.indexOf(filter) < 0) {
+                return;
+            }
+            applyExpireFilter(filter || '');
+            if (!equipmentTableReady) {
+                pendingExpireFilter = filter || '';
+                return;
+            }
+            $.table.search();
+        }
+
+        function consumeStoredExpireFilter() {
+            try {
+                var stored = sessionStorage.getItem(EQUIP_FILTER_STORAGE_KEY);
+                if (stored !== null) {
+                    sessionStorage.removeItem(EQUIP_FILTER_STORAGE_KEY);
+                    if (stored === '' || EXPIRE_FILTERS.indexOf(stored) >= 0) {
+                        return stored;
+                    }
+                }
+            } catch (e) {
+                console.warn('读取设备到期筛选缓存失败:', e);
+            }
+            return null;
+        }
+
+        function clearExpireFilter() {
+            applyExpireFilter('');
+            $.table.search();
+        }
+
+        function resetEquipmentSearch() {
+            applyExpireFilter('');
+            $.form.reset();
+        }
+
+        function onExpireFilterMessage(event) {
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+            var data = event.data;
+            if (!data || data.type !== EQUIP_FILTER_MSG_TYPE) {
+                return;
+            }
+            applyExternalExpireFilter(data.filter);
+        }
+
+        if (!window.__fireEquipmentExpireFilterListenerBound) {
+            window.addEventListener('message', onExpireFilterMessage);
+            window.__fireEquipmentExpireFilterListenerBound = true;
+        }
+
+        var storedExpireFilter = consumeStoredExpireFilter();
+        if (storedExpireFilter !== null) {
+            applyExpireFilter(storedExpireFilter);
+        } else if (expireFilterParam) {
+            applyExpireFilter(expireFilterParam);
+        }
 
         $(function () {
             var options = {
@@ -200,6 +319,12 @@
                 }]
             };
             $.table.init(options);
+            equipmentTableReady = true;
+            if (pendingExpireFilter !== null) {
+                var pending = pendingExpireFilter;
+                pendingExpireFilter = null;
+                applyExternalExpireFilter(pending);
+            }
 
             // 加载客户列表
             loadCompanyList();
@@ -287,7 +412,11 @@
             filterCompanyName = null;
             $('#companyId').val('');
             $('#companyFilterTip').hide();
-            var newUrl = window.location.pathname;
+            var params = new URLSearchParams(window.location.search);
+            params.delete('companyId');
+            params.delete('companyName');
+            var qs = params.toString();
+            var newUrl = qs ? window.location.pathname + '?' + qs : window.location.pathname;
             window.history.replaceState({}, '', newUrl);
             // 重新加载建筑列表（不带公司过滤）
             loadBuildingList();

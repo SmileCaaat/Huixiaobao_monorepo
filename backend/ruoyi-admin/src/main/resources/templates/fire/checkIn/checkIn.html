@@ -21,6 +21,62 @@
             margin-left: 10px;
             color: #1890ff;
         }
+
+        /* 本页搜索栏局部布局：不改全局字体与公共 select-list */
+        .fire-search-layout .select-list ul {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px 8px;
+        }
+
+        .fire-search-layout .select-list li {
+            float: none;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            margin: 4px 8px 4px 0;
+        }
+
+        .fire-search-layout .select-list li label:not(.radio-box) {
+            float: none;
+            width: auto;
+            margin: 0 6px 0 0;
+            white-space: nowrap;
+            text-align: right;
+            line-height: 30px;
+        }
+
+        .fire-search-layout .select-list li input,
+        .fire-search-layout .select-list li select {
+            float: none;
+            width: 150px;
+            vertical-align: middle;
+        }
+
+        .fire-search-layout .select-list .select-time label,
+        .fire-search-layout .select-list .select-time span,
+        .fire-search-layout .select-list .select-time input {
+            float: none;
+        }
+
+        .fire-search-layout .select-list .select-time input {
+            width: 110px;
+        }
+
+        .fire-search-layout .select-list .select-time span {
+            display: inline-block;
+            margin: 0 4px;
+            line-height: 30px;
+        }
+
+        .fire-search-layout .select-list .select-time label {
+            margin-top: 0;
+        }
+
+        .fire-search-layout .select-list li .btn {
+            vertical-align: middle;
+        }
     </style>
 </head>
 
@@ -34,7 +90,7 @@
                 <a href="javascript:void(0)" onclick="clearCompanyFilter()"><i class="fa fa-times"></i> 清除筛选</a>
             </div>
 
-            <div class="col-sm-12 search-collapse">
+            <div class="col-sm-12 search-collapse fire-search-layout">
                 <form id="formId">
                     <div class="select-list">
                         <ul>

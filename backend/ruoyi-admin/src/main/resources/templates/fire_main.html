@@ -378,21 +378,25 @@
             }
         }
 
-        #personalStatsRow .stat-card-clickable {
+        #personalStatsRow .stat-card-clickable,
+        #globalStatsBlock .stat-card-clickable {
             cursor: pointer;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
-        #personalStatsRow .stat-card-clickable:hover {
+        #personalStatsRow .stat-card-clickable:hover,
+        #globalStatsBlock .stat-card-clickable:hover {
             transform: translateY(-3px);
             box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
         }
 
-        #personalStatsRow .stat-card-clickable:active {
+        #personalStatsRow .stat-card-clickable:active,
+        #globalStatsBlock .stat-card-clickable:active {
             transform: translateY(-1px);
         }
 
-        #personalStatsRow .stat-card-clickable:focus {
+        #personalStatsRow .stat-card-clickable:focus,
+        #globalStatsBlock .stat-card-clickable:focus {
             outline: 2px solid rgba(220, 53, 69, 0.45);
             outline-offset: 2px;
         }
@@ -400,7 +404,10 @@
         @media (prefers-reduced-motion: reduce) {
             #personalStatsRow .stat-card-clickable,
             #personalStatsRow .stat-card-clickable:hover,
-            #personalStatsRow .stat-card-clickable:active {
+            #personalStatsRow .stat-card-clickable:active,
+            #globalStatsBlock .stat-card-clickable,
+            #globalStatsBlock .stat-card-clickable:hover,
+            #globalStatsBlock .stat-card-clickable:active {
                 transition: none;
                 transform: none;
             }
@@ -502,28 +509,36 @@
         <div id="globalStatsBlock" th:style="${homeScope == 'global'} ? '' : 'display:none'">
         <div class="row">
             <div class="col-sm-6 col-md-3">
-                <div class="stat-card card-primary">
+                <div class="stat-card card-primary stat-card-clickable" role="button" tabindex="0" aria-label="公司总数"
+                    onclick="openInfoMenu('/fire/company', '公司信息')"
+                    onkeydown="handleInfoCardKey(event, '/fire/company', '公司信息')">
                     <i class="fa fa-building stat-icon"></i>
                     <div class="stat-number" id="companyCount">-</div>
                     <div class="stat-title">公司总数</div>
                 </div>
             </div>
             <div class="col-sm-6 col-md-3">
-                <div class="stat-card card-success">
+                <div class="stat-card card-success stat-card-clickable" role="button" tabindex="0" aria-label="建筑总数"
+                    onclick="openInfoMenu('/fire/building', '建筑信息')"
+                    onkeydown="handleInfoCardKey(event, '/fire/building', '建筑信息')">
                     <i class="fa fa-building-o stat-icon"></i>
                     <div class="stat-number" id="buildingCount">-</div>
                     <div class="stat-title">建筑总数</div>
                 </div>
             </div>
             <div class="col-sm-6 col-md-3">
-                <div class="stat-card card-warning">
+                <div class="stat-card card-warning stat-card-clickable" role="button" tabindex="0" aria-label="设备总数"
+                    onclick="openEquipmentDashboard('')"
+                    onkeydown="handleEquipmentCardKey(event, '')">
                     <i class="fa fa-fire-extinguisher stat-icon"></i>
                     <div class="stat-number" id="equipmentCount">-</div>
                     <div class="stat-title">设备总数</div>
                 </div>
             </div>
             <div class="col-sm-6 col-md-3">
-                <div class="stat-card card-danger">
+                <div class="stat-card card-danger stat-card-clickable" role="button" tabindex="0" aria-label="即将过期"
+                    onclick="openEquipmentDashboard('expiringSoon')"
+                    onkeydown="handleEquipmentCardKey(event, 'expiringSoon')">
                     <i class="fa fa-exclamation-triangle stat-icon"></i>
                     <div class="stat-number" id="expiringSoonCount">-</div>
                     <div class="stat-title">即将过期</div>
@@ -792,11 +807,23 @@
         var TASK_FILTER_STORAGE_KEY = 'fireTaskDashboardFilter';
         var TASK_FILTER_MSG_TYPE = 'fire-task-dashboard-filter';
 
+        var EQUIP_MENU_BASE = '/fire/equipment';
+        var EQUIP_MENU_TITLE = '设备信息';
+        var EQUIP_FILTER_STORAGE_KEY = 'fireEquipmentExpireFilter';
+        var EQUIP_FILTER_MSG_TYPE = 'fire-equipment-expire-filter';
+
         function normalizeTaskDashboardFilter(filter) {
             if (TASK_DASHBOARD_FILTERS.indexOf(filter) >= 0) {
                 return filter;
             }
             return 'mine';
+        }
+
+        function normalizeExpireFilter(filter) {
+            if (filter === 'expiringSoon') {
+                return 'expiringSoon';
+            }
+            return '';
         }
 
         function handleStatCardKey(e, filter) {
@@ -806,23 +833,50 @@
             }
         }
 
-        function hasTaskMenuPermission() {
+        function handleInfoCardKey(e, url, title) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openInfoMenu(url, title);
+            }
+        }
+
+        function handleEquipmentCardKey(e, filter) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openEquipmentDashboard(filter);
+            }
+        }
+
+        function showNoPermissionTip(message) {
+            var tip = message || '暂无访问权限';
+            if (typeof $.modal !== 'undefined' && $.modal.msgWarning) {
+                $.modal.msgWarning(tip);
+            } else {
+                alert(tip);
+            }
+        }
+
+        function hasMenuPermission(url) {
             try {
                 var parentDoc = window.parent.document;
                 var menuItems = parentDoc.querySelectorAll('a.menuItem');
                 for (var i = 0; i < menuItems.length; i++) {
                     var href = menuItems[i].getAttribute('href');
-                    if (href && (href === TASK_MENU_BASE || href.endsWith(TASK_MENU_BASE))) {
+                    if (href && (href === url || href.endsWith(url))) {
                         return true;
                     }
                 }
             } catch (e) {
-                console.error('检查维保任务菜单权限失败:', e);
+                console.error('检查菜单权限失败:', e);
             }
             return false;
         }
 
-        function findTaskIframe() {
+        function hasTaskMenuPermission() {
+            return hasMenuPermission(TASK_MENU_BASE);
+        }
+
+        function findMenuIframe(menuBase) {
             try {
                 var parentDoc = window.parent && window.parent.document;
                 if (!parentDoc) {
@@ -831,17 +885,25 @@
                 var iframes = parentDoc.querySelectorAll('iframe.RuoYi_iframe');
                 for (var i = 0; i < iframes.length; i++) {
                     var dataId = iframes[i].getAttribute('data-id') || '';
-                    if (dataId === TASK_MENU_BASE || dataId.endsWith(TASK_MENU_BASE)) {
+                    if (dataId === menuBase || dataId.endsWith(menuBase)) {
                         return iframes[i];
                     }
                 }
             } catch (e) {
-                console.warn('查找维保任务 iframe 失败:', e);
+                console.warn('查找菜单 iframe 失败:', e);
             }
             return null;
         }
 
-        function isTaskIframeDocumentReady(iframe) {
+        function findTaskIframe() {
+            return findMenuIframe(TASK_MENU_BASE);
+        }
+
+        function findEquipmentIframe() {
+            return findMenuIframe(EQUIP_MENU_BASE);
+        }
+
+        function isIframeDocumentReady(iframe) {
             try {
                 var doc = iframe.contentWindow && iframe.contentWindow.document;
                 if (!doc) {
@@ -862,6 +924,10 @@
             }
         }
 
+        function isTaskIframeDocumentReady(iframe) {
+            return isIframeDocumentReady(iframe);
+        }
+
         function postFilterToTaskIframe(filter) {
             try {
                 var iframe = findTaskIframe();
@@ -875,6 +941,23 @@
                 return true;
             } catch (e) {
                 console.warn('向维保任务页发送筛选消息失败:', e);
+                return false;
+            }
+        }
+
+        function postExpireFilterToEquipmentIframe(filter) {
+            try {
+                var iframe = findEquipmentIframe();
+                if (!iframe || !iframe.contentWindow || !isIframeDocumentReady(iframe)) {
+                    return false;
+                }
+                iframe.contentWindow.postMessage({
+                    type: EQUIP_FILTER_MSG_TYPE,
+                    filter: filter
+                }, window.location.origin);
+                return true;
+            } catch (e) {
+                console.warn('向设备信息页发送筛选消息失败:', e);
                 return false;
             }
         }
@@ -900,14 +983,31 @@
             }, 200);
         }
 
+        function notifyEquipmentFilterOnce(filter) {
+            if (postExpireFilterToEquipmentIframe(filter)) {
+                return;
+            }
+            var iframe = findEquipmentIframe();
+            if (iframe) {
+                var onLoad = function () {
+                    iframe.removeEventListener('load', onLoad);
+                    postExpireFilterToEquipmentIframe(filter);
+                };
+                iframe.addEventListener('load', onLoad);
+            }
+            var attempts = 0;
+            var timer = setInterval(function () {
+                attempts++;
+                if (postExpireFilterToEquipmentIframe(filter) || attempts >= 10) {
+                    clearInterval(timer);
+                }
+            }, 200);
+        }
+
         function openTaskDashboard(filter) {
             filter = normalizeTaskDashboardFilter(filter);
             if (!hasTaskMenuPermission()) {
-                if (typeof $.modal !== 'undefined' && $.modal.msgWarning) {
-                    $.modal.msgWarning('无权访问维保任务');
-                } else {
-                    alert('无权访问维保任务');
-                }
+                showNoPermissionTip('暂无访问权限');
                 return;
             }
             try {
@@ -918,6 +1018,29 @@
             // 仅通过若依菜单点击切换页签，禁止手动改 iframe CSS
             openMenu(TASK_MENU_BASE, TASK_MENU_TITLE);
             notifyTaskFilterOnce(filter);
+        }
+
+        function openInfoMenu(url, title) {
+            if (!hasMenuPermission(url)) {
+                showNoPermissionTip('暂无访问权限');
+                return;
+            }
+            openMenu(url, title);
+        }
+
+        function openEquipmentDashboard(filter) {
+            filter = normalizeExpireFilter(filter);
+            if (!hasMenuPermission(EQUIP_MENU_BASE)) {
+                showNoPermissionTip('暂无访问权限');
+                return;
+            }
+            try {
+                sessionStorage.setItem(EQUIP_FILTER_STORAGE_KEY, filter);
+            } catch (e) {
+                console.warn('写入设备到期筛选缓存失败:', e);
+            }
+            openMenu(EQUIP_MENU_BASE, EQUIP_MENU_TITLE);
+            notifyEquipmentFilterOnce(filter);
         }
 
         function openMenu(url, title) {
@@ -951,12 +1074,8 @@
                 }
 
                 if (!found) {
-                    console.warn('未找到菜单项: ' + url);
-                    if (typeof $.modal !== 'undefined' && $.modal.msgWarning) {
-                        $.modal.msgWarning('未找到维保任务菜单，请确认已分配菜单权限');
-                    } else {
-                        alert('未找到维保任务菜单，请确认已分配菜单权限');
-                    }
+                    console.warn('未找到菜单项: ' + url + (title ? (' (' + title + ')') : ''));
+                    showNoPermissionTip('暂无访问权限');
                 }
             } catch (e) {
                 console.error('跳转失败:', e);

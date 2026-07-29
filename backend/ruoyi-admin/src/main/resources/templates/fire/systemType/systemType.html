@@ -3,12 +3,42 @@
 
 <head>
     <th:block th:include="include :: header('系统类型配置')" />
+    <style>
+        /* 仅本页：避免「类型编码/类型名称」因公共 65px 标签宽被拆行 */
+        .system-type-search .select-list ul {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .system-type-search .select-list li {
+            float: none;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            vertical-align: middle;
+        }
+
+        .system-type-search .select-list li label:not(.radio-box) {
+            float: none;
+            width: 80px;
+            margin: 0 6px 0 0;
+            white-space: nowrap;
+            text-align: right;
+            line-height: 30px;
+        }
+
+        .system-type-search .select-list li input,
+        .system-type-search .select-list li select {
+            vertical-align: middle;
+        }
+    </style>
 </head>
 
 <body class="gray-bg">
     <div class="container-div">
         <div class="row">
-            <div class="col-sm-12 search-collapse">
+            <div class="col-sm-12 search-collapse system-type-search">
                 <form id="formId">
                     <div class="select-list">
                         <ul>
