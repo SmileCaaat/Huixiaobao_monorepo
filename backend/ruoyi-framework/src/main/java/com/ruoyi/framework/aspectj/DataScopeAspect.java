@@ -51,6 +51,11 @@ public class DataScopeAspect
     public static final String DATA_SCOPE_SELF = "5";
 
     /**
+     * 所属公司及以下数据权限
+     */
+    public static final String DATA_SCOPE_COMPANY_AND_CHILD = "6";
+
+    /**
      * 数据权限过滤关键字
      */
     public static final String DATA_SCOPE = "dataScope";
@@ -135,6 +140,20 @@ public class DataScopeAspect
             {
                 sqlString.append(StringUtils.format(" OR {}.dept_id IN ( SELECT dept_id FROM sys_dept WHERE dept_id = {} or find_in_set( {} , ancestors ) )", deptAlias, user.getDeptId(), user.getDeptId()));
             }
+            else if (DATA_SCOPE_COMPANY_AND_CHILD.equals(dataScope))
+            {
+                Long companyDeptId = resolveCompanyDeptId(user);
+                if (StringUtils.isNotBlank(deptAlias) && StringUtils.isNotNull(companyDeptId))
+                {
+                    sqlString.append(StringUtils.format(" OR {}.dept_id IN ( SELECT dept_id FROM sys_dept WHERE del_flag = '0' AND (dept_id = {} OR find_in_set( {} , ancestors )) )",
+                            deptAlias, companyDeptId, companyDeptId));
+                }
+                else
+                {
+                    // 无法确定所属公司时按无数据处理，避免越权展示其他公司
+                    sqlString.append(" OR 1 = 0 ");
+                }
+            }
             else if (DATA_SCOPE_SELF.equals(dataScope))
             {
                 if (StringUtils.isNotBlank(userAlias))
@@ -165,6 +184,46 @@ public class DataScopeAspect
                 baseEntity.getParams().put(DATA_SCOPE, " AND (" + sqlString.substring(4) + ")");
             }
         }
+    }
+
+    /**
+     * 获取用户所属的公司根部门。
+     * 部门 ancestors 形如 0,100,110，其中第一个非 0 节点即公司根部门。
+     * 用户本身挂在公司根（parent_id=0）时返回当前部门。
+     * 无法解析时返回 null，由调用方按无数据处理，禁止放大为全部数据。
+     */
+    private static Long resolveCompanyDeptId(SysUser user)
+    {
+        if (StringUtils.isNull(user) || StringUtils.isNull(user.getDeptId()))
+        {
+            return null;
+        }
+        if (StringUtils.isNull(user.getDept()))
+        {
+            return null;
+        }
+        if (StringUtils.isNotNull(user.getDept().getParentId())
+                && user.getDept().getParentId().longValue() == 0L)
+        {
+            return user.getDeptId();
+        }
+
+        List<String> ancestorIds = StringUtils.str2List(user.getDept().getAncestors(), ",", true, true);
+        for (String ancestorId : ancestorIds)
+        {
+            if (!"0".equals(ancestorId))
+            {
+                try
+                {
+                    return Long.valueOf(ancestorId);
+                }
+                catch (NumberFormatException ignored)
+                {
+                    // 忽略异常节点，继续寻找有效的公司根部门
+                }
+            }
+        }
+        return null;
     }
 
     /**

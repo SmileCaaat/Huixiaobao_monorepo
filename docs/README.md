@@ -28,7 +28,7 @@
 - `miniprogram/` 不是 uni-app 源工程，而是 `mp-weixin` 编译结果；仓库中没有 `.vue`、`pages.json`、`manifest.json`、`package.json` 或有效 sourcemap。
 - `local_sever/` 仅用于本机联调（网关、面板、一键启动），不是生产组件。
 - 小程序可以整体原生重构，但应先固定 API 契约，否则会把当前接口漂移复制进新代码。
-- 近期管理端增量：故障报修 PC 员工工作台（待我处理/处理中/已完成/我上报的，与小程序共用 start/complete 规则；工单分类为搜索下方独立卡片）；故障报修派发撤回；维保报告按客户选任务、报告 DOCX 落盘与 Word 在线预览（[docxjs](https://github.com/VolodymyrBaydalka/docxjs)；PDF/LibreOffice 可选）；建筑编码统一后端自动生成（`B`+数字）；维保任务维护/测试弹窗按视口放大；维保任务类型筛选（全部/周期/临时）为搜索下方独立卡片；检查项「其他说明」与状态按钮分离，说明/附件保存不覆盖 `check_result`；消防首页**本人任务**统计卡可快捷筛选维保任务列表；**全局**统计卡可跳转公司/建筑/设备信息，「即将过期」带入与首页相同的 30 天到期筛选；签到/任务/报修/报告搜索栏用页面级 `fire-search-layout` 修布局（勿靠改全局 body 字号）；系统管理列表搜索用 `system-search-collapse`；设备二维码指向公开详情页 `/public/equipment/{code}`（旧 `/public/api/equipment/` 浏览器访问可跳转兼容）。
+- 近期管理端增量：故障报修 PC 员工工作台（待我处理/处理中/已完成/我上报的，与小程序共用 start/complete 规则；工单分类为搜索下方独立卡片）；故障报修派发撤回；维保报告按客户选任务、报告 DOCX 落盘与 Word 在线预览（[docxjs](https://github.com/VolodymyrBaydalka/docxjs)；PDF/LibreOffice 可选）；建筑编码统一后端自动生成（`B`+数字）；维保任务维护/测试弹窗按视口放大；维保任务类型筛选（全部/周期/临时）为搜索下方独立卡片；检查项「其他说明」与状态按钮分离，说明/附件保存不覆盖 `check_result`；消防首页**本人任务**统计卡可快捷筛选维保任务列表；**全局**统计卡可跳转公司/建筑/设备信息，「即将过期」带入与首页相同的 30 天到期筛选；签到/任务/报修/报告搜索栏用页面级 `fire-search-layout` 修布局（勿靠改全局 body 字号）；系统管理列表搜索用 `system-search-collapse`；设备二维码指向公开详情页 `/public/equipment/{code}`（旧 `/public/api/equipment/` 浏览器访问可跳转兼容）；项目负责人(`project_manager`)：业务菜单含信息维护三页、`data_scope=6` 仅本公司部门、故障报修可派发、维保任务隐藏行内删除但保留顶部删除；脚本见 `upgrade_project_manager_business_admin.sql` / `upgrade_project_manager_company_scope.sql` / `upgrade_project_manager_info_maintain.sql`（不含 `fire:task:completeAll`；须先部署后端再改 `data_scope=6`）。
 - 消防业务 SQL 仍以增量脚本为主；本地可用 `backend/sql/local_fire_baseline.sql` 建消防相关表。本地与线上菜单/数据差异通常来自数据库内容，而非代码分叉。
 - 生产部署 PDF 只覆盖 JAR 更新和日志查看，没有提供服务器、数据库、Nginx、备份或回滚信息。
 

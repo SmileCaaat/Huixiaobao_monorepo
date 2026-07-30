@@ -284,6 +284,8 @@
     <script th:inline="javascript">
         var editFlag = [[${@permission.hasPermi('fire:task:edit') }]];
         var removeFlag = [[${@permission.hasPermi('fire:task:remove') }]];
+        // 项目负责人保留顶部批量删除，隐藏操作列行内删除
+        var rowRemoveFlag = [[${@permission.isRole('project_manager')}]] ? 'hidden' : removeFlag;
         var briefingFlag = [[${@permission.hasPermi('fire:task:briefing') }]];
         var completeAllFlag = [[${@permission.hasPermi('fire:task:completeAll') }]];
         var detailFlag = [[${@permission.hasPermi('fire:task:detail') }]];
@@ -544,7 +546,7 @@
                             actions.push('<a class="btn btn-success btn-xs ' + completeAllFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="completeAllTask(\'' + row.taskId + '\')"><i class="fa fa-check-circle"></i> 一键完成</a> ');
                         }
                         actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.taskId + '\')"><i class="fa fa-edit"></i> 编辑</a> ');
-                        actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.taskId + '\')"><i class="fa fa-remove"></i> 删除</a>');
+                        actions.push('<a class="btn btn-danger btn-xs ' + rowRemoveFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.taskId + '\')"><i class="fa fa-remove"></i> 删除</a>');
                         return actions.join('');
                     }
                 }]

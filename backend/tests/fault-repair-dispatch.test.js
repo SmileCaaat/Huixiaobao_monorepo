@@ -29,5 +29,10 @@ assert.ok(!repairService.includes('dispatchRepairToCurrentUser'), 'no default cu
 assert.match(repairMapper, /repair_user_id = #\{repairUserId\}/);
 assert.match(miniController, /myAssignedRepairList[\s\S]*repair\.setRepairUserId\(userId\)/);
 assert.match(miniController, /selectActiveRegisteredUserList/);
+assert.ok(
+  /validateDispatchAuthority[\s\S]*canDispatchLikeAdmin\(current\)/.test(repairService)
+    && /hasRole\("project_manager"\)/.test(repairService),
+  'project_manager can dispatch like admin via role check'
+);
 
 console.log('fault-repair-dispatch tests: all assertions passed');

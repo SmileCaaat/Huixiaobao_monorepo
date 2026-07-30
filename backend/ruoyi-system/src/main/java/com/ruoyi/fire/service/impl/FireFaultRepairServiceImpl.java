@@ -362,7 +362,8 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         if (current == null) {
             throw new ServiceException("未登录或登录状态已失效");
         }
-        if (current.isAdmin()) {
+        // 超管、系统角色项目负责人：与超管同等派发/指派处理人权限
+        if (canDispatchLikeAdmin(current)) {
             return;
         }
         if (repair.getCompanyId() == null) {
@@ -375,6 +376,24 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
                         && ("1".equals(item.getRoleType()) || "2".equals(item.getRoleType())));
         if (!allowed) {
             throw new ServiceException("您无权派发该单位的报修任务");
+        }
+    }
+
+    /**
+     * 超管或系统角色 project_manager 可全局派发（不依赖单位成员表绑定）。
+     * 同时检查会话用户角色与 Shiro 授权角色，避免 principal 未带 roles 时误判。
+     */
+    private boolean canDispatchLikeAdmin(SysUser current) {
+        if (current.isAdmin()) {
+            return true;
+        }
+        if (fireDataPermissionService.hasGlobalBizDataScope(current)) {
+            return true;
+        }
+        try {
+            return org.apache.shiro.SecurityUtils.getSubject().hasRole("project_manager");
+        } catch (Exception e) {
+            return false;
         }
     }
 }

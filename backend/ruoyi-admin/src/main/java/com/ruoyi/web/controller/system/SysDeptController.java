@@ -62,6 +62,7 @@ public class SysDeptController extends BaseController
         {
             parentId = getSysUser().getDeptId();
         }
+        deptService.checkDeptDataScope(parentId);
         mmap.put("dept", deptService.selectDeptById(parentId));
         return prefix + "/add";
     }
@@ -75,6 +76,8 @@ public class SysDeptController extends BaseController
     @ResponseBody
     public AjaxResult addSave(@Validated SysDept dept)
     {
+        // 防止通过构造 parentId 在其他公司下新增部门
+        deptService.checkDeptDataScope(dept.getParentId());
         if (!deptService.checkDeptNameUnique(dept))
         {
             return error("新增部门'" + dept.getDeptName() + "'失败，部门名称已存在");
@@ -111,6 +114,17 @@ public class SysDeptController extends BaseController
     {
         Long deptId = dept.getDeptId();
         deptService.checkDeptDataScope(deptId);
+        SysDept currentDept = deptService.selectDeptById(deptId);
+        if (StringUtils.isNotNull(dept.getParentId()) && dept.getParentId().longValue() != 0L)
+        {
+            // 防止将本公司部门移动到其他公司
+            deptService.checkDeptDataScope(dept.getParentId());
+        }
+        else if (StringUtils.isNotNull(currentDept) && StringUtils.isNotNull(currentDept.getParentId())
+                && currentDept.getParentId().longValue() != 0L)
+        {
+            return error("修改部门'" + dept.getDeptName() + "'失败，不能将部门移出所属公司");
+        }
         if (!deptService.checkDeptNameUnique(dept))
         {
             return error("修改部门'" + dept.getDeptName() + "'失败，部门名称已存在");
