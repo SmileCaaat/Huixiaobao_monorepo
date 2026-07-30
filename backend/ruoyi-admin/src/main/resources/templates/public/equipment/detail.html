@@ -333,7 +333,15 @@
             </div>
             <div class="info-row">
                 <span class="info-label"><i class="fas fa-tag"></i> 设备类型</span>
-                <span class="info-value" th:text="${equipment.equipmentType}">灭火器</span>
+                <span class="info-value" th:text="${equipment.equipmentType ?: '-'}">灭火器</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-sitemap"></i> 系统名称</span>
+                <span class="info-value" th:text="${equipment.systemName ?: '-'}">火灾自动报警系统</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-th-large"></i> 项目类别</span>
+                <span class="info-value" th:text="${equipment.projectCategory ?: '-'}">消防供配电设施</span>
             </div>
             <div class="info-row">
                 <span class="info-label"><i class="fas fa-industry"></i> 生产厂家</span>
@@ -342,6 +350,27 @@
             <div class="info-row">
                 <span class="info-label"><i class="fas fa-cube"></i> 设备型号</span>
                 <span class="info-value" th:text="${equipment.model ?: '-'}">SN65</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-sort-numeric-up"></i> 设备数量</span>
+                <span class="info-value" th:text="${equipment.quantity != null ? equipment.quantity : '-'}">1</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label"><i class="fas fa-power-off"></i> 使用状态</span>
+                <span class="info-value"
+                    th:text="${equipment.status == '0' ? '启用' : (equipment.status == '1' ? '停用' : '-')}">启用</span>
+            </div>
+        </div>
+
+        <!-- 设备图片 -->
+        <div class="info-card" th:if="${equipment.image != null and equipment.image != ''}">
+            <div class="card-title">
+                <i class="fas fa-image"></i>
+                <span>设备图片</span>
+            </div>
+            <div style="text-align: center;">
+                <img th:src="${equipment.image}" th:alt="${equipment.equipmentName}"
+                    style="display:block;max-width:100%;max-height:360px;margin:0 auto;border-radius:10px;object-fit:contain;">
             </div>
         </div>
 

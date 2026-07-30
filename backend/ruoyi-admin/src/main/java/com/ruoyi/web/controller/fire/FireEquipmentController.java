@@ -199,7 +199,7 @@ public class FireEquipmentController extends BaseController {
 
     /**
      * 查看设备二维码弹窗
-     * 生成设备二维码，二维码内容为：{baseUrl}/public/api/equipment/{equipmentCode}
+     * 生成设备二维码，二维码内容为：{baseUrl}/public/equipment/{equipmentCode}
      * 小程序扫码后可通过 /api/fire/equipment/scan/{equipmentCode} 接口获取设备信息
      */
     @RequiresPermissions("fire:equipment:view")
@@ -208,13 +208,13 @@ public class FireEquipmentController extends BaseController {
         FireEquipment equipment = equipmentService.selectEquipmentById(equipmentId);
         mmap.put("equipment", equipment);
 
-        // 生成二维码访问URL - 指向返回JSON数据的API接口
+        // 生成二维码访问URL - 指向无需登录的设备信息展示页
         String baseUrl = getBaseUrl(request);
-        String qrUrl = baseUrl + "/public/api/equipment/" + equipment.getEquipmentCode();
+        String qrUrl = baseUrl + "/public/equipment/" + equipment.getEquipmentCode();
         mmap.put("qrUrl", qrUrl);
 
         // 生成二维码Base64
-        String qrBase64 = QrCodeUtils.generateQrCodeBase64(qrUrl, 200, 200);
+        String qrBase64 = QrCodeUtils.generateQrCodeBase64(qrUrl, 360, 360);
         mmap.put("qrBase64", qrBase64);
 
         return prefix + "/qrcode";
@@ -232,7 +232,7 @@ public class FireEquipmentController extends BaseController {
         try {
             FireEquipment equipment = equipmentService.selectEquipmentById(equipmentId);
             String baseUrl = getBaseUrl(request);
-            String qrUrl = baseUrl + "/public/api/equipment/" + equipment.getEquipmentCode();
+            String qrUrl = baseUrl + "/public/equipment/" + equipment.getEquipmentCode();
 
             // 生成带标题的二维码（包含设备名称和编码）
             BufferedImage qrImage = QrCodeUtils.generateQrCodeWithBorder(
@@ -289,7 +289,7 @@ public class FireEquipmentController extends BaseController {
             ZipOutputStream zos = new ZipOutputStream(response.getOutputStream());
 
             for (FireEquipment eq : list) {
-                String qrUrl = baseUrl + "/public/api/equipment/" + eq.getEquipmentCode();
+                String qrUrl = baseUrl + "/public/equipment/" + eq.getEquipmentCode();
 
                 // 生成带标题的二维码（包含设备名称和编码）
                 BufferedImage qrImage = QrCodeUtils.generateQrCodeWithBorder(

@@ -799,6 +799,13 @@ label {
 	margin: 5px 5px;
 }
 
+/* 系统管理搜索栏：字段标题按内容占位，避免固定宽度导致文字换行 */
+.system-search-collapse .select-list li > label:not(.radio-box) {
+	width: auto;
+	margin-right: 5px;
+	white-space: nowrap;
+}
+
 .search-btn {
 	background-color: #1ab394;
 	border-color: #1ab394;

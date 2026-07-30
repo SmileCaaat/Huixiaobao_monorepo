@@ -81,6 +81,8 @@ Content-Type: application/json
 | 设备详情 | `GET /api/fire/equipment/detail/{equipmentId}` | `equipmentId` | 已对应 |
 | 新增/编辑设备 | `POST /api/fire/equipment/add|edit` | `equipmentId,companyId,buildingId` | 已对应，字段别名需收敛 |
 | 扫码设备 | `GET /api/fire/equipment/scan/{equipmentCode}` | `equipmentCode` | 已对应 |
+| 公开设备详情页 | `GET /public/equipment/{equipmentCode}` | HTML 免登录详情 | 管理端新二维码内容 |
+| 公开设备 JSON（兼容） | `GET /public/api/equipment/{equipmentCode}` | JSON；浏览器 `Accept: text/html` 时 302 到公开详情页 | 旧码兼容 |
 | 设备报障 | `POST /api/fire/equipment/reportFault` | - | 后端缺失；页面实际使用 repair/add |
 
 ### 维保任务

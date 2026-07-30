@@ -1,6 +1,13 @@
 package com.ruoyi.web.controller.fire;
 
+import java.net.URI;
+
+import javax.servlet.http.HttpServletRequest;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,17 +52,25 @@ public class PublicEquipmentController {
 
     /**
      * API接口 - 获取设备详情（JSON格式）
+     * 浏览器直接访问旧二维码地址时，兼容跳转到设备信息展示页
      * 
      * @param equipmentCode 设备编码
      * @return 设备信息
      */
     @GetMapping("/api/equipment/{equipmentCode}")
     @ResponseBody
-    public AjaxResult getEquipmentInfo(@PathVariable("equipmentCode") String equipmentCode) {
+    public ResponseEntity<AjaxResult> getEquipmentInfo(@PathVariable("equipmentCode") String equipmentCode,
+            HttpServletRequest request) {
+        String accept = request.getHeader("Accept");
+        if (accept != null && accept.contains(MediaType.TEXT_HTML_VALUE)) {
+            String detailPath = request.getContextPath() + "/public/equipment/" + equipmentCode;
+            return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(detailPath)).build();
+        }
+
         FireEquipment equipment = equipmentService.selectEquipmentByCode(equipmentCode);
         if (equipment == null) {
-            return AjaxResult.error("设备信息不存在");
+            return ResponseEntity.ok(AjaxResult.error("设备信息不存在"));
         }
-        return AjaxResult.success(equipment);
+        return ResponseEntity.ok(AjaxResult.success(equipment));
     }
 }
