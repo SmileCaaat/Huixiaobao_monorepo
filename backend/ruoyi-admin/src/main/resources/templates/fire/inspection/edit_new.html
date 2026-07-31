@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:include="include :: header('修改巡检登记')" />
-    <th:block th:include="include :: datetimepicker-css" />
+    <th:block th:include="include :: header('修改巡检测试')" />
+    <link th:href="@{/ruoyi/css/fire-inspection-pickers.css}" rel="stylesheet" charset="utf-8"/>
 </head>
 <body class="white-bg">
     <div class="wrapper wrapper-content animated fadeInRight ibox-content">
@@ -14,9 +14,11 @@
                     <select class="form-control" id="companyId" name="companyId" th:field="*{companyId}" required>
                         <option value="">请选择</option>
                         <option th:each="company : ${companies}" th:value="${company.companyId}"
-                            th:text="${company.companyName}" th:data-name="${company.companyName}"></option>
+                            th:text="${company.companyName}" th:data-name="${company.companyName}"
+                            th:data-standard="${company.maintenanceStandard}"></option>
                     </select>
                     <input type="hidden" id="companyName" name="companyName" th:field="*{companyName}" />
+                    <input type="hidden" id="maintenanceStandard" name="maintenanceStandard" th:field="*{maintenanceStandard}" />
                 </div>
             </div>
             <div class="form-group">
@@ -33,38 +35,41 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">建筑名称：</label>
                 <div class="col-sm-8">
-                    <select class="form-control" id="buildingId" name="buildingId" th:field="*{buildingId}" required>
+                    <select class="form-control" id="buildingId" name="buildingId" required>
                         <option value="">请选择</option>
-                        <option th:each="building : ${buildings}" th:value="${building.buildingId}"
-                            th:text="${building.buildingName}" th:data-name="${building.buildingName}"
-                            th:data-company="${building.companyId}"></option>
                     </select>
                     <input type="hidden" id="buildingName" name="buildingName" th:field="*{buildingName}" />
                 </div>
             </div>
             <div class="form-group">
-                <label class="col-sm-3 control-label">所在楼层：</label>
+                <label class="col-sm-3 control-label is-required">所在楼层：</label>
                 <div class="col-sm-8">
-                    <input type="text" name="floor" th:field="*{floor}" class="form-control" placeholder="请输入所在楼层">
+                    <input type="text" class="form-control insp-picker-trigger" id="floorDisplay" placeholder="请选择" readonly>
+                    <input type="hidden" id="floor" name="floor" th:value="${inspection.floor}">
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">系统名称：</label>
                 <div class="col-sm-8">
-                    <select class="form-control" name="systemName" id="systemName" required>
+                    <select class="form-control" id="categoryKey" name="categoryKey" th:field="*{categoryKey}" required>
                         <option value="">请选择</option>
-                        <option th:each="type : ${systemTypes}" th:value="${type.typeName}"
-                            th:data-type="${type.typeCode}" th:text="${type.typeName}"
-                            th:selected="${inspection.systemName == type.typeName}"></option>
+                        <option th:each="type : ${systemTypes}" th:value="${type.categoryKey}"
+                            th:data-name="${type.categoryName}" th:text="${type.categoryName}"></option>
                     </select>
                     <input type="hidden" id="systemType" name="systemType" th:field="*{systemType}" />
+                    <input type="hidden" id="systemName" name="systemName" th:field="*{systemName}" />
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">设备名称：</label>
                 <div class="col-sm-8">
-                    <input type="text" name="equipmentName" th:field="*{equipmentName}" class="form-control"
-                        placeholder="请输入设备名称" required>
+                    <select class="form-control" id="equipmentKey" name="equipmentKey" required>
+                        <option value="">请选择</option>
+                        <option th:each="type : ${equipmentTypes}" th:value="${type.equipmentKey}"
+                            th:data-name="${type.equipmentName}" th:text="${type.equipmentName}"
+                            th:selected="${inspection.equipmentKey == type.equipmentKey}"></option>
+                    </select>
+                    <input type="hidden" id="equipmentName" name="equipmentName" th:field="*{equipmentName}" />
                 </div>
             </div>
             <div class="form-group">
@@ -76,18 +81,15 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">具体位置：</label>
                 <div class="col-sm-8">
-                    <input type="text" name="location" th:field="*{location}" class="form-control" placeholder="请输入具体位置"
-                        maxlength="200" required>
+                    <input type="text" name="location" th:field="*{location}" class="form-control" maxlength="200" required>
                 </div>
             </div>
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">巡检时间：</label>
                 <div class="col-sm-8">
-                    <div class="input-group date">
-                        <input type="text" name="inspectionTime" class="form-control" id="inspectionTime"
-                            th:value="${#dates.format(inspection.inspectionTime, 'yyyy-MM-dd HH:mm:ss')}" required>
-                        <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-                    </div>
+                    <input type="text" class="form-control insp-picker-trigger" id="inspectionDateDisplay" placeholder="请选择" readonly>
+                    <input type="hidden" name="inspectionTime" id="inspectionTime"
+                        th:value="${#dates.format(inspection.inspectionTime, 'yyyy-MM-dd HH:mm:ss')}">
                 </div>
             </div>
             <div class="form-group">
@@ -108,7 +110,13 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="col-sm-3 control-label">上传图片：</label>
+                <label class="col-sm-3 control-label">详细备注：</label>
+                <div class="col-sm-8">
+                    <textarea name="remark" th:field="*{remark}" class="form-control" rows="3" maxlength="300"></textarea>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="col-sm-3 control-label">现场图片：</label>
                 <div class="col-sm-8">
                     <input type="hidden" name="imageUrls" id="imageUrls" th:value="${inspection.imageUrls}">
                     <input type="file" id="simpleUpload" multiple accept="image/*" class="form-control">
@@ -117,72 +125,121 @@
                     <div id="preview" style="margin-top:10px;"></div>
                 </div>
             </div>
-            <div class="form-group">
-                <label class="col-sm-3 control-label">详细备注：</label>
-                <div class="col-sm-8">
-                    <textarea name="remark" th:field="*{remark}" class="form-control" rows="3" maxlength="500"
-                        placeholder="请输入详细备注"></textarea>
-                </div>
-            </div>
         </form>
     </div>
     <th:block th:include="include :: footer" />
-    <th:block th:include="include :: datetimepicker-js" />
+    <script th:src="@{/ruoyi/js/fire-inspection-pickers.js}" charset="utf-8"></script>
     <script th:inline="javascript">
-        console.log('=== EDIT SIMPLE UPLOAD VERSION 1.0 ===');
         var prefix = ctx + "fire/inspection";
+        var currentBuildingId = /*[[${inspection.buildingId}]]*/ null;
         var existingImageUrls = /*[[${inspection.imageUrls}]]*/ '';
         var uploadedImages = [];
 
+        function loadBuildings(companyId, selectedId) {
+            $("#buildingId").html('<option value="">请选择</option>');
+            if (!companyId) return;
+            $.get(prefix + "/buildings/" + companyId, function (res) {
+                if (res.code == 0 || res.code == 200) {
+                    var list = res.data || [];
+                    var html = '<option value="">请选择</option>';
+                    for (var i = 0; i < list.length; i++) {
+                        var selected = selectedId && selectedId == list[i].buildingId ? ' selected' : '';
+                        html += '<option value="' + list[i].buildingId + '" data-name="' + list[i].buildingName + '"' + selected + '>' + list[i].buildingName + '</option>';
+                    }
+                    $("#buildingId").html(html);
+                    $("#buildingName").val($("#buildingId option:selected").data("name") || '');
+                }
+            });
+        }
+
+        function loadEquipmentTypes(categoryKey, selectedKey) {
+            $("#equipmentKey").html('<option value="">请选择</option>');
+            $("#equipmentName").val('');
+            if (!categoryKey) {
+                $("#equipmentKey").html('<option value="">请先选择系统名称</option>');
+                return;
+            }
+            $.get(prefix + "/equipmentTypes", { categoryKey: categoryKey }, function (res) {
+                if (res.code == 0 || res.code == 200) {
+                    var list = res.data || [];
+                    var html = '<option value="">请选择</option>';
+                    for (var i = 0; i < list.length; i++) {
+                        var selected = selectedKey && selectedKey == list[i].equipmentKey ? ' selected' : '';
+                        html += '<option value="' + list[i].equipmentKey + '" data-name="' + list[i].equipmentName + '"' + selected + '>' + list[i].equipmentName + '</option>';
+                    }
+                    $("#equipmentKey").html(html);
+                    $("#equipmentName").val($("#equipmentKey option:selected").data("name") || '');
+                }
+            });
+        }
+
+        function removeImage(index) {
+            uploadedImages.splice(index, 1);
+            renderExistingImages();
+            $('#imageUrls').val(uploadedImages.join(','));
+        }
+
+        function renderExistingImages() {
+            var html = '<div><strong>已上传的图片：</strong></div>';
+            for (var i = 0; i < uploadedImages.length; i++) {
+                html += '<div style="display:inline-block;margin:5px;padding:5px;border:1px solid #ddd;border-radius:3px;">';
+                html += '<img src="' + uploadedImages[i] + '" style="max-width:80px;max-height:80px;vertical-align:middle;margin-right:6px;" />';
+                html += '<button type="button" class="btn btn-xs btn-danger" onclick="removeImage(' + i + ')">删除</button>';
+                html += '</div>';
+            }
+            $('#existingImages').html(html);
+        }
+
         $(function () {
-            // 初始化已有图片
+            FireInspectionPickers.initFloorPicker({
+                trigger: '#floorDisplay',
+                hidden: '#floor',
+                mount: $('body')
+            });
+            FireInspectionPickers.initDatePicker({
+                trigger: '#inspectionDateDisplay',
+                hidden: '#inspectionTime',
+                mount: $('body'),
+                defaultNow: false
+            });
+
+            loadBuildings($("#companyId").val(), currentBuildingId);
+
             if (existingImageUrls && existingImageUrls.trim() !== '') {
-                uploadedImages = existingImageUrls.split(',').map(function(url) {
+                uploadedImages = existingImageUrls.split(',').map(function (url) {
                     return url.trim();
-                }).filter(function(url) {
+                }).filter(function (url) {
                     return url !== '';
                 });
-                console.log('Existing images:', uploadedImages);
-                
-                // 显示已有图片
-                var html = '<div><strong>已上传的图片：</strong></div>';
-                for (var i = 0; i < uploadedImages.length; i++) {
-                    html += '<div style="display:inline-block;margin:5px;padding:5px;border:1px solid #ddd;border-radius:3px;">';
-                    html += '<span>图片' + (i+1) + '</span> ';
-                    html += '<button type="button" class="btn btn-xs btn-danger" onclick="removeImage(' + i + ')">删除</button>';
-                    html += '</div>';
-                }
-                $('#existingImages').html(html);
+                renderExistingImages();
                 $('#imageUrls').val(uploadedImages.join(','));
             }
 
-            // 初始化日期选择器
-            $("#inspectionTime").datetimepicker({
-                format: "yyyy-mm-dd hh:ii:ss",
-                minView: "hour",
-                autoclose: true,
-                todayBtn: true
-            });
-
-            // 公司选择联动
             $("#companyId").change(function () {
-                var companyName = $(this).find("option:selected").data("name");
-                $("#companyName").val(companyName);
+                var opt = $(this).find("option:selected");
+                $("#companyName").val(opt.data("name") || '');
+                $("#maintenanceStandard").val(opt.data("standard") || '');
+                loadBuildings($(this).val());
             });
 
-            // 建筑选择
             $("#buildingId").change(function () {
-                var buildingName = $(this).find("option:selected").data("name");
-                $("#buildingName").val(buildingName);
+                $("#buildingName").val($(this).find("option:selected").data("name") || '');
             });
 
-            // 系统名称选择
-            $("#systemName").change(function () {
-                var systemType = $(this).find("option:selected").data("type");
-                $("#systemType").val(systemType);
+            $("#categoryKey").change(function () {
+                var opt = $(this).find("option:selected");
+                var key = $(this).val() || '';
+                $("#systemName").val(opt.data("name") || '');
+                $("#systemType").val(key);
+                $("#equipmentKey").val('');
+                $("#equipmentName").val('');
+                loadEquipmentTypes(key);
             });
 
-            // 设备状态开关
+            $("#equipmentKey").change(function () {
+                $("#equipmentName").val($(this).find("option:selected").data("name") || '');
+            });
+
             $("#equipmentStatusSwitch").change(function () {
                 if ($(this).is(":checked")) {
                     $("#equipmentStatus").val("0");
@@ -193,91 +250,60 @@
                 }
             });
 
-            // 文件选择预览
-            $("#simpleUpload").change(function() {
+            $("#simpleUpload").change(function () {
                 var files = this.files;
-                $('#preview').html('');
-                if (files.length > 0) {
-                    $('#preview').append('<div><strong>新选择的图片：</strong></div>');
-                    for (var i = 0; i < files.length; i++) {
-                        $('#preview').append('<span style="margin-right:10px;">' + files[i].name + '</span>');
-                    }
+                $("#preview").html('');
+                for (var i = 0; i < files.length; i++) {
+                    $("#preview").append('<span style="margin-right:10px;">' + files[i].name + '</span>');
                 }
             });
         });
 
-        function removeImage(index) {
-            console.log('Removing image at index:', index);
-            uploadedImages.splice(index, 1);
-            $('#imageUrls').val(uploadedImages.join(','));
-            console.log('Updated imageUrls:', $('#imageUrls').val());
-            
-            // 重新显示
-            var html = '<div><strong>已上传的图片：</strong></div>';
-            for (var i = 0; i < uploadedImages.length; i++) {
-                html += '<div style="display:inline-block;margin:5px;padding:5px;border:1px solid #ddd;border-radius:3px;">';
-                html += '<span>图片' + (i+1) + '</span> ';
-                html += '<button type="button" class="btn btn-xs btn-danger" onclick="removeImage(' + i + ')">删除</button>';
-                html += '</div>';
-            }
-            $('#existingImages').html(html);
-        }
-
         function submitHandler() {
-            if ($.validate.form()) {
-                console.log('=== Edit Simple Submit Handler ===');
-                console.log('Current uploadedImages:', uploadedImages);
-                
-                var fileInput = document.getElementById('simpleUpload');
-                var files = fileInput.files;
-                
-                console.log('Files:', files);
-                console.log('Files length:', files.length);
-                
-                if (files && files.length > 0) {
-                    // 有新文件，先上传
-                    console.log('Uploading new files...');
-                    var formData = new FormData();
-                    for (var i = 0; i < files.length; i++) {
-                        formData.append('files', files[i]);
-                        console.log('Adding file:', files[i].name);
-                    }
-                    
-                    $.ajax({
-                        url: ctx + 'common/uploads',
-                        type: 'POST',
-                        data: formData,
-                        processData: false,
-                        contentType: false,
-                        success: function(response) {
-                            console.log('Upload response:', response);
-                            if (response.code == 200 || response.code == 0) {
-                                // 合并新旧图片URL
-                                var newUrls = response.urls.split(',');
-                                uploadedImages = uploadedImages.concat(newUrls);
-                                $('#imageUrls').val(uploadedImages.join(','));
-                                console.log('Merged imageUrls:', $('#imageUrls').val());
-                                doSubmit();
-                            } else {
-                                $.modal.msgError('图片上传失败：' + response.msg);
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('Upload error:', error);
-                            $.modal.msgError('图片上传失败：' + error);
-                        }
-                    });
-                } else {
-                    // 没有新文件，直接提交（保留已有图片）
-                    console.log('No new files, submitting with existing images');
-                    $('#imageUrls').val(uploadedImages.join(','));
-                    doSubmit();
+            if (!$("#floor").val()) {
+                $.modal.msgError("请选择所在楼层");
+                return;
+            }
+            if (!$("#inspectionTime").val()) {
+                $.modal.msgError("请选择巡检时间");
+                return;
+            }
+            if (!$.validate.form()) {
+                return;
+            }
+            var fileInput = document.getElementById('simpleUpload');
+            var files = fileInput.files;
+            if (files && files.length > 0) {
+                var formData = new FormData();
+                for (var i = 0; i < files.length; i++) {
+                    formData.append('files', files[i]);
                 }
+                $.ajax({
+                    url: ctx + 'common/uploads',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        if (response.code == 200 || response.code == 0) {
+                            var newUrls = (response.urls || '').split(',').filter(Boolean);
+                            uploadedImages = uploadedImages.concat(newUrls);
+                            $('#imageUrls').val(uploadedImages.join(','));
+                            doSubmit();
+                        } else {
+                            $.modal.msgError('图片上传失败：' + response.msg);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        $.modal.msgError('图片上传失败：' + error);
+                    }
+                });
+            } else {
+                doSubmit();
             }
         }
 
         function doSubmit() {
-            console.log('Submitting with imageUrls:', $("#imageUrls").val());
             $.operate.save(prefix + "/edit", $('#form-inspection-edit').serialize());
         }
     </script>

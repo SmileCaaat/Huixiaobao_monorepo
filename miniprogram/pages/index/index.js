@@ -57,12 +57,12 @@ const _sfc_main = {
         color: "#3f51b5",
         url: "/pages/customer/index"
       },
-      // {
-      //   name: "巡检测试",
-      //   icon: "/static/appIcon/test.png",
-      //   color: "#43a047",
-      //   url: "/pages/inspection/index",
-      // },
+      {
+        name: "巡检测试",
+        icon: "/static/appIcon/test.png",
+        color: "#43a047",
+        url: "/pages/inspection/index"
+      },
       {
         name: "设备信息",
         icon: "/static/appIcon/equipment.png",

@@ -14,6 +14,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="floor"           column="floor"            />
         <result property="systemType"      column="system_type"      />
         <result property="systemName"      column="system_name"      />
+        <result property="categoryKey"     column="category_key"     />
+        <result property="equipmentKey"    column="equipment_key"    />
+        <result property="systemTypeId"    column="system_type_id"   />
+        <result property="equipmentTypeId" column="equipment_type_id"/>
+        <result property="maintenanceStandard" column="maintenance_standard"/>
         <result property="equipmentName"   column="equipment_name"   />
         <result property="equipmentCount"  column="equipment_count"  />
         <result property="location"        column="location"         />
@@ -33,7 +38,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectFireInspectionVo">
         select inspection_id, company_id, company_name, inspection_type, building_id, building_name, 
-               floor, system_type, system_name, equipment_name, equipment_count, location, 
+               floor, system_type, system_name, category_key, equipment_key,
+               system_type_id, equipment_type_id, maintenance_standard,
+               equipment_name, equipment_count, location, 
                inspection_time, equipment_status, inspector_id, inspector_name, image_urls, 
                task_id, remark, del_flag, create_by, create_time, update_by, update_time
         from fire_inspection
@@ -66,11 +73,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="systemType != null and systemType != ''">
                 AND system_type = #{systemType}
             </if>
+            <if test="systemTypeId != null">
+                AND system_type_id = #{systemTypeId}
+            </if>
+            <if test="categoryKey != null and categoryKey != ''">
+                AND category_key = #{categoryKey}
+            </if>
+            <if test="equipmentKey != null and equipmentKey != ''">
+                AND equipment_key = #{equipmentKey}
+            </if>
             <if test="systemName != null and systemName != ''">
                 AND system_name like concat('%', #{systemName}, '%')
             </if>
             <if test="equipmentName != null and equipmentName != ''">
                 AND equipment_name like concat('%', #{equipmentName}, '%')
+            </if>
+            <if test="maintenanceStandard != null and maintenanceStandard != ''">
+                AND maintenance_standard like concat('%', #{maintenanceStandard}, '%')
             </if>
             <if test="equipmentStatus != null and equipmentStatus != ''">
                 AND equipment_status = #{equipmentStatus}
@@ -84,14 +103,38 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="taskId != null">
                 AND task_id = #{taskId}
             </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    company_name like concat('%', #{keyword}, '%')
+                    OR building_name like concat('%', #{keyword}, '%')
+                    OR equipment_name like concat('%', #{keyword}, '%')
+                    OR location like concat('%', #{keyword}, '%')
+                    OR inspector_name like concat('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="inspectionMonth != null and inspectionMonth != ''">
+                AND date_format(inspection_time, '%Y-%m') = #{inspectionMonth}
+            </if>
             <if test="params.beginTime != null and params.beginTime != ''">
                 AND inspection_time &gt;= #{params.beginTime}
             </if>
             <if test="params.endTime != null and params.endTime != ''">
                 AND inspection_time &lt;= #{params.endTime}
             </if>
+            <if test="params.inspectionDate != null and params.inspectionDate != ''">
+                AND date_format(inspection_time, '%Y-%m-%d') = #{params.inspectionDate}
+            </if>
+            <if test="params.companyIds != null and params.companyIds.size() &gt; 0">
+                AND company_id in
+                <foreach collection="params.companyIds" item="cid" open="(" separator="," close=")">
+                    #{cid}
+                </foreach>
+            </if>
+            <if test="params.scopeMode != null and params.scopeMode == 'none'">
+                AND 1 = 0
+            </if>
         </where>
-        order by inspection_time desc
+        order by inspection_time desc, create_time desc
     </select>
 
     <select id="selectFireInspectionByCompanyId" parameterType="Long" resultMap="FireInspectionResult">
@@ -111,6 +154,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="floor != null">floor,</if>
             <if test="systemType != null">system_type,</if>
             <if test="systemName != null">system_name,</if>
+            <if test="categoryKey != null">category_key,</if>
+            <if test="equipmentKey != null">equipment_key,</if>
+            <if test="systemTypeId != null">system_type_id,</if>
+            <if test="equipmentTypeId != null">equipment_type_id,</if>
+            <if test="maintenanceStandard != null">maintenance_standard,</if>
             <if test="equipmentName != null">equipment_name,</if>
             <if test="equipmentCount != null">equipment_count,</if>
             <if test="location != null">location,</if>
@@ -134,6 +182,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="floor != null">#{floor},</if>
             <if test="systemType != null">#{systemType},</if>
             <if test="systemName != null">#{systemName},</if>
+            <if test="categoryKey != null">#{categoryKey},</if>
+            <if test="equipmentKey != null">#{equipmentKey},</if>
+            <if test="systemTypeId != null">#{systemTypeId},</if>
+            <if test="equipmentTypeId != null">#{equipmentTypeId},</if>
+            <if test="maintenanceStandard != null">#{maintenanceStandard},</if>
             <if test="equipmentName != null">#{equipmentName},</if>
             <if test="equipmentCount != null">#{equipmentCount},</if>
             <if test="location != null">#{location},</if>
@@ -161,6 +214,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="floor != null">floor = #{floor},</if>
             <if test="systemType != null">system_type = #{systemType},</if>
             <if test="systemName != null">system_name = #{systemName},</if>
+            <if test="categoryKey != null">category_key = #{categoryKey},</if>
+            <if test="equipmentKey != null">equipment_key = #{equipmentKey},</if>
+            <if test="systemTypeId != null">system_type_id = #{systemTypeId},</if>
+            <if test="equipmentTypeId != null">equipment_type_id = #{equipmentTypeId},</if>
+            <if test="maintenanceStandard != null">maintenance_standard = #{maintenanceStandard},</if>
             <if test="equipmentName != null">equipment_name = #{equipmentName},</if>
             <if test="equipmentCount != null">equipment_count = #{equipmentCount},</if>
             <if test="location != null">location = #{location},</if>

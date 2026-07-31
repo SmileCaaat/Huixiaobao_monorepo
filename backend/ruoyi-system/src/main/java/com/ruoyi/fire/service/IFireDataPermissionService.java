@@ -4,6 +4,7 @@ import java.util.List;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.fire.domain.FireCheckIn;
 import com.ruoyi.fire.domain.FireFaultRepair;
+import com.ruoyi.fire.domain.FireInspection;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.domain.FireUserCompany;
 import com.ruoyi.system.domain.FireReportRecord;
@@ -106,6 +107,17 @@ public interface IFireDataPermissionService {
 
     /** 为签到列表/导出查询注入可见范围（非管理员） */
     void applyCheckInListScope(FireCheckIn query, SysUser user);
+
+    /** 为巡检测试列表/导出查询注入可见公司范围（非管理员） */
+    void applyInspectionListScope(FireInspection query, SysUser user);
+
+    boolean canAccessInspection(Long userId, FireInspection inspection);
+
+    boolean canAccessInspection(SysUser user, FireInspection inspection);
+
+    void assertCanAccessInspection(Long userId, FireInspection inspection);
+
+    void assertCanAccessInspection(SysUser user, FireInspection inspection);
 
     boolean canAccessCheckIn(Long userId, FireCheckIn checkIn);
 

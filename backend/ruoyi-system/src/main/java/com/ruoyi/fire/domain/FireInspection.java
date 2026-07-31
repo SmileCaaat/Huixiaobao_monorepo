@@ -41,15 +41,31 @@ public class FireInspection extends BaseEntity {
     @Excel(name = "所在楼层")
     private String floor;
 
-    /** 系统类型 */
+    /** 系统类型编码（兼容旧字段） */
     private String systemType;
 
     /** 系统名称 */
     @Excel(name = "系统名称")
     private String systemName;
 
+    /** 消防维护一级类目 key（非 fire_system_type） */
+    private String categoryKey;
+
+    /** 消防维护二级设备 key（非 fire_system_type） */
+    private String equipmentKey;
+
+    /** 遗留字段：不再关联 fire_system_type */
+    private Long systemTypeId;
+
+    /** 遗留字段：不再关联 fire_system_type */
+    private Long equipmentTypeId;
+
+    /** 维保标准快照 */
+    @Excel(name = "维保标准")
+    private String maintenanceStandard;
+
     /** 设备名称 */
-    @Excel(name = "设备名称")
+    @Excel(name = "巡检设备")
     private String equipmentName;
 
     /** 设备数量 */
@@ -73,8 +89,17 @@ public class FireInspection extends BaseEntity {
     private Long inspectorId;
 
     /** 巡查人员姓名 */
-    @Excel(name = "巡查人员")
+    @Excel(name = "操作员")
     private String inspectorName;
+
+    /** 关键词（客户/建筑/设备/位置/操作员模糊匹配，非持久化） */
+    private String keyword;
+
+    /** 巡检月份 YYYY-MM（非持久化） */
+    private String inspectionMonth;
+
+    /** 巡检日期 YYYY-MM-DD（非持久化，小程序筛选） */
+    private String inspectionDate;
 
     /** 图片URL */
     private String imageUrls;
@@ -161,6 +186,70 @@ public class FireInspection extends BaseEntity {
 
     public void setSystemName(String systemName) {
         this.systemName = systemName;
+    }
+
+    public String getCategoryKey() {
+        return categoryKey;
+    }
+
+    public void setCategoryKey(String categoryKey) {
+        this.categoryKey = categoryKey;
+    }
+
+    public String getEquipmentKey() {
+        return equipmentKey;
+    }
+
+    public void setEquipmentKey(String equipmentKey) {
+        this.equipmentKey = equipmentKey;
+    }
+
+    public Long getSystemTypeId() {
+        return systemTypeId;
+    }
+
+    public void setSystemTypeId(Long systemTypeId) {
+        this.systemTypeId = systemTypeId;
+    }
+
+    public Long getEquipmentTypeId() {
+        return equipmentTypeId;
+    }
+
+    public void setEquipmentTypeId(Long equipmentTypeId) {
+        this.equipmentTypeId = equipmentTypeId;
+    }
+
+    public String getMaintenanceStandard() {
+        return maintenanceStandard;
+    }
+
+    public void setMaintenanceStandard(String maintenanceStandard) {
+        this.maintenanceStandard = maintenanceStandard;
+    }
+
+    public String getKeyword() {
+        return keyword;
+    }
+
+    public void setKeyword(String keyword) {
+        this.keyword = keyword;
+    }
+
+    public String getInspectionMonth() {
+        return inspectionMonth;
+    }
+
+    public void setInspectionMonth(String inspectionMonth) {
+        this.inspectionMonth = inspectionMonth;
+    }
+
+    public String getInspectionDate() {
+        return inspectionDate;
+    }
+
+    public void setInspectionDate(String inspectionDate) {
+        this.inspectionDate = inspectionDate;
     }
 
     public String getEquipmentName() {

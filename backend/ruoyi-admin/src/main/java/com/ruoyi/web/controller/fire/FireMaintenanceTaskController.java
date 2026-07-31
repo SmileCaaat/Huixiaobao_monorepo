@@ -48,6 +48,9 @@ public class FireMaintenanceTaskController extends BaseController {
     @Autowired
     private IFireDataPermissionService fireDataPermissionService;
 
+    @Autowired
+    private com.ruoyi.fire.service.IFireMaintenanceTemplateCategoryService templateCategoryService;
+
     /**
      * 维保任务页面
      */
@@ -729,64 +732,7 @@ public class FireMaintenanceTaskController extends BaseController {
     @GetMapping("/templates/inspection/level1")
     @ResponseBody
     public AjaxResult getInspectionLevel1Templates() {
-        List<FireMaintenanceTemplate> templates = fireMaintenanceTaskService.getAllTemplatesWithCache();
-        java.util.LinkedHashMap<String, com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO> map =
-                new java.util.LinkedHashMap<>();
-        for (FireMaintenanceTemplate template : templates) {
-            if (template == null || template.getLevel() == null || template.getLevel() != 1) {
-                continue;
-            }
-            String type = template.getTemplateType() == null ? "0" : template.getTemplateType();
-            if (!"0".equals(type) && !"1".equals(type)) {
-                continue;
-            }
-            // 选择系统弹窗要求名称唯一：同名类目（即使 itemCode 不同）合并为一项
-            String normalizedName = com.ruoyi.fire.service.support.FireInspectionTestKeys
-                    .normalizeText(template.getItemName());
-            String mergeKey;
-            if (com.ruoyi.common.utils.StringUtils.isNotEmpty(normalizedName)) {
-                mergeKey = "n:" + normalizedName.toLowerCase();
-            }
-            else {
-                mergeKey = "id:" + template.getId();
-            }
-            com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO vo = map.get(mergeKey);
-            if (vo == null) {
-                vo = new com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO();
-                vo.setCategoryKey(mergeKey);
-                vo.setCategoryName(normalizedName);
-                vo.setSortOrder(template.getSortOrder());
-                map.put(mergeKey, vo);
-            }
-            else if (com.ruoyi.common.utils.StringUtils.isEmpty(vo.getCategoryName())
-                    && com.ruoyi.common.utils.StringUtils.isNotEmpty(normalizedName)) {
-                vo.setCategoryName(normalizedName);
-            }
-            if (template.getSortOrder() != null
-                    && (vo.getSortOrder() == null || template.getSortOrder() < vo.getSortOrder())) {
-                vo.setSortOrder(template.getSortOrder());
-            }
-            if ("1".equals(type)) {
-                if (!vo.getFireTestTemplateIds().contains(template.getId())) {
-                    vo.getFireTestTemplateIds().add(template.getId());
-                }
-            }
-            else if (!vo.getMaintenanceTemplateIds().contains(template.getId())) {
-                vo.getMaintenanceTemplateIds().add(template.getId());
-            }
-        }
-        List<com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO> result = new ArrayList<>(map.values());
-        result.sort((a, b) -> {
-            int sa = a.getSortOrder() == null ? Integer.MAX_VALUE : a.getSortOrder();
-            int sb = b.getSortOrder() == null ? Integer.MAX_VALUE : b.getSortOrder();
-            if (sa != sb) {
-                return Integer.compare(sa, sb);
-            }
-            String na = a.getCategoryName() == null ? "" : a.getCategoryName();
-            String nb = b.getCategoryName() == null ? "" : b.getCategoryName();
-            return na.compareTo(nb);
-        });
-        return AjaxResult.success(result);
+        return AjaxResult.success(templateCategoryService.listInspectionLevel1Categories());
     }
 
     /**

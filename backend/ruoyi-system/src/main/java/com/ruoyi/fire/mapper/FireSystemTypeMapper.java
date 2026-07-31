@@ -34,6 +34,16 @@ public interface FireSystemTypeMapper {
     public List<FireSystemType> selectFireSystemTypeAll();
 
     /**
+     * 查询正常未删除的一级类目（parent_id 为 0 或 NULL）
+     */
+    public List<FireSystemType> selectTopLevelSystemTypes();
+
+    /**
+     * 查询指定一级类目下正常未删除的子类目
+     */
+    public List<FireSystemType> selectChildSystemTypes(Long parentId);
+
+    /**
      * 新增消防系统类型
      * 
      * @param fireSystemType 消防系统类型

@@ -1,0 +1,23 @@
+/* 巡检测试：楼层网格 / 三列日期选择器（PC） */
+.insp-picker-trigger { cursor: pointer; background: #fff; }
+.insp-picker-trigger[readonly] { background: #fff; cursor: pointer; }
+.insp-sheet-mask { display: none; position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: 19891020; align-items: flex-end; justify-content: center; }
+.insp-sheet-mask.open { display: flex; }
+.insp-sheet { width: 100%; max-width: 520px; background: #fff; border-radius: 12px 12px 0 0; box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12); max-height: 78vh; display: flex; flex-direction: column; }
+.insp-sheet-title { text-align: center; font-size: 15px; font-weight: 600; color: #333; padding: 14px 16px 8px; }
+.insp-sheet-hd { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #eee; font-size: 14px; color: #666; }
+.insp-sheet-hd .confirm { color: #e53935; font-weight: 600; cursor: pointer; }
+.insp-sheet-hd .cancel, .insp-sheet-hd .confirm { min-width: 48px; cursor: pointer; user-select: none; }
+.insp-sheet-hd .title { color: #333; font-weight: 600; }
+.insp-floor-scroll { overflow-y: auto; max-height: 52vh; padding: 8px 16px 12px; }
+.insp-floor-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.insp-floor-cell { height: 36px; line-height: 34px; text-align: center; font-size: 14px; color: #333; background: #f5f5f5; border-radius: 6px; border: 1px solid transparent; box-sizing: border-box; cursor: pointer; user-select: none; }
+.insp-floor-cell:hover { background: #eee; }
+.insp-floor-cell.active { color: #e53935; background: #ffebee; border-color: #e53935; font-weight: 600; }
+.insp-floor-cancel { margin: 4px 16px 14px; height: 40px; line-height: 40px; text-align: center; font-size: 15px; color: #333; background: #f5f5f5; border-radius: 6px; cursor: pointer; user-select: none; }
+.insp-date-cols { display: grid; grid-template-columns: repeat(3, 1fr); height: 220px; position: relative; padding: 0 8px; }
+.insp-date-cols::before { content: ""; position: absolute; left: 8px; right: 8px; top: 50%; height: 36px; margin-top: -18px; border-top: 1px solid #eee; border-bottom: 1px solid #eee; pointer-events: none; z-index: 1; }
+.insp-date-col { overflow-y: auto; height: 100%; scroll-snap-type: y mandatory; text-align: center; -webkit-overflow-scrolling: touch; }
+.insp-date-item { height: 36px; line-height: 36px; font-size: 14px; color: #999; scroll-snap-align: center; cursor: pointer; user-select: none; }
+.insp-date-item.active { color: #222; font-weight: 700; font-size: 16px; }
+.insp-date-spacer { height: 92px; pointer-events: none; }

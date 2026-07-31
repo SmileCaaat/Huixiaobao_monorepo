@@ -129,6 +129,18 @@ const editInspection = (data) => {
 const deleteInspection = (id) => {
   return utils_request.post(`/api/fire/inspection/delete/${id}`);
 };
+const getInspectionTemplateCategories = () => {
+  return utils_request.get("/api/fire/inspection/templateCategories");
+};
+const getInspectionTemplateEquipments = (categoryKey) => {
+  return utils_request.get(
+    `/api/fire/inspection/templateCategories/${encodeURIComponent(categoryKey)}/equipments`
+  );
+};
+/** @deprecated 兼容旧调用，已改为消防维护模板一级类目 */
+const getInspectionSystemTypes = () => getInspectionTemplateCategories();
+/** @deprecated 兼容旧调用，参数为 categoryKey */
+const getInspectionEquipmentTypes = (categoryKey) => getInspectionTemplateEquipments(categoryKey);
 const getCheckInList = (data) => {
   return utils_request.post("/api/fire/checkIn/list", data);
 };
@@ -256,6 +268,10 @@ const api = {
   addInspection,
   editInspection,
   deleteInspection,
+  getInspectionTemplateCategories,
+  getInspectionTemplateEquipments,
+  getInspectionSystemTypes,
+  getInspectionEquipmentTypes,
   // 签到
   getCheckInList,
   addCheckIn,

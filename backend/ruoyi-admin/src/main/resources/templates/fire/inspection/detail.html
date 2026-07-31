@@ -2,7 +2,7 @@
 <html lang="zh" xmlns:th="http://www.thymeleaf.org">
 
 <head>
-    <th:block th:include="include :: header('巡检详情')" />
+    <th:block th:include="include :: header('巡检测试详情')" />
     <style>
         .detail-item {
             margin-bottom: 15px;
@@ -51,7 +51,7 @@
     <div class="wrapper wrapper-content animated fadeInRight ibox-content">
         <div class="panel panel-default">
             <div class="panel-heading">
-                <strong>巡检登记详情</strong>
+                <strong>巡检测试详情</strong>
             </div>
             <div class="panel-body">
                 <div class="row">
@@ -130,13 +130,13 @@
                 <div class="row">
                     <div class="col-sm-6">
                         <div class="detail-item">
-                            <span class="detail-label">巡查人员：</span>
+                            <span class="detail-label">操作员：</span>
                             <span class="detail-value" th:text="${inspection.inspectorName}"></span>
                         </div>
                     </div>
                     <div class="col-sm-6">
                         <div class="detail-item">
-                            <span class="detail-label">创建时间：</span>
+                            <span class="detail-label">登记日期：</span>
                             <span class="detail-value"
                                 th:text="${#dates.format(inspection.createTime, 'yyyy-MM-dd HH:mm:ss')}"></span>
                         </div>

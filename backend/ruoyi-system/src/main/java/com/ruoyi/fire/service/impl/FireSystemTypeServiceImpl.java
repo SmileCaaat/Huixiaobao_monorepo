@@ -52,6 +52,16 @@ public class FireSystemTypeServiceImpl implements IFireSystemTypeService {
         return fireSystemTypeMapper.selectFireSystemTypeAll();
     }
 
+    @Override
+    public List<FireSystemType> selectTopLevelSystemTypes() {
+        return fireSystemTypeMapper.selectTopLevelSystemTypes();
+    }
+
+    @Override
+    public List<FireSystemType> selectChildSystemTypes(Long parentId) {
+        return fireSystemTypeMapper.selectChildSystemTypes(parentId);
+    }
+
     /**
      * 新增消防系统类型
      * 

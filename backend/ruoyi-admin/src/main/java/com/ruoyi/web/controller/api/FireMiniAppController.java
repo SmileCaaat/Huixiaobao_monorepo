@@ -78,6 +78,9 @@ public class FireMiniAppController extends BaseController {
     @Autowired
     private IFireDataPermissionService fireDataPermissionService;
 
+    @Autowired
+    private IFireMaintenanceTemplateCategoryService templateCategoryService;
+
     // ==================== 公司相关接口 ====================
 
     /**
@@ -777,42 +780,62 @@ public class FireMiniAppController extends BaseController {
     // ==================== 巡检登记相关接口 ====================
 
     /**
-     * 获取巡检登记列表
+     * 获取巡检测试列表
      */
     @PostMapping("/inspection/list")
     public TableDataInfo inspectionList(@RequestBody FireInspection inspection) {
+        if (inspection == null) {
+            inspection = new FireInspection();
+        }
+        applyInspectionDateFilter(inspection);
+        fireDataPermissionService.applyInspectionListScope(inspection, ShiroUtils.getSysUser());
         startPage();
         List<FireInspection> list = inspectionService.selectFireInspectionList(inspection);
         return getDataTable(list);
     }
 
     /**
-     * 获取当前用户的巡检列表
+     * 获取当前用户可见的巡检测试列表
      */
     @PostMapping("/inspection/myList")
     public TableDataInfo myInspectionList(@RequestBody FireInspection inspection) {
-        inspection.setInspectorId(ShiroUtils.getUserId());
+        if (inspection == null) {
+            inspection = new FireInspection();
+        }
+        applyInspectionDateFilter(inspection);
+        fireDataPermissionService.applyInspectionListScope(inspection, ShiroUtils.getSysUser());
         startPage();
         List<FireInspection> list = inspectionService.selectFireInspectionList(inspection);
         return getDataTable(list);
     }
 
     /**
-     * 获取巡检详情
+     * 获取巡检测试详情
      */
     @GetMapping("/inspection/detail/{inspectionId}")
     public AjaxResult inspectionDetail(@PathVariable("inspectionId") Long inspectionId) {
         FireInspection inspection = inspectionService.selectFireInspectionById(inspectionId);
+        try {
+            fireDataPermissionService.assertCanAccessInspection(ShiroUtils.getSysUser(), inspection);
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
         return AjaxResult.success(inspection);
     }
 
     /**
-     * 新增巡检登记
+     * 新增巡检测试
      */
     @PostMapping("/inspection/add")
     public AjaxResult addInspection(@RequestBody FireInspection inspection) {
+        try {
+            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), inspection.getCompanyId());
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
         inspection.setInspectorId(ShiroUtils.getUserId());
-        inspection.setInspectorName(ShiroUtils.getLoginName());
+        String displayName = ShiroUtils.getSysUser() != null ? ShiroUtils.getSysUser().getUserName() : null;
+        inspection.setInspectorName(StringUtils.isNotEmpty(displayName) ? displayName : ShiroUtils.getLoginName());
         if (inspection.getInspectionTime() == null) {
             inspection.setInspectionTime(new Date());
         }
@@ -828,38 +851,73 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 修改巡检登记
+     * 修改巡检测试
      */
     @PostMapping("/inspection/edit")
     public AjaxResult editInspection(@RequestBody FireInspection inspection) {
+        FireInspection existing = inspectionService.selectFireInspectionById(inspection.getInspectionId());
+        try {
+            fireDataPermissionService.assertCanAccessInspection(ShiroUtils.getSysUser(), existing);
+            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), inspection.getCompanyId());
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
         inspection.setUpdateBy(ShiroUtils.getLoginName());
         return toAjax(inspectionService.updateFireInspection(inspection));
     }
 
     /**
-     * 删除巡检登记
+     * 删除巡检测试
      */
     @PostMapping("/inspection/delete/{inspectionId}")
     public AjaxResult deleteInspection(@PathVariable("inspectionId") Long inspectionId) {
+        FireInspection existing = inspectionService.selectFireInspectionById(inspectionId);
+        try {
+            fireDataPermissionService.assertCanAccessInspection(ShiroUtils.getSysUser(), existing);
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
         return toAjax(inspectionService.deleteFireInspectionById(inspectionId));
     }
 
     /**
-     * 获取系统类型字典
+     * 巡检测试一级类目（与消防维护模板完全一致）
+     */
+    @GetMapping("/inspection/templateCategories")
+    public AjaxResult inspectionTemplateCategories() {
+        return AjaxResult.success(templateCategoryService.listInspectionLevel1Categories());
+    }
+
+    /**
+     * 巡检测试二级设备类目（与消防维护模板完全一致）
+     */
+    @GetMapping("/inspection/templateCategories/{categoryKey:.+}/equipments")
+    public AjaxResult inspectionTemplateEquipments(@PathVariable("categoryKey") String categoryKey) {
+        return AjaxResult.success(templateCategoryService.listEquipmentsByCategoryKey(categoryKey));
+    }
+
+    /**
+     * 兼容旧路径：一级类目改走消防维护模板
+     */
+    @GetMapping("/inspection/systemTypes")
+    public AjaxResult inspectionSystemTypes() {
+        return AjaxResult.success(templateCategoryService.listInspectionLevel1Categories());
+    }
+
+    /**
+     * 兼容旧路径：按 categoryKey 查询二级设备
+     */
+    @GetMapping("/inspection/equipmentTypes/{categoryKey:.+}")
+    public AjaxResult inspectionEquipmentTypes(@PathVariable("categoryKey") String categoryKey) {
+        return AjaxResult.success(templateCategoryService.listEquipmentsByCategoryKey(categoryKey));
+    }
+
+    /**
+     * 获取系统类型字典（仍返回消防维护一级类目，供巡检测试使用）
      */
     @GetMapping("/dict/systemTypes")
     public AjaxResult getSystemTypes() {
-        // 从数据库获取系统类型列表
-        List<FireSystemType> systemTypes = systemTypeService.selectFireSystemTypeAll();
-
-        java.util.List<Map<String, String>> list = new java.util.ArrayList<>();
-        for (FireSystemType type : systemTypes) {
-            Map<String, String> item = new HashMap<>();
-            item.put("value", type.getTypeCode());
-            item.put("label", type.getTypeName());
-            list.add(item);
-        }
-        return AjaxResult.success(list);
+        return AjaxResult.success(templateCategoryService.listInspectionLevel1Categories());
     }
 
     /**
@@ -1321,6 +1379,43 @@ public class FireMiniAppController extends BaseController {
 
     private boolean isSysAdmin() {
         return ShiroUtils.getSysUser() != null && ShiroUtils.getSysUser().isAdmin();
+    }
+
+    private void applyInspectionDateFilter(FireInspection inspection) {
+        if (inspection == null) {
+            return;
+        }
+        if (inspection.getParams() == null) {
+            inspection.setParams(new HashMap<>());
+        }
+        if (StringUtils.isNotEmpty(inspection.getInspectionDate())) {
+            inspection.getParams().put("inspectionDate", inspection.getInspectionDate());
+        }
+        Object inspectionDate = inspection.getParams().get("inspectionDate");
+        if (inspectionDate == null && inspection.getParams().get("date") != null) {
+            inspectionDate = inspection.getParams().get("date");
+        }
+        if (inspectionDate != null && StringUtils.isNotEmpty(inspectionDate.toString())) {
+            inspection.getParams().put("inspectionDate", inspectionDate.toString());
+        }
+    }
+
+    private java.util.List<Map<String, Object>> toSystemTypeOptions(List<FireSystemType> systemTypes) {
+        java.util.List<Map<String, Object>> list = new java.util.ArrayList<>();
+        if (systemTypes == null) {
+            return list;
+        }
+        for (FireSystemType type : systemTypes) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("typeId", type.getTypeId());
+            item.put("parentId", type.getParentId());
+            item.put("typeCode", type.getTypeCode());
+            item.put("typeName", type.getTypeName());
+            item.put("value", type.getTypeId());
+            item.put("label", type.getTypeName());
+            list.add(item);
+        }
+        return list;
     }
 
     private FireFaultRepair buildEditableRepair(FireFaultRepair request, FireFaultRepair existing) {

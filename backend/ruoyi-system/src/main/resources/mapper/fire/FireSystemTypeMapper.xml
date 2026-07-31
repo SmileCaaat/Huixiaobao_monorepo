@@ -46,6 +46,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="parentId != null">
                 AND parent_id = #{parentId}
             </if>
+            <if test="params != null and params.topLevel != null and params.topLevel == true">
+                AND (parent_id IS NULL OR parent_id = 0)
+            </if>
         </where>
         order by order_num asc
     </select>
@@ -53,6 +56,20 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <select id="selectFireSystemTypeAll" resultMap="FireSystemTypeResult">
         <include refid="selectFireSystemTypeVo"/>
         where status = '0' and del_flag = '0'
+        order by order_num asc
+    </select>
+
+    <select id="selectTopLevelSystemTypes" resultMap="FireSystemTypeResult">
+        <include refid="selectFireSystemTypeVo"/>
+        where status = '0' and del_flag = '0'
+          and (parent_id IS NULL OR parent_id = 0)
+        order by order_num asc
+    </select>
+
+    <select id="selectChildSystemTypes" parameterType="Long" resultMap="FireSystemTypeResult">
+        <include refid="selectFireSystemTypeVo"/>
+        where status = '0' and del_flag = '0'
+          and parent_id = #{parentId}
         order by order_num asc
     </select>
 

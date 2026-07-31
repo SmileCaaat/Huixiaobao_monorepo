@@ -116,7 +116,10 @@ Content-Type: application/json
 | 签到 | `/api/fire/checkIn/add/list/detail` | `checkInId,companyId,taskId,latitude,longitude,images` | 已对应 |
 | 位置校验 | `/api/fire/checkIn/validateLocation` | `companyId,latitude,longitude` | 已对应；页面未单独调用 |
 | 公司任务下拉 | `/api/fire/checkIn/listTasksByCompany` | `companyId` | 已对应 |
-| 巡检 | `/api/fire/inspection/myList/detail/add/edit/delete` | `inspectionId,companyId,buildingId` | 已对应 |
+| 巡检 | `/api/fire/inspection/myList/detail/add/edit/delete` | `inspectionId,companyId,buildingId,categoryKey,equipmentKey,systemName,equipmentName,floor,inspectionTime` | 已对应；类目来自消防维护模板，不写 `fire_system_type.typeId` |
+| 巡检一级类目 | `GET /api/fire/inspection/templateCategories` | 与 `/fire/task/templates/inspection/level1` 同规则 | 已对应 |
+| 巡检二级设备 | `GET /api/fire/inspection/templateCategories/{categoryKey}/equipments` | `categoryKey` 需 URL 编码（含 `n:`） | 已对应 |
+| 巡检类目（兼容） | `GET /api/fire/inspection/systemTypes`、`/equipmentTypes/{categoryKey}` | 同上，旧路径兼容 | 已对应 |
 | 报修列表 | `/api/fire/repair/myReportedList`、`myAssignedList` | `repairId,reporterId,repairUserId` | 已对应 |
 | 报修操作 | `/api/fire/repair/add/edit/delete/dispatch/start/complete` | `repairId,companyId` | 已对应；start/complete 仅当前处理人 |
 | 报修列表（PC 员工工作台） | `POST /fire/repair/list` | `params[workbenchCategory]`：`assignedPending`/`processing`/`completed`/`reported` | 已对应；后端注入当前用户，忽略客户端 scope 参数 |

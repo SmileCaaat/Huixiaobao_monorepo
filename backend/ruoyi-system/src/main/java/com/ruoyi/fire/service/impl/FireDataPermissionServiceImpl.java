@@ -19,6 +19,7 @@ import com.ruoyi.common.utils.StringUtils;
 import org.apache.shiro.SecurityUtils;
 import com.ruoyi.fire.domain.FireCheckIn;
 import com.ruoyi.fire.domain.FireFaultRepair;
+import com.ruoyi.fire.domain.FireInspection;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.domain.FireUserCompany;
 import com.ruoyi.fire.mapper.FireCompanyMapper;
@@ -690,5 +691,74 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
         }
         query.getParams().put("scopeMode", "leadOrSelf");
         query.getParams().put("leadCompanyIds", leadCompanyIds);
+    }
+
+    @Override
+    public void applyInspectionListScope(FireInspection query, SysUser user) {
+        if (query == null || user == null || user.isAdmin() || hasGlobalBizDataScope(user)) {
+            return;
+        }
+        if (query.getParams() == null) {
+            query.setParams(new HashMap<>());
+        } else {
+            query.getParams().remove("companyIds");
+            query.getParams().remove("scopeMode");
+        }
+        Long requestedCompanyId = query.getCompanyId();
+        if (requestedCompanyId != null) {
+            if (!canAccessCompany(user.getUserId(), requestedCompanyId)) {
+                query.getParams().put("scopeMode", "none");
+                query.setCompanyId(null);
+            }
+            return;
+        }
+        List<Long> companyIds = listAccessibleCompanyIds(user.getUserId());
+        if (companyIds == null || companyIds.isEmpty()) {
+            query.getParams().put("scopeMode", "none");
+            return;
+        }
+        query.getParams().put("companyIds", companyIds);
+    }
+
+    @Override
+    public boolean canAccessInspection(Long userId, FireInspection inspection) {
+        if (inspection == null || userId == null) {
+            return false;
+        }
+        return canAccessCompany(userId, inspection.getCompanyId());
+    }
+
+    @Override
+    public boolean canAccessInspection(SysUser user, FireInspection inspection) {
+        if (inspection == null || user == null) {
+            return false;
+        }
+        if (user.isAdmin() || hasGlobalBizDataScope(user)) {
+            return true;
+        }
+        return canAccessInspection(user.getUserId(), inspection);
+    }
+
+    @Override
+    public void assertCanAccessInspection(Long userId, FireInspection inspection) {
+        if (inspection == null) {
+            throw new ServiceException("巡检测试记录不存在");
+        }
+        if (!canAccessInspection(userId, inspection)) {
+            throw new ServiceException("无权限访问该巡检测试记录");
+        }
+    }
+
+    @Override
+    public void assertCanAccessInspection(SysUser user, FireInspection inspection) {
+        if (inspection == null) {
+            throw new ServiceException("巡检测试记录不存在");
+        }
+        if (user == null) {
+            throw new ServiceException("未登录");
+        }
+        if (!canAccessInspection(user, inspection)) {
+            throw new ServiceException("无权限访问该巡检测试记录");
+        }
     }
 }
