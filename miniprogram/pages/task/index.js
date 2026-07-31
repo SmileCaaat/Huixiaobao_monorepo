@@ -111,7 +111,7 @@ const _sfc_main = {
     const goTaskDetail = (item) => {
       common_vendor.index.setStorageSync("currentTask", item);
       common_vendor.index.navigateTo({
-        url: `/pages/task/action?id=${item.taskId}`
+        url: `/pages/task/detail?id=${item.taskId}`
       });
     };
     const getStatusClass = (status) => {

@@ -14,7 +14,8 @@ const _sfc_main = {
   setup(__props) {
     const recordId = common_vendor.ref(null);
     const taskId = common_vendor.ref(null);
-    const recordType = common_vendor.ref("0");
+    const categoryKey = common_vendor.ref(null);
+    const equipmentKey = common_vendor.ref(null);
     const loading = common_vendor.ref(false);
     const deviceInfo = common_vendor.ref({});
     const itemList = common_vendor.ref([]);
@@ -43,35 +44,51 @@ const _sfc_main = {
       common_vendor.index.navigateBack();
     };
     const loadItemList = async () => {
-      if (!recordId.value)
+      if (!taskId.value || !categoryKey.value || !equipmentKey.value) {
+        if (recordId.value) {
+          // 兼容旧入口：仍按 recordId 拉取
+          try {
+            loading.value = true;
+            const legacy = await api_index.api.getDeviceDetail(recordId.value);
+            if (legacy.code === 200 || legacy.code === 0) {
+              const data = legacy.data || {};
+              deviceInfo.value = data.equipment || {};
+              itemList.value = (data.checkItems || data.items || []).map((item) => ({
+                ...item,
+                faultDescription: item.faultDescription || "",
+                otherNotes: item.otherNotes || "",
+                faultImages: item.faultImages || "",
+                checkResult: item.checkResult || "0"
+              }));
+            }
+          } catch (e) {
+            common_vendor.index.showToast({ title: "获取检查项列表失败", icon: "none" });
+          } finally {
+            loading.value = false;
+          }
+        }
         return;
+      }
       try {
         loading.value = true;
-        const res = await api_index.api.getDeviceDetail(recordId.value);
+        const res = await api_index.api.getInspectionTestEquipment(
+          taskId.value,
+          categoryKey.value,
+          equipmentKey.value
+        );
         if (res.code === 200 || res.code === 0) {
           const data = res.data || {};
-          if (data.equipment) {
-            deviceInfo.value = data.equipment;
-          }
-          itemList.value = (data.checkItems || data.items || []).filter((item) => item.recordType === recordType.value).map((item) => ({
+          deviceInfo.value = data;
+          itemList.value = (data.checkItems || []).map((item) => ({
             ...item,
             faultDescription: item.faultDescription || "",
             otherNotes: item.otherNotes || "",
             faultImages: item.faultImages || "",
             checkResult: item.checkResult || "0"
           }));
-          if (!taskId.value) {
-            const eq = data.equipment || {};
-            const rows = data.checkItems || data.items || [];
-            const fromEq = eq.taskId;
-            const fromRow = rows[0] && rows[0].taskId;
-            const resolved = fromEq || fromRow || data.taskId;
-            if (resolved)
-              taskId.value = String(resolved);
-          }
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/task/device.vue:loadItemList", "获取检查项列表失败:", e);
+        common_vendor.index.__f__("error", "at pages/task/device.js:loadItemList", "获取检查项列表失败:", e);
         common_vendor.index.showToast({ title: "获取检查项列表失败", icon: "none" });
       } finally {
         loading.value = false;
@@ -249,13 +266,18 @@ const _sfc_main = {
       const pages = getCurrentPages();
       const currentPage = pages[pages.length - 1];
       const options = currentPage.options || {};
-      recordId.value = options.recordId;
+      recordId.value = options.recordId || null;
+      categoryKey.value = options.categoryKey ? decodeURIComponent(options.categoryKey) : null;
+      equipmentKey.value = options.equipmentKey ? decodeURIComponent(options.equipmentKey) : null;
       const cachedTask = common_vendor.index.getStorageSync("currentTask");
       taskId.value = options.taskId || cachedTask && cachedTask.taskId || null;
-      recordType.value = options.recordType || "0";
       const cached = common_vendor.index.getStorageSync("currentDevice");
       if (cached) {
         deviceInfo.value = cached;
+        if (!categoryKey.value && cached.categoryKey)
+          categoryKey.value = cached.categoryKey;
+        if (!equipmentKey.value && cached.equipmentKey)
+          equipmentKey.value = cached.equipmentKey;
       }
       loadItemList();
     });
@@ -266,8 +288,8 @@ const _sfc_main = {
           fixed: true,
           ["status-bar"]: true,
           ["left-icon"]: "back",
-          title: deviceInfo.value.itemName || "设备详情",
-          ["background-color"]: recordType.value === "1" ? "#ff9800" : "#e53935",
+          title: deviceInfo.value.equipmentName || deviceInfo.value.itemName || "设备详情",
+          ["background-color"]: "#1565c0",
           color: "#ffffff"
         }),
         c: common_vendor.f(itemList.value, (item, k0, i0) => {
@@ -330,7 +352,7 @@ const _sfc_main = {
         }),
         A: common_vendor.o(closeModal)
       }) : {}, {
-        B: recordType.value === "1" ? 1 : ""
+        B: ""
       });
     };
   }

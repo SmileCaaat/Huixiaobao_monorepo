@@ -106,63 +106,175 @@ public class FireMaintenanceTaskController extends BaseController {
     }
 
     /**
-     * 维保任务详情页面（常规维保）
+     * 巡查测试统一详情（一级类目）
+     */
+    @RequiresPermissions("fire:task:view")
+    @GetMapping("/inspectionTestDetail/{taskId}")
+    public String inspectionTestDetail(@PathVariable("taskId") Long taskId, org.springframework.ui.ModelMap mmap) {
+        try {
+            FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
+            com.ruoyi.fire.domain.dto.FireInspectionTestDetailVO detail =
+                    fireMaintenanceTaskService.buildInspectionTestDetail(taskId);
+            mmap.put("task", detail.getTaskInfo() != null ? detail.getTaskInfo() : task);
+            mmap.put("detail", detail);
+            mmap.put("categories", detail.getCategories());
+            return prefix + "/inspection_test_detail";
+        } catch (ServiceException e) {
+            mmap.put("errorMessage", e.getMessage());
+            return "error/unauth";
+        }
+    }
+
+    /**
+     * 巡查测试二级设备
+     */
+    @RequiresPermissions("fire:task:view")
+    @GetMapping("/inspectionTestSystem/{taskId}/{categoryKey}")
+    public String inspectionTestSystem(@PathVariable("taskId") Long taskId,
+            @PathVariable("categoryKey") String categoryKey, org.springframework.ui.ModelMap mmap) {
+        FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+        fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
+        com.ruoyi.fire.domain.dto.FireInspectionTestCategoryGroup category =
+                fireMaintenanceTaskService.buildInspectionTestSystem(taskId, categoryKey);
+        mmap.put("task", task);
+        mmap.put("category", category);
+        mmap.put("equipments", category.getEquipments());
+        return prefix + "/inspection_test_system";
+    }
+
+    /**
+     * 巡查测试三级检查项
+     */
+    @RequiresPermissions("fire:task:view")
+    @GetMapping("/inspectionTestEquipment/{taskId}/{categoryKey}/{equipmentKey}")
+    public String inspectionTestEquipment(@PathVariable("taskId") Long taskId,
+            @PathVariable("categoryKey") String categoryKey,
+            @PathVariable("equipmentKey") String equipmentKey, org.springframework.ui.ModelMap mmap) {
+        FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+        fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
+        com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup equipment =
+                fireMaintenanceTaskService.buildInspectionTestEquipment(taskId, categoryKey, equipmentKey);
+        mmap.put("task", task);
+        mmap.put("categoryKey", categoryKey);
+        mmap.put("equipmentKey", equipmentKey);
+        mmap.put("equipment", equipment);
+        mmap.put("checkItems", equipment.getCheckItems());
+        return prefix + "/inspection_test_equipment";
+    }
+
+    /**
+     * 消防维护检查项 - 其他说明独立页
+     */
+    @RequiresPermissions("fire:task:view")
+    @GetMapping("/inspectionTestItemDetail/{taskId}/{categoryKey}/{equipmentKey}/{recordId}")
+    public String inspectionTestItemDetail(@PathVariable("taskId") Long taskId,
+            @PathVariable("categoryKey") String categoryKey,
+            @PathVariable("equipmentKey") String equipmentKey,
+            @PathVariable("recordId") Long recordId,
+            org.springframework.ui.ModelMap mmap) {
+        try {
+            FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
+
+            com.ruoyi.fire.domain.FireMaintenanceRecord item = getRecordService()
+                    .selectFireMaintenanceRecordByRecordId(recordId);
+            if (item == null) {
+                throw new ServiceException("检查记录不存在");
+            }
+            if (item.getTaskId() == null || !taskId.equals(item.getTaskId())) {
+                throw new ServiceException("检查记录不属于当前任务");
+            }
+            if (item.getLevel() == null || item.getLevel() != 3) {
+                throw new ServiceException("仅支持三级检查项填写其他说明");
+            }
+
+            com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup equipment =
+                    fireMaintenanceTaskService.buildInspectionTestEquipment(taskId, categoryKey, equipmentKey);
+            boolean belongs = false;
+            if (equipment.getCheckItems() != null) {
+                for (com.ruoyi.fire.domain.FireMaintenanceRecord checkItem : equipment.getCheckItems()) {
+                    if (checkItem != null && recordId.equals(checkItem.getRecordId())) {
+                        belongs = true;
+                        // 使用分组内记录，保证展示与列表一致
+                        item = checkItem;
+                        break;
+                    }
+                }
+            }
+            if (!belongs) {
+                throw new ServiceException("检查项不属于当前设备或不属于当前类目");
+            }
+
+            mmap.put("task", task);
+            mmap.put("item", item);
+            mmap.put("categoryKey", categoryKey);
+            mmap.put("equipmentKey", equipmentKey);
+            mmap.put("equipment", equipment);
+            return prefix + "/inspection_test_item_detail";
+        }
+        catch (ServiceException e) {
+            mmap.put("errorMessage", e.getMessage());
+            return "error/unauth";
+        }
+    }
+
+    /**
+     * 兼容旧入口：常规维保详情 → 巡查测试
      */
     @RequiresPermissions("fire:task:view")
     @GetMapping("/detail/{taskId}")
     public String detail(@PathVariable("taskId") Long taskId, org.springframework.ui.ModelMap mmap) {
-        FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId, "0");
-        mmap.put("task", task);
-        return prefix + "/detail";
+        return inspectionTestDetail(taskId, mmap);
     }
 
     /**
-     * 消防测试维护详情页面（消防设施测试）
+     * 兼容旧入口：消防测试详情 → 巡查测试
      */
     @RequiresPermissions("fire:task:view")
     @GetMapping("/fireTestDetail/{taskId}")
     public String fireTestDetail(@PathVariable("taskId") Long taskId, org.springframework.ui.ModelMap mmap) {
-        FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId, "1");
-        mmap.put("task", task);
-        return prefix + "/fire_test_detail";
+        return inspectionTestDetail(taskId, mmap);
     }
 
     /**
-     * 消防测试系统列表页面
+     * 兼容旧入口：消防测试系统页 → 按 record 反查类目后进入统一页
      */
     @RequiresPermissions("fire:task:view")
     @GetMapping("/fireTestSystem/{recordId}")
     public String fireTestSystem(@PathVariable("recordId") Long recordId, org.springframework.ui.ModelMap mmap) {
-        com.ruoyi.fire.domain.FireMaintenanceRecord system = getRecordService()
-                .selectFireMaintenanceRecordByRecordId(recordId);
-        mmap.put("system", system);
-
-        java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> equipments = getRecordService()
-                .selectLevel2List(system.getTaskId(), recordId);
-
-        for (com.ruoyi.fire.domain.FireMaintenanceRecord equipment : equipments) {
-            calculateEquipmentStats(equipment, system.getTaskId());
-        }
-
-        mmap.put("equipments", equipments);
-        return prefix + "/fire_test_system";
+        return redirectLegacySystem(recordId, mmap);
     }
 
     /**
-     * 消防测试设备检查项列表页面
+     * 兼容旧入口：消防测试检查项 → 统一检查项页
      */
     @RequiresPermissions("fire:task:view")
     @GetMapping("/fireTestEquipment/{recordId}")
     public String fireTestEquipment(@PathVariable("recordId") Long recordId, org.springframework.ui.ModelMap mmap) {
-        com.ruoyi.fire.domain.FireMaintenanceRecord equipment = getRecordService()
-                .selectFireMaintenanceRecordByRecordId(recordId);
-        mmap.put("equipment", equipment);
+        return redirectLegacyEquipment(recordId, mmap);
+    }
 
-        java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> checkItems = getRecordService()
-                .selectLevel3List(equipment.getTaskId(), recordId);
-        mmap.put("checkItems", checkItems);
-
-        return prefix + "/fire_test_equipment";
+    /**
+     * 超管：重建巡查测试检查记录（单任务或全量）
+     */
+    @RequiresPermissions("fire:task:edit")
+    @Log(title = "重建消防维护记录", businessType = BusinessType.UPDATE)
+    @PostMapping("/rebuildInspectionTestRecords")
+    @ResponseBody
+    public AjaxResult rebuildInspectionTestRecords(@RequestParam(value = "taskId", required = false) Long taskId) {
+        SysUser user = ShiroUtils.getSysUser();
+        if (user == null || !user.isAdmin()) {
+            return error("仅超级管理员可执行重建");
+        }
+        if (taskId != null) {
+            int added = fireMaintenanceTaskService.rebuildInspectionTestRecords(taskId);
+            return AjaxResult.success("重建完成，新增记录 " + added + " 条").put("added", added);
+        }
+        java.util.Map<Long, Integer> result = fireMaintenanceTaskService.rebuildAllInspectionTestRecords();
+        int totalAdded = result.values().stream().mapToInt(Integer::intValue).sum();
+        return AjaxResult.success("全量重建完成，任务数 " + result.size() + "，新增记录 " + totalAdded + " 条")
+                .put("tasks", result.size()).put("added", totalAdded);
     }
 
     /**
@@ -329,28 +441,12 @@ public class FireMaintenanceTaskController extends BaseController {
     }
 
     /**
-     * 系统列表页面
+     * 兼容旧入口：系统列表 → 统一巡查测试二级页
      */
     @RequiresPermissions("fire:task:view")
     @GetMapping("/system/{recordId}")
     public String system(@PathVariable("recordId") Long recordId, org.springframework.ui.ModelMap mmap) {
-        // 获取系统信息和设备列表
-        com.ruoyi.fire.domain.FireMaintenanceRecord system = getRecordService()
-                .selectFireMaintenanceRecordByRecordId(recordId);
-        mmap.put("system", system);
-
-        // 获取该系统下的所有设备（二级）
-        java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> equipments = getRecordService()
-                .selectLevel2List(system.getTaskId(), recordId);
-
-        // 为每个设备计算统计数据
-        for (com.ruoyi.fire.domain.FireMaintenanceRecord equipment : equipments) {
-            calculateEquipmentStats(equipment, system.getTaskId());
-        }
-
-        mmap.put("equipments", equipments);
-
-        return prefix + "/system";
+        return redirectLegacySystem(recordId, mmap);
     }
 
     /**
@@ -378,22 +474,67 @@ public class FireMaintenanceTaskController extends BaseController {
     }
 
     /**
-     * 设备检查项列表页面
+     * 兼容旧入口：检查项列表 → 统一巡查测试三级页
      */
     @RequiresPermissions("fire:task:view")
     @GetMapping("/equipment/{recordId}")
     public String equipment(@PathVariable("recordId") Long recordId, org.springframework.ui.ModelMap mmap) {
-        // 获取设备信息
-        com.ruoyi.fire.domain.FireMaintenanceRecord equipment = getRecordService()
-                .selectFireMaintenanceRecordByRecordId(recordId);
-        mmap.put("equipment", equipment);
+        return redirectLegacyEquipment(recordId, mmap);
+    }
 
-        // 获取该设备下的所有检查项（三级）
-        java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> checkItems = getRecordService()
-                .selectLevel3List(equipment.getTaskId(), recordId);
-        mmap.put("checkItems", checkItems);
+    /**
+     * 将当前小类中未检查项批量标为正常（不覆盖故障/无此设备）
+     */
+    @PostMapping("/markEquipmentAllNormal/{taskId}/{categoryKey}/{equipmentKey}")
+    @ResponseBody
+    public AjaxResult markEquipmentAllNormal(@PathVariable("taskId") Long taskId,
+            @PathVariable("categoryKey") String categoryKey,
+            @PathVariable("equipmentKey") String equipmentKey) {
+        try {
+            if (taskId == null) {
+                return error("任务ID不能为空");
+            }
+            if (StringUtils.isEmpty(categoryKey) || StringUtils.isEmpty(equipmentKey)) {
+                return error("类目或设备参数不能为空");
+            }
+            FireMaintenanceTask task = fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId);
+            if (task == null) {
+                return error("维保任务不存在");
+            }
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
 
-        return prefix + "/equipment";
+            com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup equipment =
+                    fireMaintenanceTaskService.buildInspectionTestEquipment(taskId, categoryKey, equipmentKey);
+            java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> checkItems = equipment.getCheckItems();
+            if (checkItems == null || checkItems.isEmpty()) {
+                return error("当前小类没有检查项");
+            }
+
+            java.util.List<Long> uncheckedIds = new java.util.ArrayList<>();
+            for (com.ruoyi.fire.domain.FireMaintenanceRecord item : checkItems) {
+                if (item == null || item.getRecordId() == null) {
+                    continue;
+                }
+                if (item.getTaskId() != null && !taskId.equals(item.getTaskId())) {
+                    continue;
+                }
+                String result = item.getCheckResult();
+                if (result == null || result.isEmpty() || "0".equals(result)) {
+                    uncheckedIds.add(item.getRecordId());
+                }
+            }
+            if (uncheckedIds.isEmpty()) {
+                return success("当前小类没有未检查项");
+            }
+
+            int rows = getRecordService().markUncheckedNormalByRecordIds(taskId,
+                    uncheckedIds.toArray(new Long[0]));
+            return success("已将 " + rows + " 项未检查设为正常");
+        } catch (ServiceException e) {
+            return error(StringUtils.isNotEmpty(e.getMessage()) ? e.getMessage() : "操作失败");
+        } catch (Exception e) {
+            return error(StringUtils.isNotEmpty(e.getMessage()) ? e.getMessage() : "操作失败");
+        }
     }
 
     /**
@@ -429,6 +570,18 @@ public class FireMaintenanceTaskController extends BaseController {
     @ResponseBody
     public AjaxResult updateCheckDetail(Long recordId, String checkResult, String faultDescription,
             String otherNotes, String faultImages) {
+        if (recordId == null) {
+            return error("记录ID不能为空");
+        }
+        com.ruoyi.fire.domain.FireMaintenanceRecord existing = getRecordService()
+                .selectFireMaintenanceRecordByRecordId(recordId);
+        if (existing == null) {
+            return error("检查记录不存在");
+        }
+        FireMaintenanceTask task = fireMaintenanceTaskService
+                .selectFireMaintenanceTaskByTaskId(existing.getTaskId());
+        fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
+
         com.ruoyi.fire.domain.FireMaintenanceRecord record = new com.ruoyi.fire.domain.FireMaintenanceRecord();
         record.setRecordId(recordId);
         // 未传 checkResult 时保持 null，MyBatis 动态 SQL 不会更新该列
@@ -568,6 +721,75 @@ public class FireMaintenanceTaskController extends BaseController {
     }
 
     /**
+     * 消防维护统一一级类目（合并 template_type=0/1）。
+     * 选择器按规范化类目名称去重，确保同名系统只显示一次；
+     * 同一显示项可同时挂载维保与测试两侧模板 ID。
+     */
+    @RequiresPermissions("fire:task:view")
+    @GetMapping("/templates/inspection/level1")
+    @ResponseBody
+    public AjaxResult getInspectionLevel1Templates() {
+        List<FireMaintenanceTemplate> templates = fireMaintenanceTaskService.getAllTemplatesWithCache();
+        java.util.LinkedHashMap<String, com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO> map =
+                new java.util.LinkedHashMap<>();
+        for (FireMaintenanceTemplate template : templates) {
+            if (template == null || template.getLevel() == null || template.getLevel() != 1) {
+                continue;
+            }
+            String type = template.getTemplateType() == null ? "0" : template.getTemplateType();
+            if (!"0".equals(type) && !"1".equals(type)) {
+                continue;
+            }
+            // 选择系统弹窗要求名称唯一：同名类目（即使 itemCode 不同）合并为一项
+            String normalizedName = com.ruoyi.fire.service.support.FireInspectionTestKeys
+                    .normalizeText(template.getItemName());
+            String mergeKey;
+            if (com.ruoyi.common.utils.StringUtils.isNotEmpty(normalizedName)) {
+                mergeKey = "n:" + normalizedName.toLowerCase();
+            }
+            else {
+                mergeKey = "id:" + template.getId();
+            }
+            com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO vo = map.get(mergeKey);
+            if (vo == null) {
+                vo = new com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO();
+                vo.setCategoryKey(mergeKey);
+                vo.setCategoryName(normalizedName);
+                vo.setSortOrder(template.getSortOrder());
+                map.put(mergeKey, vo);
+            }
+            else if (com.ruoyi.common.utils.StringUtils.isEmpty(vo.getCategoryName())
+                    && com.ruoyi.common.utils.StringUtils.isNotEmpty(normalizedName)) {
+                vo.setCategoryName(normalizedName);
+            }
+            if (template.getSortOrder() != null
+                    && (vo.getSortOrder() == null || template.getSortOrder() < vo.getSortOrder())) {
+                vo.setSortOrder(template.getSortOrder());
+            }
+            if ("1".equals(type)) {
+                if (!vo.getFireTestTemplateIds().contains(template.getId())) {
+                    vo.getFireTestTemplateIds().add(template.getId());
+                }
+            }
+            else if (!vo.getMaintenanceTemplateIds().contains(template.getId())) {
+                vo.getMaintenanceTemplateIds().add(template.getId());
+            }
+        }
+        List<com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO> result = new ArrayList<>(map.values());
+        result.sort((a, b) -> {
+            int sa = a.getSortOrder() == null ? Integer.MAX_VALUE : a.getSortOrder();
+            int sb = b.getSortOrder() == null ? Integer.MAX_VALUE : b.getSortOrder();
+            if (sa != sb) {
+                return Integer.compare(sa, sb);
+            }
+            String na = a.getCategoryName() == null ? "" : a.getCategoryName();
+            String nb = b.getCategoryName() == null ? "" : b.getCategoryName();
+            return na.compareTo(nb);
+        });
+        return AjaxResult.success(result);
+    }
+
+    /**
      * 获取消防设施测试的一级模板列表
      */
     @RequiresPermissions("fire:task:view")
@@ -617,6 +839,58 @@ public class FireMaintenanceTaskController extends BaseController {
         if (!"today".equals(value) && !"overdue".equals(value)) {
             task.getParams().remove("dashboardFilter");
         }
+    }
+
+    private String redirectLegacySystem(Long recordId, org.springframework.ui.ModelMap mmap) {
+        com.ruoyi.fire.domain.FireMaintenanceRecord record = getRecordService()
+                .selectFireMaintenanceRecordByRecordId(recordId);
+        if (record == null || record.getTaskId() == null) {
+            throw new ServiceException("记录不存在");
+        }
+        Long taskId = record.getTaskId();
+        fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(),
+                fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId));
+        com.ruoyi.fire.domain.FireMaintenanceRecord level1 = resolveLevel1(record);
+        String categoryKey = com.ruoyi.fire.service.support.FireInspectionTestKeys
+                .encodeKey(com.ruoyi.fire.service.support.FireInspectionTestKeys.businessKey(level1));
+        return inspectionTestSystem(taskId, categoryKey, mmap);
+    }
+
+    private String redirectLegacyEquipment(Long recordId, org.springframework.ui.ModelMap mmap) {
+        com.ruoyi.fire.domain.FireMaintenanceRecord record = getRecordService()
+                .selectFireMaintenanceRecordByRecordId(recordId);
+        if (record == null || record.getTaskId() == null) {
+            throw new ServiceException("记录不存在");
+        }
+        Long taskId = record.getTaskId();
+        fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(),
+                fireMaintenanceTaskService.selectFireMaintenanceTaskByTaskId(taskId));
+        com.ruoyi.fire.domain.FireMaintenanceRecord level2 = record;
+        if (record.getLevel() != null && record.getLevel() == 3) {
+            level2 = getRecordService().selectFireMaintenanceRecordByRecordId(record.getParentRecordId());
+        }
+        com.ruoyi.fire.domain.FireMaintenanceRecord level1 = resolveLevel1(level2);
+        String categoryKey = com.ruoyi.fire.service.support.FireInspectionTestKeys
+                .encodeKey(com.ruoyi.fire.service.support.FireInspectionTestKeys.businessKey(level1));
+        String equipmentKey = com.ruoyi.fire.service.support.FireInspectionTestKeys
+                .encodeKey(com.ruoyi.fire.service.support.FireInspectionTestKeys.businessKey(level2));
+        return inspectionTestEquipment(taskId, categoryKey, equipmentKey, mmap);
+    }
+
+    private com.ruoyi.fire.domain.FireMaintenanceRecord resolveLevel1(
+            com.ruoyi.fire.domain.FireMaintenanceRecord record) {
+        com.ruoyi.fire.domain.FireMaintenanceRecord current = record;
+        int guard = 0;
+        while (current != null && current.getLevel() != null && current.getLevel() != 1 && guard++ < 8) {
+            if (current.getParentRecordId() == null) {
+                break;
+            }
+            current = getRecordService().selectFireMaintenanceRecordByRecordId(current.getParentRecordId());
+        }
+        if (current == null) {
+            throw new ServiceException("无法定位一级类目");
+        }
+        return current;
     }
 
     private Long[] convertStrToLongArray(String ids) {

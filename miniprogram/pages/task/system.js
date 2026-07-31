@@ -16,9 +16,8 @@ if (!Math) {
 const _sfc_main = {
   __name: "system",
   setup(__props) {
-    const recordId = common_vendor.ref(null);
+    const categoryKey = common_vendor.ref(null);
     const taskId = common_vendor.ref(null);
-    const recordType = common_vendor.ref("0");
     const loading = common_vendor.ref(false);
     const systemInfo = common_vendor.ref({});
     const deviceList = common_vendor.ref([]);
@@ -51,44 +50,46 @@ const _sfc_main = {
       return uploadRes.url || ((_a = uploadRes.data) == null ? void 0 : _a.url) || uploadRes.fileName || ((_b = uploadRes.data) == null ? void 0 : _b.fileName) || ((_c = uploadRes.data) == null ? void 0 : _c.newFileName) || ((_d = uploadRes.data) == null ? void 0 : _d.url);
     };
     const loadDeviceList = async () => {
-      if (!recordId.value)
+      if (!taskId.value || !categoryKey.value)
         return;
       try {
         loading.value = true;
-        const res = await api_index.api.getSystemDetail(recordId.value);
+        const res = await api_index.api.getInspectionTestSystem(taskId.value, categoryKey.value);
         if (res.code === 200 || res.code === 0) {
           const data = res.data || {};
-          if (data.system) {
-            systemInfo.value = data.system;
-          }
-          deviceList.value = (data.equipments || []).filter(
-            (item) => item.recordType === recordType.value
-          );
-          if (!taskId.value) {
-            const sys = data.system || {};
-            const eqs = data.equipments || [];
-            const resolved = sys.taskId || data.taskId || eqs[0] && eqs[0].taskId;
-            if (resolved)
-              taskId.value = String(resolved);
-          }
+          systemInfo.value = data;
+          deviceList.value = data.equipments || [];
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/task/system.vue:195", "获取设备列表失败:", e);
+        common_vendor.index.__f__("error", "at pages/task/system.js", "获取设备列表失败:", e);
         common_vendor.index.showToast({ title: "获取设备列表失败", icon: "none" });
       } finally {
         loading.value = false;
       }
     };
     const goDeviceDetail = (item) => {
+      if (!item.hasCheckItems) {
+        if (item.hasMaintenance) {
+          openMaintenance(item);
+        }
+        return;
+      }
       common_vendor.index.setStorageSync("currentDevice", item);
       const tid = taskId.value || "";
+      const ck = encodeURIComponent(categoryKey.value || "");
+      const ek = encodeURIComponent(item.equipmentKey || "");
       common_vendor.index.navigateTo({
-        url: `/pages/task/device?recordId=${item.recordId}&recordType=${recordType.value}&taskId=${tid}`
+        url: `/pages/task/device?taskId=${tid}&categoryKey=${ck}&equipmentKey=${ek}`
       });
     };
     const openMaintenance = (item) => {
+      const rid = item.fireTestRecordId || item.recordId;
+      if (!rid) {
+        common_vendor.index.showToast({ title: "无可维护记录", icon: "none" });
+        return;
+      }
       maintenanceForm.value = {
-        recordId: item.recordId,
+        recordId: rid,
         deviceLocation: item.deviceLocation || "",
         testSituation: item.testSituation || "",
         testTime: item.testTime || "",
@@ -127,7 +128,7 @@ const _sfc_main = {
                 common_vendor.index.showToast({ title: "上传成功但未返回文件地址", icon: "none" });
               }
             } catch (e) {
-              common_vendor.index.__f__("error", "at pages/task/system.vue:258", "图片上传失败:", e);
+              common_vendor.index.__f__("error", "at pages/task/system.js", "图片上传失败:", e);
             }
           }
         }
@@ -160,7 +161,7 @@ const _sfc_main = {
           common_vendor.index.showToast({ title: res.msg || "保存失败", icon: "none" });
         }
       } catch (e) {
-        common_vendor.index.__f__("error", "at pages/task/system.vue:290", "保存维护信息失败:", e);
+        common_vendor.index.__f__("error", "at pages/task/system.js", "保存维护信息失败:", e);
         common_vendor.index.showToast({ title: "保存失败", icon: "none" });
       } finally {
         submitting.value = false;
@@ -170,13 +171,15 @@ const _sfc_main = {
       const pages = getCurrentPages();
       const currentPage = pages[pages.length - 1];
       const options = currentPage.options || {};
-      recordId.value = options.recordId;
-      recordType.value = options.recordType || "0";
+      categoryKey.value = options.categoryKey ? decodeURIComponent(options.categoryKey) : null;
       const cachedTask = common_vendor.index.getStorageSync("currentTask");
       taskId.value = options.taskId || (cachedTask && cachedTask.taskId) || null;
       const cached = common_vendor.index.getStorageSync("currentSystem");
       if (cached) {
         systemInfo.value = cached;
+        if (!categoryKey.value && cached.categoryKey) {
+          categoryKey.value = cached.categoryKey;
+        }
       }
       loadDeviceList();
     });
@@ -187,27 +190,26 @@ const _sfc_main = {
           fixed: true,
           ["status-bar"]: true,
           ["left-icon"]: "back",
-          title: "设备列表",
-          ["background-color"]: recordType.value === "1" ? "#ff9800" : "#e53935",
+          title: "消防维护设备",
+          ["background-color"]: "#1565c0",
           color: "#ffffff"
         }),
-        c: common_vendor.t(systemInfo.value.itemName || "系统"),
+        c: common_vendor.t(systemInfo.value.categoryName || systemInfo.value.itemName || "类目"),
         d: common_vendor.f(deviceList.value, (item, k0, i0) => {
-          return common_vendor.e({
-            a: common_vendor.t(item.itemName),
+          return {
+            a: common_vendor.t(item.equipmentName || item.itemName),
             b: common_vendor.t(item.totalItems || 0),
             c: common_vendor.t(item.completedItems || 0),
             d: common_vendor.t(item.uncompletedItems || 0),
-            e: common_vendor.t(item.completedItems >= item.totalItems && item.totalItems > 0 ? "已完成" : "未完成"),
-            f: common_vendor.n(item.completedItems >= item.totalItems && item.totalItems > 0 ? "completed" : "pending")
-          }, recordType.value === "1" ? {
-            g: common_vendor.o(($event) => openMaintenance(item), item.recordId)
-          } : {}, {
-            h: item.recordId,
-            i: common_vendor.o(($event) => goDeviceDetail(item), item.recordId)
-          });
+            e: common_vendor.t(item.status === "1" || item.completedItems >= item.totalItems && item.totalItems > 0 ? "已完成" : "未完成"),
+            f: common_vendor.n(item.status === "1" || item.completedItems >= item.totalItems && item.totalItems > 0 ? "completed" : "pending"),
+            g: common_vendor.o(($event) => openMaintenance(item), item.equipmentKey || item.recordId),
+            j: !!item.hasMaintenance,
+            h: item.equipmentKey || item.recordId,
+            i: common_vendor.o(($event) => goDeviceDetail(item), item.equipmentKey || item.recordId)
+          };
         }),
-        e: recordType.value === "1",
+        e: true,
         f: loading.value
       }, loading.value ? {} : {}, {
         g: deviceList.value.length === 0 && !loading.value
@@ -245,11 +247,10 @@ const _sfc_main = {
           type: "bottom",
           ["background-color"]: "#fff"
         }),
-        x: recordType.value === "1" ? 1 : ""
+        x: false
       });
     };
   }
 };
 const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-2ecdcd3f"]]);
 wx.createPage(MiniProgramPage);
-//# sourceMappingURL=../../../.sourcemap/mp-weixin/pages/task/system.js.map

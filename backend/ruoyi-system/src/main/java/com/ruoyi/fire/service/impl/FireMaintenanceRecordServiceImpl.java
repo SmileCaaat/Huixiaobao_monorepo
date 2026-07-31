@@ -244,4 +244,20 @@ public class FireMaintenanceRecordServiceImpl implements IFireMaintenanceRecordS
         updateTaskStatistics(taskId);
         return rows;
     }
+
+    /**
+     * 将指定记录中未检查项批量标记为正常，并刷新任务统计
+     */
+    @Override
+    @Transactional
+    public int markUncheckedNormalByRecordIds(Long taskId, Long[] recordIds) {
+        if (recordIds == null || recordIds.length == 0) {
+            return 0;
+        }
+        int rows = fireMaintenanceRecordMapper.markUncheckedNormalByRecordIds(recordIds);
+        if (taskId != null) {
+            updateTaskStatistics(taskId);
+        }
+        return rows;
+    }
 }

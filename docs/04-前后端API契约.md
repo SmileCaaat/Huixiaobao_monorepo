@@ -90,15 +90,24 @@ Content-Type: application/json
 | 前端函数 | 方法和路径 | 关键字段 | 状态 |
 |---|---|---|---|
 | `getMyTaskList` | `POST /api/fire/task/myList` | `companyId,taskType,taskStatus,pageNum,pageSize` | 需修复：后端只处理 companyId/taskStatus，分页在 JSON body |
-| `getTaskDetail` | `GET /api/fire/task/detail/{taskId}` | `taskId` → `systems[]` | 已对应；`recordType` 由前端过滤 |
-| `getSystemDetail` | `GET /api/fire/task/system/{recordId}` | `recordId` → `system,equipments[]` | 已对应 |
-| `getDeviceDetail` | `GET /api/fire/task/equipment/{recordId}` | `recordId` → `equipment,checkItems[]` | 已对应 |
+| `getInspectionTestDetail` | `GET /api/fire/task/inspectionTest/{taskId}` | `taskId` → 按业务键合并的类目列表 | 主入口（消防维护） |
+| `getInspectionTestSystem` | `GET /api/fire/task/inspectionTest/system/{taskId}/{categoryKey}` | `categoryKey` → 设备列表 | 主入口 |
+| `getInspectionTestEquipment` | `GET /api/fire/task/inspectionTest/equipment/{taskId}/{categoryKey}/{equipmentKey}` | → `checkItems[]` | 主入口 |
+| `getTaskDetail` | `GET /api/fire/task/detail/{taskId}` | `taskId` → `systems[]` | 兼容旧路径 |
+| `getSystemDetail` | `GET /api/fire/task/system/{recordId}` | `recordId` → `system,equipments[]` | 兼容旧路径 |
+| `getDeviceDetail` | `GET /api/fire/task/equipment/{recordId}` | `recordId` → `equipment,checkItems[]` | 兼容旧路径 |
 | `updateCheckResult` | `POST /api/fire/task/updateCheckResult` | `taskId,recordId,checkResult` | 已对应 |
 | `updateFaultDesc` | `POST /api/fire/task/updateFaultDesc` | `taskId,recordId,faultDescription` | 已对应 |
 | `updateCheckDetail` | `POST /api/fire/task/updateCheckDetail` | `taskId,recordId,otherNotes,faultImages`（可选 `checkResult`/`faultDescription`） | 已对应；仅传说明/附件时不覆盖 `check_result` |
-| `updateMaintenance` | `POST /api/fire/task/updateMaintenance` | `taskId,recordId,testResult,sitePhotos` | 后端 API 缺失 |
+| `updateMaintenance` | `POST /api/fire/task/updateMaintenance` | `taskId,recordId,…` JSON | 已对应（小程序 REST） |
 
-管理端存在 `POST /fire/task/updateMaintenance`，但它接受表单参数且位于管理端路由，不能直接视为小程序接口。应在 `/api/fire` 下补一个 JSON 版本，并复用 Service。
+管理端补充：
+
+| 方法和路径 | 说明 |
+|---|---|
+| `GET /fire/task/inspectionTestDetail/{taskId}` 等三级页 | 管理端「消防维护」统一执行树 |
+| `POST /fire/task/markEquipmentAllNormal/{taskId}/{categoryKey}/{equipmentKey}` | 当前小类未检查项→正常；不覆盖故障/无此设备 |
+| `POST /fire/task/rebuildInspectionTestRecords` | 超管重建执行树（可选 `taskId`） |
 
 ### 签到、巡检、报修与报告
 

@@ -511,6 +511,62 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
+     * 巡查测试统一详情（一级类目，合并 record_type 0/1）
+     */
+    @GetMapping("/task/inspectionTest/{taskId}")
+    public AjaxResult inspectionTestDetail(@PathVariable("taskId") Long taskId) {
+        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null) {
+            return AjaxResult.error("任务不存在");
+        }
+        if (!isTaskRelated(task, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权查看该任务");
+        }
+        return AjaxResult.success(taskService.buildInspectionTestDetail(taskId));
+    }
+
+    /**
+     * 巡查测试二级设备列表
+     */
+    @GetMapping("/task/inspectionTest/system/{taskId}/{categoryKey}")
+    public AjaxResult inspectionTestSystem(@PathVariable("taskId") Long taskId,
+            @PathVariable("categoryKey") String categoryKey) {
+        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null) {
+            return AjaxResult.error("任务不存在");
+        }
+        if (!isTaskRelated(task, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权查看该任务");
+        }
+        try {
+            return AjaxResult.success(taskService.buildInspectionTestSystem(taskId, categoryKey));
+        } catch (IllegalArgumentException e) {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 巡查测试三级检查项
+     */
+    @GetMapping("/task/inspectionTest/equipment/{taskId}/{categoryKey}/{equipmentKey}")
+    public AjaxResult inspectionTestEquipment(@PathVariable("taskId") Long taskId,
+            @PathVariable("categoryKey") String categoryKey,
+            @PathVariable("equipmentKey") String equipmentKey) {
+        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null) {
+            return AjaxResult.error("任务不存在");
+        }
+        if (!isTaskRelated(task, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权查看该任务");
+        }
+        try {
+            return AjaxResult.success(taskService.buildInspectionTestEquipment(taskId, categoryKey, equipmentKey));
+        } catch (IllegalArgumentException e) {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
      * 获取系统详情（二级页面：设备列表）
      * 校验当前用户是否为该任务的相关人员。
      */
@@ -573,17 +629,38 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
+     * 校验写接口：任务可访问，且 recordId 属于该 taskId
+     */
+    private AjaxResult assertWritableRecord(Long taskId, Long recordId) {
+        if (taskId == null) {
+            return AjaxResult.error("任务ID不能为空");
+        }
+        if (recordId == null) {
+            return AjaxResult.error("记录ID不能为空");
+        }
+        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null || !isTaskRelated(task, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权操作该任务");
+        }
+        FireMaintenanceRecord existing = recordService.selectFireMaintenanceRecordByRecordId(recordId);
+        if (existing == null) {
+            return AjaxResult.error("记录不存在");
+        }
+        if (existing.getTaskId() == null || !existing.getTaskId().equals(taskId)) {
+            return AjaxResult.error("记录与任务不匹配");
+        }
+        return null;
+    }
+
+    /**
      * 更新检查结果（快速操作）
      * 校验当前用户是否为该任务相关人员。
      */
     @PostMapping("/task/updateCheckResult")
     public AjaxResult updateCheckResult(@RequestBody FireMaintenanceRecord record) {
-        if (record.getTaskId() == null) {
-            return AjaxResult.error("任务ID不能为空");
-        }
-        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(record.getTaskId());
-        if (task == null || !isTaskRelated(task, ShiroUtils.getUserId())) {
-            return AjaxResult.error("您无权操作该任务");
+        AjaxResult denied = assertWritableRecord(record.getTaskId(), record.getRecordId());
+        if (denied != null) {
+            return denied;
         }
         record.setCheckTime(new Date());
         record.setCheckerId(ShiroUtils.getUserId());
@@ -604,12 +681,9 @@ public class FireMiniAppController extends BaseController {
      */
     @PostMapping("/task/updateFaultDesc")
     public AjaxResult updateFaultDesc(@RequestBody FireMaintenanceRecord record) {
-        if (record.getTaskId() == null) {
-            return AjaxResult.error("任务ID不能为空");
-        }
-        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(record.getTaskId());
-        if (task == null || !isTaskRelated(task, ShiroUtils.getUserId())) {
-            return AjaxResult.error("您无权操作该任务");
+        AjaxResult denied = assertWritableRecord(record.getTaskId(), record.getRecordId());
+        if (denied != null) {
+            return denied;
         }
         int result = recordService.updateCheckResult(record);
         return toAjax(result);
@@ -622,12 +696,9 @@ public class FireMiniAppController extends BaseController {
      */
     @PostMapping("/task/updateCheckDetail")
     public AjaxResult updateCheckDetail(@RequestBody FireMaintenanceRecord record) {
-        if (record.getTaskId() == null) {
-            return AjaxResult.error("任务ID不能为空");
-        }
-        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(record.getTaskId());
-        if (task == null || !isTaskRelated(task, ShiroUtils.getUserId())) {
-            return AjaxResult.error("您无权操作该任务");
+        AjaxResult denied = assertWritableRecord(record.getTaskId(), record.getRecordId());
+        if (denied != null) {
+            return denied;
         }
         // 说明/附件保存不改写设备状态
         if (record.getCheckResult() == null || record.getCheckResult().isEmpty()) {
@@ -639,6 +710,25 @@ public class FireMiniAppController extends BaseController {
 
         int result = recordService.updateCheckResult(record);
         return toAjax(result);
+    }
+
+    /**
+     * 更新设备维护信息（消防测试二级字段）
+     */
+    @PostMapping("/task/updateMaintenance")
+    public AjaxResult updateMaintenance(@RequestBody FireMaintenanceRecord record) {
+        AjaxResult denied = assertWritableRecord(record.getTaskId(), record.getRecordId());
+        if (denied != null) {
+            return denied;
+        }
+        FireMaintenanceRecord update = new FireMaintenanceRecord();
+        update.setRecordId(record.getRecordId());
+        update.setDeviceLocation(record.getDeviceLocation());
+        update.setTestSituation(record.getTestSituation());
+        update.setTestTime(record.getTestTime());
+        update.setTestResult(record.getTestResult());
+        update.setSitePhotos(record.getSitePhotos());
+        return toAjax(recordService.updateFireMaintenanceRecord(update));
     }
 
     /**

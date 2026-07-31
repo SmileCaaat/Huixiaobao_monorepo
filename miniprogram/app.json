@@ -22,7 +22,6 @@
     "pages/inspection/form",
     "pages/inspection/detail",
     "pages/task/index",
-    "pages/task/action",
     "pages/task/detail",
     "pages/task/system",
     "pages/task/device",

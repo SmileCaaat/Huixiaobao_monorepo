@@ -1,6 +1,6 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "检查项列表",
+  "navigationBarTitleText": "消防维护检查项",
   "usingComponents": {
     "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar"
   }

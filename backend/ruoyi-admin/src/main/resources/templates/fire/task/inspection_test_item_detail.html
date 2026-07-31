@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('其他说明')" />
+    <style>
+        .detail-container { padding: 20px; background: #f5f5f5; min-height: 100vh; }
+        .item-header { background: linear-gradient(135deg, #1565c0, #42a5f5); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .item-header h3 { margin: 0; display: flex; align-items: center; }
+        .item-header h3 i { margin-right: 10px; }
+        .btn-toolbar { margin-bottom: 15px; }
+        .btn-toolbar .btn { margin-right: 10px; }
+        .card-panel { background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.1); padding: 20px; margin-bottom: 16px; }
+        .card-panel h4 { margin: 0 0 16px; font-size: 15px; color: #333; font-weight: 600; }
+        .info-row { margin-bottom: 10px; font-size: 13px; color: #666; }
+        .info-row .label-text { color: #999; margin-right: 8px; }
+        .info-row .value-text { color: #333; }
+        .status-pill { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; }
+        .status-pending { background: #e9ecef; color: #6c757d; }
+        .status-normal { background: #d4edda; color: #155724; }
+        .status-fault { background: #f8d7da; color: #721c24; }
+        .status-nodevice { background: #fff3cd; color: #856404; }
+        .notes-area textarea { width: 100%; min-height: 120px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; }
+        .image-preview-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+        .image-preview-item { position: relative; width: 96px; height: 96px; }
+        .image-preview-item img { width: 96px; height: 96px; object-fit: cover; border-radius: 4px; cursor: pointer; border: 1px solid #eee; }
+        .image-preview-item .img-remove { position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; border-radius: 50%; background: #dc3545; color: #fff; font-size: 12px; line-height: 18px; text-align: center; cursor: pointer; }
+        .upload-row { margin-top: 10px; }
+        .save-bar { text-align: right; }
+        .save-bar .btn { min-width: 100px; }
+    </style>
+</head>
+<body class="gray-bg">
+<div class="detail-container">
+    <div class="item-header">
+        <h3>
+            <i class="fa fa-file-text-o"></i>
+            <span>其他说明 - </span>
+            <span th:text="${item.itemName}">检查项</span>
+        </h3>
+    </div>
+    <div class="btn-toolbar">
+        <a class="btn btn-default" href="javascript:void(0)" id="btnBack"><i class="fa fa-arrow-left"></i> 返回</a>
+    </div>
+
+    <div class="card-panel">
+        <h4>基本信息</h4>
+        <div class="info-row">
+            <span class="label-text">检查项名称：</span>
+            <span class="value-text" th:text="${item.itemName}">-</span>
+        </div>
+        <div class="info-row">
+            <span class="label-text">检查项编码：</span>
+            <span class="value-text" th:text="${item.itemCode}">-</span>
+        </div>
+        <div class="info-row">
+            <span class="label-text">当前状态：</span>
+            <span class="status-pill"
+                  th:classappend="${item.checkResult == '1' ? 'status-normal' : (item.checkResult == '2' ? 'status-fault' : (item.checkResult == '3' ? 'status-nodevice' : 'status-pending'))}"
+                  th:text="${item.checkResult == '1' ? '正常' : (item.checkResult == '2' ? '故障' : (item.checkResult == '3' ? '无此设备' : '未检查'))}">未检查</span>
+        </div>
+    </div>
+
+    <div class="card-panel notes-area">
+        <h4>其他说明</h4>
+        <textarea id="otherNotes" placeholder="请输入其他说明..." th:text="${item.otherNotes}"></textarea>
+    </div>
+
+    <div class="card-panel">
+        <h4>附件 / 现场图片</h4>
+        <div class="upload-row">
+            <input type="file" id="fileUpload" multiple accept="image/*">
+        </div>
+        <div id="imagePreview" class="image-preview-list"></div>
+    </div>
+
+    <div class="card-panel save-bar">
+        <button type="button" class="btn btn-primary" id="btnSave"><i class="fa fa-save"></i> 保存</button>
+    </div>
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+    var prefix = ctx + "fire/task";
+    var taskId = [[${task.taskId}]];
+    var recordId = [[${item.recordId}]];
+    var categoryKey = /*[[${categoryKey}]]*/ '';
+    var equipmentKey = /*[[${equipmentKey}]]*/ '';
+    var initialImages = /*[[${item.faultImages}]]*/ '';
+    var pendingFaultImages = [];
+    var detailSaving = false;
+
+    function goBack() {
+        window.location.href = prefix + "/inspectionTestEquipment/" + taskId + "/"
+            + encodeURIComponent(categoryKey) + "/" + encodeURIComponent(equipmentKey);
+    }
+
+    function escapeHtml(value) {
+        return $('<div>').text(value == null ? '' : String(value)).html();
+    }
+
+    function initPendingImages() {
+        pendingFaultImages = initialImages ? String(initialImages).split(',').map(function (s) {
+            return $.trim(s);
+        }).filter(function (s) { return !!s; }) : [];
+        renderImagePreview();
+    }
+
+    function renderImagePreview() {
+        var html = '';
+        pendingFaultImages.forEach(function (img, idx) {
+            if (!img) return;
+            html += '<div class="image-preview-item" data-index="' + idx + '">'
+                + '<img class="js-preview-image" src="' + escapeHtml(img) + '" data-url="' + escapeHtml(img) + '" alt="">'
+                + '<span class="img-remove js-remove-image" title="移除" data-index="' + idx + '">×</span>'
+                + '</div>';
+        });
+        $('#imagePreview').html(html);
+    }
+
+    function saveOtherNotes() {
+        if (detailSaving) {
+            return;
+        }
+        var otherNotes = $('#otherNotes').val();
+        if (otherNotes == null) {
+            otherNotes = '';
+        }
+        var fileInput = document.getElementById('fileUpload');
+        detailSaving = true;
+        var $btn = $('#btnSave');
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> 保存中...');
+
+        function finishUnlock() {
+            detailSaving = false;
+            $btn.prop('disabled', false).html('<i class="fa fa-save"></i> 保存');
+        }
+
+        function submit(imageUrls) {
+            $.ajax({
+                url: prefix + "/updateCheckDetail",
+                type: "post",
+                data: {
+                    recordId: recordId,
+                    otherNotes: otherNotes,
+                    faultImages: imageUrls == null ? '' : imageUrls
+                },
+                success: function (res) {
+                    finishUnlock();
+                    if (res.code == 0) {
+                        $.modal.msgSuccess("保存成功");
+                        initialImages = imageUrls || '';
+                        pendingFaultImages = initialImages ? String(initialImages).split(',').filter(function (s) { return !!s; }) : [];
+                        if (fileInput) {
+                            fileInput.value = '';
+                        }
+                        renderImagePreview();
+                    } else {
+                        $.modal.alertError(res.msg || "保存失败");
+                    }
+                },
+                error: function (xhr) {
+                    finishUnlock();
+                    $.modal.alertError((xhr.responseJSON && xhr.responseJSON.msg) || "保存失败");
+                }
+            });
+        }
+
+        if (fileInput && fileInput.files.length > 0) {
+            var formData = new FormData();
+            for (var i = 0; i < fileInput.files.length; i++) {
+                formData.append('files', fileInput.files[i]);
+            }
+            $.ajax({
+                url: ctx + 'common/uploads',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (result) {
+                    if (result.code == 0) {
+                        var uploaded = result.urls ? String(result.urls).split(',').filter(function (s) { return !!s; }) : [];
+                        var merged = pendingFaultImages.concat(uploaded);
+                        submit(merged.join(','));
+                    } else {
+                        finishUnlock();
+                        $.modal.alertError("文件上传失败：" + (result.msg || ''));
+                    }
+                },
+                error: function (xhr, status, error) {
+                    finishUnlock();
+                    $.modal.alertError("文件上传失败：" + error);
+                }
+            });
+        } else {
+            submit(pendingFaultImages.join(','));
+        }
+    }
+
+    $('#btnBack').on('click', function (e) {
+        e.preventDefault();
+        goBack();
+    });
+    $('#btnSave').on('click', function (e) {
+        e.preventDefault();
+        saveOtherNotes();
+    });
+    $('#imagePreview').on('click', '.js-preview-image', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var url = $(this).attr('data-url');
+        if (url) {
+            $.modal.image(url);
+        }
+    });
+    $('#imagePreview').on('click', '.js-remove-image', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var idx = parseInt($(this).attr('data-index'), 10);
+        if (!isNaN(idx)) {
+            pendingFaultImages.splice(idx, 1);
+            renderImagePreview();
+        }
+    });
+
+    initPendingImages();
+</script>
+</body>
+</html>

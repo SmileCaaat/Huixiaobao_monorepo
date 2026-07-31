@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('消防维护')" />
+    <style>
+        .detail-container { padding: 20px; background: #f5f5f5; min-height: 100vh; }
+        .task-header { background: linear-gradient(135deg, #1565c0, #42a5f5); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .task-header h3 { margin: 0; display: flex; align-items: center; }
+        .task-header h3 i { margin-right: 10px; }
+        .task-meta { margin-top: 8px; font-size: 13px; opacity: .9; }
+        .system-list { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,.1); }
+        .system-item { padding: 15px 20px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: space-between; align-items: center; }
+        .system-item:hover { background: #f5f9ff; }
+        .system-info { flex: 1; cursor: pointer; }
+        .system-name { font-size: 16px; font-weight: 500; color: #333; margin-bottom: 5px; }
+        .system-stats { font-size: 13px; color: #666; }
+        .system-stats span { margin-right: 15px; }
+        .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 12px; }
+        .status-incomplete { background: #fff3cd; color: #856404; }
+        .status-complete { background: #d4edda; color: #155724; }
+        .arrow-icon { color: #999; font-size: 18px; cursor: pointer; margin-left: 10px; }
+        .no-data { text-align: center; padding: 50px; color: #999; }
+    </style>
+</head>
+<body class="gray-bg">
+<div class="detail-container">
+    <div class="task-header">
+        <h3><i class="fa fa-clipboard"></i> 消防维护 - <span th:text="${task.taskName}">任务名称</span></h3>
+        <div class="task-meta">
+            <span th:if="${task.companyName != null}" th:text="|单位：${task.companyName}|"></span>
+            <span style="margin-left:12px;">合计 <strong th:text="${detail.totalItems}">0</strong> 项，
+                已完成 <strong th:text="${detail.completedItems}">0</strong>，
+                未完成 <strong th:text="${detail.uncompletedItems}">0</strong></span>
+        </div>
+    </div>
+    <div class="system-list" id="systemList">
+        <div th:each="cat : ${categories}" class="system-item" th:data-category-key="${cat.categoryKey}">
+            <div class="system-info js-open-category">
+                <div class="system-name" th:text="${cat.categoryName}">类目</div>
+                <div class="system-stats">
+                    <span>总计 <strong th:text="${cat.totalItems}">0</strong></span>
+                    <span>已完成 <strong th:text="${cat.completedItems}">0</strong></span>
+                    <span>未完成 <strong th:text="${cat.uncompletedItems}">0</strong></span>
+                </div>
+            </div>
+            <div>
+                <span class="status-badge"
+                      th:classappend="${cat.status == '1' ? 'status-complete' : 'status-incomplete'}"
+                      th:text="${cat.status == '1' ? '已完成' : '未完成'}">未完成</span>
+                <i class="fa fa-angle-right arrow-icon js-open-category"></i>
+            </div>
+        </div>
+        <div class="no-data" th:if="${categories == null or #lists.isEmpty(categories)}">
+            <i class="fa fa-inbox"></i>
+            <p>暂无消防维护类目，请确认任务已下发并生成检查记录</p>
+        </div>
+    </div>
+</div>
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+    var prefix = ctx + "fire/task";
+    var taskId = [[${task.taskId}]];
+    function openCategory(categoryKey) {
+        if (!categoryKey) { return; }
+        window.location.href = prefix + "/inspectionTestSystem/" + taskId + "/" + encodeURIComponent(categoryKey);
+    }
+    $('#systemList').on('click', '.js-open-category', function () {
+        var key = $(this).closest('.system-item').attr('data-category-key');
+        openCategory(key);
+    });
+</script>
+</body>
+</html>

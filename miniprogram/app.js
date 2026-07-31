@@ -24,7 +24,6 @@ if (!Math) {
   "./pages/inspection/form.js";
   "./pages/inspection/detail.js";
   "./pages/task/index.js";
-  "./pages/task/action.js";
   "./pages/task/detail.js";
   "./pages/task/system.js";
   "./pages/task/device.js";

@@ -530,16 +530,15 @@
                         if (row.taskStatus == '0') {
                             actions.push('<a class="btn btn-warning btn-xs" href="javascript:void(0)" onclick="dispatchTask(\'' + row.taskId + '\')"><i class="fa fa-send"></i> 下发</a> ');
                         }
-                        // 只有已下发的任务才能维护（进行中或已完成）
+                        // 只有已下发的任务才能进入消防维护（进行中或已完成）
                         if (row.taskStatus == '1' || row.taskStatus == '2') {
-                            actions.push('<a class="btn btn-info btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="openMaintenanceDetail(\'' + row.taskId + '\')"><i class="fa fa-wrench"></i> 维护</a> ');
-                            actions.push('<a class="btn btn-warning btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="openFireTestDetail(\'' + row.taskId + '\')"><i class="fa fa-fire-extinguisher"></i> 消防测试</a> ');
+                            actions.push('<a class="btn btn-warning btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="openInspectionTestDetail(\'' + row.taskId + '\')"><i class="fa fa-clipboard"></i> 消防维护</a> ');
                             // 签到详情按钮
                             actions.push('<a class="btn btn-primary btn-xs" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="openCheckInList(\'' + row.taskId + '\')"><i class="fa fa-map-marker"></i> 签到详情</a> ');
                             // 维保简报按钮（进行中或已完成状态可编辑）
                             actions.push('<a class="btn btn-primary btn-xs ' + briefingFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="editBriefing(\'' + row.taskId + '\')"><i class="fa fa-file-text-o"></i> 维保简报</a> ');
                         } else {
-                            actions.push('<a class="btn btn-default btn-xs disabled" style="margin-bottom: 5px;" href="javascript:void(0)" title="请先下发任务"><i class="fa fa-wrench"></i> 维护</a> ');
+                            actions.push('<a class="btn btn-default btn-xs disabled" style="margin-bottom: 5px;" href="javascript:void(0)" title="请先下发任务"><i class="fa fa-clipboard"></i> 消防维护</a> ');
                         }
                         // 未完成的任务显示一键完成按钮（仅超级管理员权限 fire:task:completeAll）
                         if (row.taskStatus == '1') {
@@ -667,7 +666,7 @@
             $.modal.open("维保简报", url, '800', '500');
         }
 
-        // 维护 / 消防测试弹窗尺寸：目标 1350×900（较原 900×600 放大 50%），并按视口收缩
+        // 消防维护弹窗尺寸：目标 1350×900（较原 900×600 放大 50%），并按视口收缩
         function getTaskDetailLayerArea() {
             var win = top || window;
             var vw = win.innerWidth || (win.document.documentElement && win.document.documentElement.clientWidth) || 1350;
@@ -677,31 +676,12 @@
             return [width + 'px', height + 'px'];
         }
 
-        // 打开维护页面（弹框模式，关闭刷新列表）
-        function openMaintenanceDetail(taskId) {
-            var url = prefix + '/detail/' + taskId;
+        // 打开消防维护页面（弹框模式，关闭刷新列表）
+        function openInspectionTestDetail(taskId) {
+            var url = prefix + '/inspectionTestDetail/' + taskId;
             top.layer.open({
                 type: 2,
-                title: '维保维护',
-                area: getTaskDetailLayerArea(),
-                fix: false,
-                maxmin: true,
-                shade: 0.3,
-                content: url,
-                btn: [],
-                shadeClose: true,
-                end: function () {
-                    $.table.refresh();
-                }
-            });
-        }
-
-        // 打开消防测试维护页面（弹框模式，关闭刷新列表）
-        function openFireTestDetail(taskId) {
-            var url = prefix + '/fireTestDetail/' + taskId;
-            top.layer.open({
-                type: 2,
-                title: '消防设施测试',
+                title: '消防维护',
                 area: getTaskDetailLayerArea(),
                 fix: false,
                 maxmin: true,

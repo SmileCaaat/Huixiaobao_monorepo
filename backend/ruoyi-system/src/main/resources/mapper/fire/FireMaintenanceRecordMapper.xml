@@ -191,4 +191,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         set check_result = '1', check_time = sysdate()
         where task_id = #{taskId} and level = 3 and (check_result = '0' or check_result is null)
     </update>
+
+    <update id="markUncheckedNormalByRecordIds">
+        update fire_maintenance_record
+        set check_result = '1', check_time = sysdate()
+        where level = 3
+          and (check_result is null or check_result = '' or check_result = '0')
+          and record_id in
+        <foreach item="recordId" collection="array" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </update>
 </mapper>

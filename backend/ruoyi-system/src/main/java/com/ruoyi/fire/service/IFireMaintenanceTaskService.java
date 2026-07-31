@@ -1,8 +1,12 @@
 package com.ruoyi.fire.service;
 
 import java.util.List;
+import java.util.Map;
 import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
+import com.ruoyi.fire.domain.dto.FireInspectionTestCategoryGroup;
+import com.ruoyi.fire.domain.dto.FireInspectionTestDetailVO;
+import com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup;
 
 /**
  * 维保任务Service接口
@@ -87,4 +91,39 @@ public interface IFireMaintenanceTaskService {
      * @return 公司列表
      */
     public List<FireCompany> selectCompanyListByTaskUserId(Long userId);
+
+    /**
+     * 巡查测试统一详情（一级类目去重分组）
+     */
+    FireInspectionTestDetailVO buildInspectionTestDetail(Long taskId);
+
+    /**
+     * 巡查测试二级设备列表（按类目业务键）
+     *
+     * @param categoryKeyEncoded URL-safe Base64 编码的类目业务键
+     */
+    FireInspectionTestCategoryGroup buildInspectionTestSystem(Long taskId, String categoryKeyEncoded);
+
+    /**
+     * 巡查测试三级检查项（按设备业务键）
+     *
+     * @param categoryKeyEncoded  类目键
+     * @param equipmentKeyEncoded 设备键
+     */
+    FireInspectionTestEquipmentGroup buildInspectionTestEquipment(Long taskId, String categoryKeyEncoded,
+            String equipmentKeyEncoded);
+
+    /**
+     * 按当前模板选择重建任务检查记录（删旧再生，幂等）
+     *
+     * @return 新增记录数
+     */
+    int rebuildInspectionTestRecords(Long taskId);
+
+    /**
+     * 批量重建非取消任务的检查记录
+     *
+     * @return taskId -> 新增记录数
+     */
+    Map<Long, Integer> rebuildAllInspectionTestRecords();
 }

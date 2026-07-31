@@ -1,6 +1,6 @@
 {
   "navigationStyle": "custom",
-  "navigationBarTitleText": "系统设备",
+  "navigationBarTitleText": "消防维护设备",
   "usingComponents": {
     "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar",
     "uni-icons": "../../node-modules/@dcloudio/uni-ui/lib/uni-icons/uni-icons",

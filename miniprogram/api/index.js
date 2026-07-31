@@ -88,6 +88,17 @@ const getSystemDetail = (recordId) => {
 const getDeviceDetail = (recordId) => {
   return utils_request.get(`/api/fire/task/equipment/${recordId}`);
 };
+const getInspectionTestDetail = (taskId) => {
+  return utils_request.get(`/api/fire/task/inspectionTest/${taskId}`);
+};
+const getInspectionTestSystem = (taskId, categoryKey) => {
+  return utils_request.get(`/api/fire/task/inspectionTest/system/${taskId}/${encodeURIComponent(categoryKey)}`);
+};
+const getInspectionTestEquipment = (taskId, categoryKey, equipmentKey) => {
+  return utils_request.get(
+    `/api/fire/task/inspectionTest/equipment/${taskId}/${encodeURIComponent(categoryKey)}/${encodeURIComponent(equipmentKey)}`
+  );
+};
 const updateCheckResult = (data) => {
   return utils_request.post("/api/fire/task/updateCheckResult", data);
 };
@@ -231,6 +242,9 @@ const api = {
   getTaskDetail,
   getSystemDetail,
   getDeviceDetail,
+  getInspectionTestDetail,
+  getInspectionTestSystem,
+  getInspectionTestEquipment,
   updateCheckResult,
   updateFaultDesc,
   updateCheckDetail,

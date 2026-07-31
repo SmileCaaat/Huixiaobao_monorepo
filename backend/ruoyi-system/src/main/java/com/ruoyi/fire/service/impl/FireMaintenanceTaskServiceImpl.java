@@ -1,8 +1,11 @@
 package com.ruoyi.fire.service.impl;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,7 +25,11 @@ import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.domain.FireMaintenanceTemplate;
 import com.ruoyi.fire.domain.FireMaintenanceRecord;
+import com.ruoyi.fire.domain.dto.FireInspectionTestCategoryGroup;
+import com.ruoyi.fire.domain.dto.FireInspectionTestDetailVO;
+import com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
+import com.ruoyi.fire.service.support.FireInspectionTestKeys;
 
 /**
  * 维保任务Service业务层处理
@@ -587,5 +594,285 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
     @Override
     public List<FireCompany> selectCompanyListByTaskUserId(Long userId) {
         return fireMaintenanceTaskMapper.selectCompanyListByTaskUserId(userId);
+    }
+
+    @Override
+    public FireInspectionTestDetailVO buildInspectionTestDetail(Long taskId) {
+        FireMaintenanceTask task = requireTask(taskId);
+        List<FireMaintenanceRecord> all = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
+        List<FireInspectionTestCategoryGroup> categories = buildCategoryGroups(all, false);
+        FireInspectionTestDetailVO vo = new FireInspectionTestDetailVO();
+        vo.setTaskInfo(task);
+        vo.setCategories(categories);
+        int total = 0;
+        int completed = 0;
+        for (FireInspectionTestCategoryGroup g : categories) {
+            total += g.getTotalItems() == null ? 0 : g.getTotalItems();
+            completed += g.getCompletedItems() == null ? 0 : g.getCompletedItems();
+        }
+        vo.setTotalItems(total);
+        vo.setCompletedItems(completed);
+        vo.setUncompletedItems(Math.max(0, total - completed));
+        return vo;
+    }
+
+    @Override
+    public FireInspectionTestCategoryGroup buildInspectionTestSystem(Long taskId, String categoryKeyEncoded) {
+        requireTask(taskId);
+        decodeBusinessKey(categoryKeyEncoded); // validate encoding
+        List<FireMaintenanceRecord> all = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
+        List<FireInspectionTestCategoryGroup> groups = buildCategoryGroups(all, true);
+        return groups.stream()
+                .filter(g -> categoryKeyEncoded.equals(g.getCategoryKey()))
+                .findFirst()
+                .orElseThrow(() -> new ServiceException("类目不存在或不属于当前任务"));
+    }
+
+    @Override
+    public FireInspectionTestEquipmentGroup buildInspectionTestEquipment(Long taskId, String categoryKeyEncoded,
+            String equipmentKeyEncoded) {
+        FireInspectionTestCategoryGroup category = buildInspectionTestSystem(taskId, categoryKeyEncoded);
+        decodeBusinessKey(equipmentKeyEncoded);
+        return category.getEquipments().stream()
+                .filter(e -> equipmentKeyEncoded.equals(e.getEquipmentKey()))
+                .findFirst()
+                .orElseThrow(() -> new ServiceException("设备不存在或不属于当前类目"));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int rebuildInspectionTestRecords(Long taskId) {
+        FireMaintenanceTask task = requireTask(taskId);
+        String originalStatus = task.getTaskStatus();
+        boolean cancelled = "3".equals(originalStatus);
+
+        fireMaintenanceRecordMapper.deleteFireMaintenanceRecordByTaskId(taskId);
+
+        List<FireMaintenanceTemplate> templates = getAllTemplatesWithCache();
+        Set<Long> selectedSystemIds = parseIdSet(task.getSelectedSystemIds());
+        Set<Long> selectedFireTestIds = parseIdSet(task.getSelectedFireTestIds());
+        if (selectedSystemIds.isEmpty()) {
+            selectedSystemIds = collectLevel1Ids(templates, false);
+        }
+        if (selectedFireTestIds.isEmpty()) {
+            selectedFireTestIds = collectLevel1Ids(templates, true);
+        }
+
+        Set<Long> existingTemplateIds = new HashSet<>();
+        int added = generateMissingRecordsForLevel1Ids(taskId, selectedSystemIds, "0", templates, existingTemplateIds);
+        added += generateMissingRecordsForLevel1Ids(taskId, selectedFireTestIds, "1", templates, existingTemplateIds);
+
+        refreshTaskStatistics(taskId);
+        if (cancelled) {
+            FireMaintenanceTask keep = new FireMaintenanceTask();
+            keep.setTaskId(taskId);
+            keep.setTaskStatus("3");
+            fireMaintenanceTaskMapper.updateFireMaintenanceTask(keep);
+        }
+        else {
+            FireMaintenanceTask reset = new FireMaintenanceTask();
+            reset.setTaskId(taskId);
+            reset.setTaskStatus("0");
+            reset.setCompletedItems(0);
+            reset.setNormalItems(0);
+            reset.setFaultItems(0);
+            reset.setNoDeviceItems(0);
+            fireMaintenanceTaskMapper.updateFireMaintenanceTask(reset);
+            refreshTaskStatistics(taskId);
+            FireMaintenanceTask pending = new FireMaintenanceTask();
+            pending.setTaskId(taskId);
+            pending.setTaskStatus("0");
+            fireMaintenanceTaskMapper.updateFireMaintenanceTask(pending);
+        }
+        log.info("rebuildInspectionTestRecords taskId={}, added={}, cancelled={}", taskId, added, cancelled);
+        return added;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Map<Long, Integer> rebuildAllInspectionTestRecords() {
+        FireMaintenanceTask query = new FireMaintenanceTask();
+        List<FireMaintenanceTask> tasks = fireMaintenanceTaskMapper.selectFireMaintenanceTaskList(query);
+        Map<Long, Integer> result = new LinkedHashMap<>();
+        if (tasks == null) {
+            return result;
+        }
+        for (FireMaintenanceTask task : tasks) {
+            if (task == null || task.getTaskId() == null) {
+                continue;
+            }
+            result.put(task.getTaskId(), rebuildInspectionTestRecords(task.getTaskId()));
+        }
+        return result;
+    }
+
+    private FireMaintenanceTask requireTask(Long taskId) {
+        if (taskId == null) {
+            throw new ServiceException("任务ID不能为空");
+        }
+        FireMaintenanceTask task = fireMaintenanceTaskMapper.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null) {
+            throw new ServiceException("任务不存在");
+        }
+        return task;
+    }
+
+    private String decodeBusinessKey(String encoded) {
+        try {
+            return FireInspectionTestKeys.decodeKey(encoded);
+        }
+        catch (IllegalArgumentException ex) {
+            throw new ServiceException("无效的类目/设备标识");
+        }
+    }
+
+    private List<FireInspectionTestCategoryGroup> buildCategoryGroups(List<FireMaintenanceRecord> all,
+            boolean includeEquipments) {
+        Map<Long, FireMaintenanceRecord> byId = all.stream()
+                .collect(Collectors.toMap(FireMaintenanceRecord::getRecordId, r -> r, (a, b) -> a));
+        Map<String, List<FireMaintenanceRecord>> l1ByKey = new LinkedHashMap<>();
+        List<FireMaintenanceRecord> level1 = all.stream()
+                .filter(r -> r.getLevel() != null && r.getLevel() == 1)
+                .sorted(Comparator
+                        .comparing((FireMaintenanceRecord r) -> r.getSortOrder() == null ? Integer.MAX_VALUE : r.getSortOrder())
+                        .thenComparing(r -> r.getRecordId() == null ? 0L : r.getRecordId()))
+                .collect(Collectors.toList());
+        for (FireMaintenanceRecord l1 : level1) {
+            String key = FireInspectionTestKeys.businessKey(l1);
+            if (StringUtils.isEmpty(key) || "n:".equals(key)) {
+                key = "id:" + l1.getRecordId();
+            }
+            l1ByKey.computeIfAbsent(key, k -> new ArrayList<>()).add(l1);
+        }
+
+        List<FireInspectionTestCategoryGroup> groups = new ArrayList<>();
+        for (Map.Entry<String, List<FireMaintenanceRecord>> entry : l1ByKey.entrySet()) {
+            FireInspectionTestCategoryGroup group = new FireInspectionTestCategoryGroup();
+            String businessKey = entry.getKey();
+            List<FireMaintenanceRecord> sources = entry.getValue();
+            group.setCategoryKey(FireInspectionTestKeys.encodeKey(businessKey));
+            group.setSourceRecords(sources);
+            FireMaintenanceRecord first = sources.get(0);
+            group.setCategoryName(first.getItemName());
+            group.setSortOrder(sources.stream()
+                    .map(FireMaintenanceRecord::getSortOrder)
+                    .filter(s -> s != null)
+                    .min(Integer::compareTo)
+                    .orElse(first.getSortOrder()));
+            for (FireMaintenanceRecord src : sources) {
+                if ("1".equals(src.getRecordType())) {
+                    group.setFireTestRecordId(src.getRecordId());
+                }
+                else {
+                    group.setMaintenanceRecordId(src.getRecordId());
+                }
+            }
+            Set<Long> rootIds = sources.stream().map(FireMaintenanceRecord::getRecordId).collect(Collectors.toSet());
+            List<FireMaintenanceRecord> l3Under = all.stream()
+                    .filter(r -> r.getLevel() != null && r.getLevel() == 3)
+                    .filter(r -> belongsToAnyRoot(r, rootIds, byId))
+                    .collect(Collectors.toList());
+            int total = l3Under.size();
+            int completed = (int) l3Under.stream()
+                    .filter(r -> r.getCheckResult() != null && !"0".equals(r.getCheckResult()))
+                    .count();
+            group.setTotalItems(total);
+            group.setCompletedItems(completed);
+            group.setUncompletedItems(Math.max(0, total - completed));
+            group.setStatus(total > 0 && completed == total ? "1" : "0");
+            if (includeEquipments) {
+                group.setEquipments(buildEquipmentGroups(all, rootIds, byId));
+            }
+            groups.add(group);
+        }
+        return groups;
+    }
+
+    private List<FireInspectionTestEquipmentGroup> buildEquipmentGroups(List<FireMaintenanceRecord> all,
+            Set<Long> categoryRootIds, Map<Long, FireMaintenanceRecord> byId) {
+        List<FireMaintenanceRecord> level2 = all.stream()
+                .filter(r -> r.getLevel() != null && r.getLevel() == 2)
+                .filter(r -> r.getParentRecordId() != null && categoryRootIds.contains(r.getParentRecordId()))
+                .sorted(Comparator
+                        .comparing((FireMaintenanceRecord r) -> r.getSortOrder() == null ? Integer.MAX_VALUE : r.getSortOrder())
+                        .thenComparing(r -> r.getRecordId() == null ? 0L : r.getRecordId()))
+                .collect(Collectors.toList());
+        Map<String, List<FireMaintenanceRecord>> byKey = new LinkedHashMap<>();
+        for (FireMaintenanceRecord l2 : level2) {
+            String key = FireInspectionTestKeys.businessKey(l2);
+            if (StringUtils.isEmpty(key) || "n:".equals(key)) {
+                key = "id:" + l2.getRecordId();
+            }
+            byKey.computeIfAbsent(key, k -> new ArrayList<>()).add(l2);
+        }
+        List<FireInspectionTestEquipmentGroup> groups = new ArrayList<>();
+        for (Map.Entry<String, List<FireMaintenanceRecord>> entry : byKey.entrySet()) {
+            FireInspectionTestEquipmentGroup group = new FireInspectionTestEquipmentGroup();
+            List<FireMaintenanceRecord> sources = entry.getValue();
+            group.setEquipmentKey(FireInspectionTestKeys.encodeKey(entry.getKey()));
+            group.setSourceRecords(sources);
+            FireMaintenanceRecord first = sources.get(0);
+            group.setEquipmentName(first.getItemName());
+            group.setSortOrder(sources.stream()
+                    .map(FireMaintenanceRecord::getSortOrder)
+                    .filter(s -> s != null)
+                    .min(Integer::compareTo)
+                    .orElse(first.getSortOrder()));
+            List<FireMaintenanceRecord> checkItems = new ArrayList<>();
+            for (FireMaintenanceRecord src : sources) {
+                if ("1".equals(src.getRecordType())) {
+                    group.setFireTestRecordId(src.getRecordId());
+                    group.setHasMaintenance(true);
+                    group.setDeviceLocation(src.getDeviceLocation());
+                    group.setTestSituation(src.getTestSituation());
+                    group.setTestTime(src.getTestTime());
+                    group.setTestResult(src.getTestResult());
+                    group.setSitePhotos(src.getSitePhotos());
+                }
+                else {
+                    group.setMaintenanceRecordId(src.getRecordId());
+                }
+                List<FireMaintenanceRecord> children = all.stream()
+                        .filter(r -> r.getLevel() != null && r.getLevel() == 3)
+                        .filter(r -> src.getRecordId().equals(r.getParentRecordId()))
+                        .sorted(Comparator
+                                .comparing((FireMaintenanceRecord r) -> r.getSortOrder() == null ? Integer.MAX_VALUE
+                                        : r.getSortOrder())
+                                .thenComparing(r -> r.getRecordId() == null ? 0L : r.getRecordId()))
+                        .collect(Collectors.toList());
+                if (!children.isEmpty()) {
+                    group.setHasCheckItems(true);
+                    checkItems.addAll(children);
+                }
+            }
+            group.setCheckItems(checkItems);
+            int total = checkItems.size();
+            int completed = (int) checkItems.stream()
+                    .filter(r -> r.getCheckResult() != null && !"0".equals(r.getCheckResult()))
+                    .count();
+            group.setTotalItems(total);
+            group.setCompletedItems(completed);
+            group.setUncompletedItems(Math.max(0, total - completed));
+            group.setStatus(total > 0 && completed == total ? "1" : "0");
+            groups.add(group);
+        }
+        return groups;
+    }
+
+    private boolean belongsToAnyRoot(FireMaintenanceRecord record, Set<Long> rootIds,
+            Map<Long, FireMaintenanceRecord> byId) {
+        Long parentId = record.getParentRecordId();
+        int guard = 0;
+        while (parentId != null && guard++ < 8) {
+            if (rootIds.contains(parentId)) {
+                return true;
+            }
+            FireMaintenanceRecord parent = byId.get(parentId);
+            if (parent == null) {
+                return false;
+            }
+            parentId = parent.getParentRecordId();
+        }
+        return false;
     }
 }

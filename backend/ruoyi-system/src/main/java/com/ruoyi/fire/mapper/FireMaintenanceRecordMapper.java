@@ -120,4 +120,12 @@ public interface FireMaintenanceRecordMapper {
      * @return 结果
      */
     public int completeAllByTaskId(Long taskId);
+
+    /**
+     * 将指定记录中未检查项批量标记为正常（仅处理 check_result 为空或 0）
+     *
+     * @param recordIds 记录ID集合（服务端已确定范围）
+     * @return 更新行数
+     */
+    public int markUncheckedNormalByRecordIds(Long[] recordIds);
 }

@@ -99,4 +99,13 @@ public interface IFireMaintenanceRecordService {
      * @return 结果
      */
     public int completeAllByTaskId(Long taskId);
+
+    /**
+     * 将指定记录中未检查项批量标记为正常，并刷新任务统计
+     *
+     * @param taskId 任务ID
+     * @param recordIds 服务端已确定的记录范围
+     * @return 更新行数
+     */
+    public int markUncheckedNormalByRecordIds(Long taskId, Long[] recordIds);
 }
