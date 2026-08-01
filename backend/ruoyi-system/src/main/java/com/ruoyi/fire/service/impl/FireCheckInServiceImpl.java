@@ -19,6 +19,7 @@ import com.ruoyi.fire.mapper.FireCheckInMapper;
 import com.ruoyi.fire.service.IFireCheckInService;
 import com.ruoyi.fire.service.IFireCompanyService;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
+import com.ruoyi.fire.service.IGeoCodingService;
 import com.ruoyi.system.service.ISysUserService;
 
 /**
@@ -39,6 +40,9 @@ public class FireCheckInServiceImpl implements IFireCheckInService {
 
     @Autowired
     private IFireCompanyService companyService;
+
+    @Autowired
+    private IGeoCodingService geoCodingService;
 
     @Override
     public FireCheckIn selectFireCheckInById(Long checkInId) {
@@ -303,15 +307,40 @@ public class FireCheckInServiceImpl implements IFireCheckInService {
     }
 
     private void validateAddressForMobile(FireCheckIn checkIn) {
-        if (StringUtils.isEmpty(checkIn.getAddress()) || checkIn.getAddress().trim().isEmpty()) {
-            throw new ServiceException("签到地址不能为空");
+        if (checkIn.getLongitude() == null || checkIn.getLatitude() == null) {
+            throw new ServiceException("请获取当前位置");
         }
-        checkIn.setAddress(checkIn.getAddress().trim());
-        if (checkIn.getLongitude() != null || checkIn.getLatitude() != null) {
-            if (checkIn.getLongitude() == null || checkIn.getLatitude() == null) {
-                throw new ServiceException("经纬度不完整");
-            }
-            validateCoordinate(checkIn.getLongitude(), checkIn.getLatitude());
+        validateCoordinate(checkIn.getLongitude(), checkIn.getLatitude());
+        // Native map selection is the explicit fallback when automatic reverse geocoding is unavailable.
+        // Coordinates remain authoritative; the selected address is only a readable label for them.
+        if ("map".equals(checkIn.getAddressMode())) {
+            String selectedAddress = StringUtils.isNotEmpty(checkIn.getLocatedAddress())
+                    ? checkIn.getLocatedAddress().trim()
+                    : (checkIn.getAddress() == null ? "" : checkIn.getAddress().trim());
+            validateMapSelectedAddress(selectedAddress);
+            checkIn.setAddress(selectedAddress);
+            checkIn.setLocatedAddress(selectedAddress);
+            checkIn.setManualAddress(null);
+            return;
+        }
+        // 不信任客户端地址文本；以服务端逆地理编码结果为准
+        String resolved = geoCodingService.resolveChineseAddress(checkIn.getLongitude(), checkIn.getLatitude());
+        checkIn.setAddress(resolved);
+        checkIn.setLocatedAddress(resolved);
+        checkIn.setAddressMode("auto");
+        checkIn.setManualAddress(null);
+    }
+
+    private void validateMapSelectedAddress(String address) {
+        if (StringUtils.isEmpty(address) || address.length() > 255) {
+            throw new ServiceException("请选择有效的签到地址");
+        }
+        if (!address.matches(".*[\\u4e00-\\u9fff].*")) {
+            throw new ServiceException("签到地址必须包含中文地名");
+        }
+        if (address.matches("^-?\\d+(\\.\\d+)?\\s*,\\s*-?\\d+(\\.\\d+)?$")
+                || address.contains("解析失败") || address.contains("正在获取") || address.contains("正在解析")) {
+            throw new ServiceException("请选择有效的签到地址");
         }
     }
 

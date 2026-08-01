@@ -1,7 +1,5 @@
 {
-  "navigationStyle": "custom",
-  "navigationBarTitleText": "设备列表",
-  "usingComponents": {
-    "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar"
-  }
+  "navigationBarTitleText": "\u8bbe\u5907\u5217\u8868",
+  "enablePullDownRefresh": true,
+  "usingComponents": {}
 }

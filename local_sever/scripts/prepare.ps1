@@ -142,6 +142,7 @@ $DbUser = Get-Cfg "DB_USER" "root"
 $DbPass = Get-Cfg "DB_PASS" "replace-me"
 $DruidUser = Get-Cfg "DRUID_USER" "admin"
 $DruidPass = Get-Cfg "DRUID_PASS" "replace-me"
+$AmapWebKey = Get-Cfg "AMAP_WEB_KEY" ""
 
 $GatewayPidFile = Join-Path $PidDir "gateway.pid"
 $BackendPidFile = Join-Path $PidDir "backend.pid"
@@ -241,6 +242,7 @@ if ($AutoStartBackend -and -not $SkipBackend) {
       $env:DB_PASS = $DbPass
       $env:DRUID_USER = $DruidUser
       $env:DRUID_PASS = $DruidPass
+      $env:AMAP_WEB_KEY = $AmapWebKey
 
       if ($DbPass -eq "replace-me") {
         Write-Host "[local_sever] WARN: DB_PASS is still replace-me. Backend may fail to start."

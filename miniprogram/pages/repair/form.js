@@ -1,267 +1,146 @@
-"use strict";
-const common_vendor = require("../../common/vendor.js");
-const api_index = require("../../api/index.js");
-if (!Array) {
-  const _easycom_uni_nav_bar2 = common_vendor.resolveComponent("uni-nav-bar");
-  const _easycom_uni_icons2 = common_vendor.resolveComponent("uni-icons");
-  (_easycom_uni_nav_bar2 + _easycom_uni_icons2)();
-}
-const _easycom_uni_nav_bar = () => "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar.js";
-const _easycom_uni_icons = () => "../../node-modules/@dcloudio/uni-ui/lib/uni-icons/uni-icons.js";
-if (!Math) {
-  (_easycom_uni_nav_bar + _easycom_uni_icons)();
-}
-const _sfc_main = {
-  __name: "form",
-  setup(__props) {
-    const submitting = common_vendor.ref(false);
-    const imageList = common_vendor.ref([]);
-    const equipmentCategories = common_vendor.ref([]);
-    const systemTypeCategoriesLabels = common_vendor.ref([]);
-    const systemTypeCategoriesMap = common_vendor.ref([]);
-    const urgencyOptions = [
-      { label: "一般", value: "0" },
-      { label: "紧急", value: "1" },
-      { label: "特急", value: "2" }
-    ];
-    const formData = common_vendor.ref({
-      companyId: null,
-      companyName: "",
-      systemTypeId: null,
-      systemTypeName: "",
-      equipmentId: null,
-      equipmentName: "",
-      customerAddress: "",
-      foundTime: "",
-      urgencyLevel: "0",
-      faultDescription: "",
-      faultImages: ""
-    });
-    const pad = (num) => String(num).padStart(2, "0");
-    const formatDateTime = (date) => {
-      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
-        date.getDate()
-      )} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
-        date.getSeconds()
-      )}`;
-    };
-    const pickerDateTimeValue = common_vendor.computed(() => {
-      if (!formData.value.foundTime)
-        return "";
-      return formData.value.foundTime.slice(0, 16);
-    });
-    const onSystemTypeChange = (e) => {
-      const index = e.detail.value;
-      const label = systemTypeCategoriesLabels.value[index];
-      formData.value.systemTypeName = label;
-      const match = systemTypeCategoriesMap.value.find(
-        (item) => item.label === label
-      );
-      if (match) {
-        formData.value.systemTypeId = match.value;
-      }
-    };
-    const onEquipmentChange = (e) => {
-      const index = e.detail.value;
-      formData.value.equipmentName = equipmentCategories.value[index];
-    };
-    const goBack = () => {
-      common_vendor.index.navigateBack();
-    };
-    const onDateChange = (e) => {
-      const value = e.detail.value;
-      formData.value.foundTime = `${value}:00`;
-    };
-    const chooseImage = () => {
-      common_vendor.index.chooseImage({
-        count: 4 - imageList.value.length,
-        success: async (res) => {
-          var _a, _b;
-          common_vendor.index.showLoading({ title: "上传中..." });
-          const tempPaths = res.tempFilePaths;
-          for (const path of tempPaths) {
-            try {
-              const uploadRes = await api_index.api.uploadFile(path, { name: "file" });
-              const url = uploadRes.url || ((_a = uploadRes.data) == null ? void 0 : _a.url) || uploadRes.fileName || ((_b = uploadRes.data) == null ? void 0 : _b.fileName);
-              if ((uploadRes.code === 200 || uploadRes.code === 0) && url) {
-                imageList.value.push(path);
-                formData.value.faultImages = formData.value.faultImages ? `${formData.value.faultImages},${url}` : url;
-              } else {
-                common_vendor.index.showToast({ title: "鍥剧墖涓婁紶澶辫触", icon: "none" });
-              }
-            } catch (e) {
-              common_vendor.index.showToast({ title: "图片上传失败", icon: "none" });
-            }
-          }
-          common_vendor.index.hideLoading();
-        }
-      });
-    };
-    const deleteImage = (index) => {
-      imageList.value.splice(index, 1);
-      const paths = formData.value.faultImages ? formData.value.faultImages.split(",") : [];
-      paths.splice(index, 1);
-      formData.value.faultImages = paths.join(",");
-    };
-    const previewImage = (index) => {
-      common_vendor.index.previewImage({
-        urls: imageList.value,
-        current: index
-      });
-    };
-    const openCompanySelect = () => {
-      common_vendor.index.showActionSheet({
-        itemList: ["当前项目单位", "其他单位..."],
-        success: async (res) => {
-          if (res.tapIndex === 0) {
-            const current = await api_index.api.getCurrentCompany();
-            if (current.data) {
-              formData.value.companyId = current.data.companyId;
-              formData.value.companyName = current.data.companyName;
-            }
-          } else {
-            common_vendor.index.showToast({ title: "搜索功能暂未开放", icon: "none" });
-          }
-        }
-      });
-    };
-    const handleSubmit = async () => {
-      if (!formData.value.companyId) {
-        return common_vendor.index.showToast({ title: "请选择报修单位", icon: "none" });
-      }
-      if (!formData.value.faultDescription) {
-        return common_vendor.index.showToast({ title: "请输入故障描述", icon: "none" });
-      }
-      submitting.value = true;
-      try {
-        const submitData = { ...formData.value };
-        Object.keys(submitData).forEach((key) => {
-          if (submitData[key] === null || submitData[key] === void 0) {
-            delete submitData[key];
-          }
+const { api } = require("../../api/index.js");
+const request = require("../../services/request.js");
+const auth = require("../../services/auth.js");
+
+Page({
+  data: {
+    companyId: null,
+    companyName: "",
+    urgencyLevel: "0",
+    urgencyOptions: [
+      { label: "\u4e00\u822c", value: "0" },
+      { label: "\u7d27\u6025", value: "1" },
+      { label: "\u7279\u6025", value: "2" }
+    ],
+    urgencyIndex: 0,
+    urgencyText: "\u4e00\u822c",
+    faultDescription: "",
+    images: [],
+    saving: false
+  },
+
+  onLoad() {
+    this.loadCompany();
+  },
+
+  async loadCompany() {
+    try {
+      const res = await api.getCurrentCompany();
+      if (res && res.data) {
+        this.setData({
+          companyId: res.data.companyId,
+          companyName: res.data.companyName || "\u5f53\u524d\u516c\u53f8"
         });
-        const res = await api_index.api.addRepair(submitData);
-        if (res.code === 200 || res.code === 0) {
-          common_vendor.index.showToast({ title: "提交成功" });
-          setTimeout(() => {
-            common_vendor.index.redirectTo({ url: "/pages/repair/index" });
-          }, 1500);
-        } else {
-          common_vendor.index.showToast({ title: res.msg || "提交失败", icon: "none" });
-        }
-      } catch (e) {
-        common_vendor.index.showToast({ title: "请求失败", icon: "none" });
-      } finally {
-        submitting.value = false;
       }
-    };
-    common_vendor.onMounted(() => {
-      const now = /* @__PURE__ */ new Date();
-      formData.value.foundTime = formatDateTime(now);
-      api_index.api.getCurrentCompany().then((res) => {
-        if (res.data) {
-          formData.value.companyId = res.data.companyId;
-          formData.value.companyName = res.data.companyName;
-        }
-      });
-      api_index.api.getEquipmentCategories().then((res) => {
-        if (res.data) {
-          equipmentCategories.value = res.data;
-        }
-      });
-      api_index.api.getSystemTypes().then((res) => {
-        if (res.data) {
-          systemTypeCategoriesMap.value = res.data;
-          systemTypeCategoriesLabels.value = res.data.map((item) => item.label);
-        }
-      });
+    } catch (e) {
+      this.setData({ companyName: "\u672a\u9009\u62e9\u516c\u53f8" });
+    }
+  },
+
+  onUrgencyChange(e) {
+    const idx = Number(e.detail.value) || 0;
+    const opt = this.data.urgencyOptions[idx];
+    this.setData({
+      urgencyIndex: idx,
+      urgencyLevel: opt.value,
+      urgencyText: opt.label
     });
-    return (_ctx, _cache) => {
-      return common_vendor.e({
-        a: common_vendor.o(goBack),
-        b: common_vendor.p({
-          fixed: true,
-          ["status-bar"]: true,
-          ["left-icon"]: "back",
-          title: "故障上报",
-          ["background-color"]: "#e53935",
-          color: "#ffffff"
-        }),
-        c: common_vendor.t(formData.value.companyName || "请选择单位"),
-        d: !formData.value.companyName ? 1 : "",
-        e: common_vendor.p({
-          type: "right",
-          size: "16",
-          color: "#999"
-        }),
-        f: common_vendor.o(openCompanySelect),
-        g: common_vendor.t(formData.value.systemTypeName || "请选择系统"),
-        h: !formData.value.systemTypeName ? 1 : "",
-        i: common_vendor.p({
-          type: "bottom",
-          size: "14",
-          color: "#999"
-        }),
-        j: systemTypeCategoriesLabels.value,
-        k: common_vendor.o(onSystemTypeChange),
-        l: common_vendor.t(formData.value.equipmentName || "请选择设备名称"),
-        m: !formData.value.equipmentName ? 1 : "",
-        n: common_vendor.p({
-          type: "bottom",
-          size: "14",
-          color: "#999"
-        }),
-        o: equipmentCategories.value,
-        p: common_vendor.o(onEquipmentChange),
-        q: formData.value.customerAddress,
-        r: common_vendor.o(($event) => formData.value.customerAddress = $event.detail.value),
-        s: common_vendor.t(formData.value.foundTime || "请选择日期时间"),
-        t: common_vendor.p({
-          type: "right",
-          size: "16",
-          color: "#999"
-        }),
-        v: pickerDateTimeValue.value,
-        w: common_vendor.o(onDateChange),
-        x: common_vendor.f(urgencyOptions, (item, index, i0) => {
-          return {
-            a: common_vendor.t(item.label),
-            b: index,
-            c: formData.value.urgencyLevel === item.value ? 1 : "",
-            d: common_vendor.o(($event) => formData.value.urgencyLevel = item.value, index)
-          };
-        }),
-        y: formData.value.faultDescription,
-        z: common_vendor.o(($event) => formData.value.faultDescription = $event.detail.value),
-        A: common_vendor.f(imageList.value, (img, index, i0) => {
-          return {
-            a: img,
-            b: common_vendor.o(($event) => previewImage(index), index),
-            c: "d88a0b15-5-" + i0,
-            d: common_vendor.o(($event) => deleteImage(index), index),
-            e: index
-          };
-        }),
-        B: common_vendor.p({
-          type: "closeempty",
-          size: "12",
-          color: "#fff"
-        }),
-        C: imageList.value.length < 4
-      }, imageList.value.length < 4 ? {
-        D: common_vendor.p({
-          type: "plusempty",
-          size: "30",
-          color: "#ccc"
-        }),
-        E: common_vendor.o(chooseImage)
-      } : {}, {
-        F: common_vendor.o(handleSubmit),
-        G: submitting.value
+  },
+
+  onDescInput(e) {
+    this.setData({ faultDescription: e.detail.value });
+  },
+
+  chooseImage() {
+    const remain = 4 - this.data.images.length;
+    if (remain <= 0) return;
+    wx.chooseImage({
+      count: remain,
+      sizeType: ["compressed"],
+      sourceType: ["album", "camera"],
+      success: (res) => {
+        (res.tempFilePaths || []).forEach((p) => this.uploadImg(p));
+      }
+    });
+  },
+
+  uploadImg(tempPath) {
+    const images = this.data.images.concat([{ tempPath, serverUrl: "", uploading: true }]);
+    const index = images.length - 1;
+    this.setData({ images });
+    const token = auth.getToken();
+    wx.uploadFile({
+      url: request.BASE_URL + "/api/common/upload",
+      filePath: tempPath,
+      name: "file",
+      header: token ? { Authorization: "Bearer " + token } : {},
+      success: (uploadRes) => {
+        try {
+          const body = JSON.parse(uploadRes.data);
+          const url = body.url || body.fileName || (body.data && body.data.url);
+          if (url) {
+            this.setData({
+              ["images[" + index + "].serverUrl"]: url,
+              ["images[" + index + "].uploading"]: false
+            });
+          } else {
+            this.removeImage(index);
+            wx.showToast({ title: body.msg || "\u4e0a\u4f20\u5931\u8d25", icon: "none" });
+          }
+        } catch (err) {
+          this.removeImage(index);
+          wx.showToast({ title: "\u4e0a\u4f20\u5931\u8d25", icon: "none" });
+        }
+      },
+      fail: () => {
+        this.removeImage(index);
+        wx.showToast({ title: "\u4e0a\u4f20\u5931\u8d25", icon: "none" });
+      }
+    });
+  },
+
+  removeImage(e) {
+    const index = typeof e === "number" ? e : e.currentTarget.dataset.index;
+    const images = this.data.images.slice();
+    images.splice(index, 1);
+    this.setData({ images });
+  },
+
+  previewImage(e) {
+    const urls = this.data.images.map((i) => i.tempPath || i.serverUrl);
+    wx.previewImage({ urls, current: urls[e.currentTarget.dataset.index] });
+  },
+
+  async submit() {
+    if (this.data.saving) return;
+    if (!this.data.companyId) {
+      wx.showToast({ title: "\u8bf7\u5148\u9009\u62e9\u516c\u53f8", icon: "none" });
+      return;
+    }
+    const faultDescription = (this.data.faultDescription || "").trim();
+    if (!faultDescription) {
+      wx.showToast({ title: "\u8bf7\u586b\u5199\u6545\u969c\u63cf\u8ff0", icon: "none" });
+      return;
+    }
+    if (this.data.images.some((img) => img.uploading)) {
+      wx.showToast({ title: "\u56fe\u7247\u4e0a\u4f20\u4e2d", icon: "none" });
+      return;
+    }
+    this.setData({ saving: true });
+    try {
+      const faultImages = this.data.images.map((i) => i.serverUrl).filter(Boolean).join(",");
+      await api.addRepair({
+        companyId: this.data.companyId,
+        urgencyLevel: this.data.urgencyLevel,
+        faultDescription,
+        faultImages
       });
-    };
+      wx.showToast({ title: "\u63d0\u4ea4\u6210\u529f", icon: "success" });
+      setTimeout(() => wx.navigateBack(), 1200);
+    } catch (e) {
+      // toast handled by request
+    } finally {
+      this.setData({ saving: false });
+    }
   }
-};
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-d88a0b15"]]);
-wx.createPage(MiniProgramPage);
-//# sourceMappingURL=../../../.sourcemap/mp-weixin/pages/repair/form.js.map
+});

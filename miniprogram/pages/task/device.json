@@ -1,7 +1,4 @@
 {
-  "navigationStyle": "custom",
-  "navigationBarTitleText": "消防维护检查项",
-  "usingComponents": {
-    "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar"
-  }
+  "navigationBarTitleText": "\u68c0\u67e5\u9879",
+  "usingComponents": {}
 }

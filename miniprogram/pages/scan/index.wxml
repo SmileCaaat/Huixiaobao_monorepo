@@ -1,1 +1,12 @@
-<view class="page data-v-99526857"><view class="header data-v-99526857"><text class="title data-v-99526857">扫一扫</text></view><view class="content data-v-99526857"><view class="scan-area data-v-99526857"><view class="scan-box data-v-99526857"><text class="scan-icon data-v-99526857">📷</text><text class="scan-text data-v-99526857">点击扫描设备二维码</text><button class="scan-btn data-v-99526857" bindtap="{{a}}">开始扫描</button></view></view></view><view class="bottom-placeholder data-v-99526857"></view><tab-bar wx:if="{{b}}" class="data-v-99526857" u-i="99526857-0" bind:__l="__l" u-p="{{b}}"/></view>
+<view class="page">
+  <view class="btn-primary scan-btn" bindtap="startScan">开始扫码</view>
+  <view wx:if="{{error}}" class="error">{{error}}</view>
+  <view wx:if="{{result}}" class="card">
+    <view class="row">名称：{{result.equipmentName || '-'}}</view>
+    <view class="row">编码：{{result.equipmentCode || '-'}}</view>
+    <view class="row">位置：{{result.location || '-'}}</view>
+    <view class="btn-ghost" bindtap="goDetail">查看详情</view>
+  </view>
+  <view wx:else class="empty-tip">扫描设备二维码查询信息</view>
+  <tab-bar currentTab="{{2}}" />
+</view>

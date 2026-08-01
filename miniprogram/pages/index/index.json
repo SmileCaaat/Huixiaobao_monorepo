@@ -1,7 +1,7 @@
 {
-  "navigationStyle": "custom",
   "navigationBarTitleText": "首页",
   "usingComponents": {
-    "company-drawer": "../../components/CompanyDrawer"
+    "tab-bar": "/components/tab-bar/tab-bar",
+    "company-drawer": "/components/company-drawer/company-drawer"
   }
 }

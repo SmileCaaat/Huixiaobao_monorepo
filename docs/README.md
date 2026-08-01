@@ -4,7 +4,7 @@
 
 ## 一句话架构
 
-汇消宝是一个以 RuoYi 后端为核心、微信小程序为现场作业端的消防维保系统：后端业务模型和管理能力相对完整，小程序则是缺少源码的 uni-app 编译产物，适合在稳定接口契约后逐步或整体重写为原生小程序。本地联调可通过 `local_sever/` 一键拉起后端面板并切换小程序 `BASE_URL`。
+汇消宝是一个以 RuoYi 后端为核心、微信原生小程序为现场作业端的消防维保系统。业务判断在后端；小程序只做展示与采集。本地联调可通过 `local_sever/` 一键拉起后端面板并切换小程序 `BASE_URL`。
 
 ## 阅读顺序
 
@@ -12,7 +12,7 @@
 |---|---|
 | [01-项目总览.md](01-项目总览.md) | 仓库边界、技术栈、模块依赖和整体架构 |
 | [02-后端架构.md](02-后端架构.md) | Maven 模块、分层、鉴权、数据库和基础设施 |
-| [03-小程序架构与现状.md](03-小程序架构与现状.md) | 页面、请求、Token、uni-app 痕迹及重构边界 |
+| [03-小程序架构与现状.md](03-小程序架构与现状.md) | 原生页面、请求、Token、AppID 与模块现状 |
 | [04-前后端API契约.md](04-前后端API契约.md) | 小程序 API 到后端 Controller 的映射及已知断点 |
 | [05-核心业务流程.md](05-核心业务流程.md) | 登录、公司上下文、任务、设备、巡检、签到和报修流程 |
 | [06-开发与部署.md](06-开发与部署.md) | 本地开发、微信开发者工具、生产部署、日志和回滚 |
@@ -21,11 +21,13 @@
 | [09-local_sever.md](09-local_sever.md) | 本地测试网关、设备面板、一键启动与小程序联调 |
 | [10-本地与线上差异说明.md](10-本地与线上差异说明.md) | 本地管理端与线上不一致的原因、本地库来源与如何对齐 |
 | [11-本地更改与预览规则.md](11-本地更改与预览规则.md) | 改 backend / 小程序 / 库 / 启动台后如何预览，Maven 与重启规则 |
+| [12-后端接口手册.md](12-后端接口手册.md) | **权威全量 API 清单**（`/api/**` + 主要 `/fire/**` JSON）；契约以本手册为准 |
+| [12-原生小程序重构总纲与Cursor执行指令.md](12-原生小程序重构总纲与Cursor执行指令.md) | 原生重构执行任务书（历史）；落地进度见 03/07 |
 
 ## 当前判断
 
 - `backend/` 是项目核心，业务数据模型、管理端、消防业务 Service/Mapper 和大部分小程序 REST API 都已存在。
-- `miniprogram/` 不是 uni-app 源工程，而是 `mp-weixin` 编译结果；仓库中没有 `.vue`、`pages.json`、`manifest.json`、`package.json` 或有效 sourcemap。
+- `miniprogram/` **已为微信原生源码**：已去掉 uni-app `vendor`/`@dcloudio`；主业务页接真接口；AppID `wx550e3fbd9d3ea9a4`；签到中文地址走后端 `reverseGeocode`。
 - `local_sever/` 仅用于本机联调（网关、面板、一键启动），不是生产组件。
 - 小程序可以整体原生重构，但应先固定 API 契约，否则会把当前接口漂移复制进新代码。
 - 近期管理端增量：故障报修 PC 员工工作台（待我处理/处理中/已完成/我上报的，与小程序共用 start/complete 规则；工单分类为搜索下方独立卡片）；故障报修派发撤回；维保报告按客户选任务、报告 DOCX 落盘与 Word 在线预览（[docxjs](https://github.com/VolodymyrBaydalka/docxjs)；PDF/LibreOffice 可选）；建筑编码统一后端自动生成（`B`+数字）；维保任务维护弹窗按视口放大；维保任务类型筛选（全部/周期/临时）为搜索下方独立卡片；**消防维护**合并常规维保与消防设施测试（统一三级页 + `categoryKey`/`equipmentKey`；小程序去掉 `task/action`）；**独立巡检测试**（`/fire/inspection`）：系统/设备类目与消防维护模板一致（`IFireMaintenanceTemplateCategoryService`），保存 `categoryKey`/`equipmentKey`；PC/小程序楼层网格（`-5F～-1F`、`1F～99F`）与年/月/日日期选择；检查项「其他说明」与状态按钮分离，选中态无 √，说明/附件保存不覆盖 `check_result`；检查项「全部正常」仅改未检查项；消防首页**本人任务**统计卡可快捷筛选维保任务列表；**全局**统计卡可跳转公司/建筑/设备信息，「即将过期」带入与首页相同的 30 天到期筛选；签到/任务/报修/报告搜索栏用页面级 `fire-search-layout` 修布局（勿靠改全局 body 字号）；系统管理列表搜索用 `system-search-collapse`；设备二维码指向公开详情页 `/public/equipment/{code}`（旧 `/public/api/equipment/` 浏览器访问可跳转兼容）；项目负责人(`project_manager`)：业务菜单含信息维护三页、`data_scope=6` 仅本公司部门、故障报修可派发、维保任务隐藏行内删除但保留顶部删除；脚本见 `upgrade_project_manager_business_admin.sql` / `upgrade_project_manager_company_scope.sql` / `upgrade_project_manager_info_maintain.sql`（不含 `fire:task:completeAll`；须先部署后端再改 `data_scope=6`）。

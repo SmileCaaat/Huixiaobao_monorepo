@@ -1,0 +1,33 @@
+<view wx:if="{{visible}}" class="drawer-mask" bindtap="onClose">
+  <view class="drawer-container" catchtap="noop">
+    <view class="drawer-header">
+      <text class="drawer-title">请选择公司</text>
+    </view>
+    <view class="search-box">
+      <input
+        class="search-input"
+        type="text"
+        placeholder="请输入关键字"
+        value="{{keyword}}"
+        bindinput="onKeyword"
+      />
+    </view>
+    <scroll-view class="company-list" scroll-y>
+      <view
+        wx:for="{{filtered}}"
+        wx:key="companyId"
+        class="company-item {{currentCompanyId == item.companyId ? 'active' : ''}}"
+        data-id="{{item.companyId}}"
+        bindtap="onSelect"
+      >
+        <view class="company-name">
+          {{item.companyName}}
+          <text wx:if="{{currentCompanyId == item.companyId}}" class="current-tag">当前</text>
+        </view>
+        <view class="company-address">{{item.address || '暂无地址'}}</view>
+      </view>
+      <view wx:if="{{!loading && filtered.length === 0}}" class="empty-state">暂无匹配的公司</view>
+    </scroll-view>
+    <view wx:if="{{loading}}" class="loading-mask">加载中...</view>
+  </view>
+</view>

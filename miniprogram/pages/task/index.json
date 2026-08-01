@@ -1,7 +1,5 @@
 {
-  "navigationStyle": "custom",
-  "navigationBarTitleText": "维保任务",
-  "usingComponents": {
-    "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar"
-  }
+  "navigationBarTitleText": "\u7ef4\u4fdd\u4efb\u52a1",
+  "enablePullDownRefresh": true,
+  "usingComponents": {}
 }

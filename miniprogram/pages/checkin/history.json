@@ -1,5 +1,5 @@
 {
-  "navigationStyle": "custom",
   "navigationBarTitleText": "签到历史",
+  "enablePullDownRefresh": true,
   "usingComponents": {}
 }

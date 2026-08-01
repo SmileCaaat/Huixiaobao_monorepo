@@ -1,3 +1,36 @@
+page {
+  background: #f5f5f5;
+  color: #333;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
 
-/*每个页面公共css */
-page{--status-bar-height:25px;--top-window-height:0px;--window-top:0px;--window-bottom:0px;--window-left:0px;--window-right:0px;--window-magin:0px}[data-c-h="true"]{display: none !important;}
+.btn-primary {
+  background: #e53935;
+  color: #fff;
+  border-radius: 12rpx;
+  text-align: center;
+  padding: 22rpx 0;
+}
+
+.btn-ghost {
+  background: #fff;
+  color: #e53935;
+  border: 1px solid #e53935;
+  border-radius: 12rpx;
+  text-align: center;
+  padding: 20rpx 0;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin: 20rpx 24rpx;
+}
+
+.empty-tip {
+  text-align: center;
+  color: #999;
+  padding: 80rpx 24rpx;
+}

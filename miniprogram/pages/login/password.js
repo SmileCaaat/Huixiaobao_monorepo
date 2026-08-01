@@ -1,73 +1,48 @@
-"use strict";
-const common_vendor = require("../../common/vendor.js");
-const api_index = require("../../api/index.js");
-const utils_request = require("../../utils/request.js");
-const _sfc_main = {
-  __name: "password",
-  setup(__props) {
-    const phone = common_vendor.ref("");
-    const password = common_vendor.ref("");
-    const showPwd = common_vendor.ref(false);
-    const canSubmit = common_vendor.computed(
-      () => phone.value.length === 11 && password.value.length >= 6
-    );
-    const handleForgot = () => {
-      common_vendor.index.showToast({ title: "请联系管理员重置密码", icon: "none" });
-    };
-    const goRegister = () => {
-      common_vendor.index.navigateTo({ url: "/pages/login/register" });
-    };
-    const handleLogin = async () => {
-      if (!canSubmit.value) {
-        common_vendor.index.showToast({ title: "请输入完整信息", icon: "none" });
-        return;
+const { api } = require("../../api/index.js");
+const auth = require("../../services/auth.js");
+
+Page({
+  data: {
+    username: "",
+    password: "",
+    showPwd: false
+  },
+  onUsername(e) {
+    this.setData({ username: e.detail.value });
+  },
+  onPassword(e) {
+    this.setData({ password: e.detail.value });
+  },
+  togglePwd() {
+    this.setData({ showPwd: !this.data.showPwd });
+  },
+  handleForgot() {
+    wx.showToast({ title: "请联系管理员重置密码", icon: "none" });
+  },
+  goRegister() {
+    wx.navigateTo({ url: "/pages/login/register" });
+  },
+  async handleLogin() {
+    const username = (this.data.username || "").trim();
+    const password = this.data.password || "";
+    if (!username || password.length < 6) {
+      wx.showToast({ title: "请输入完整信息", icon: "none" });
+      return;
+    }
+    try {
+      const res = await api.login({ username, password });
+      if (res.data && res.data.token) {
+        auth.setToken(res.data.token);
+        if (res.data.user) auth.setUser(res.data.user);
+        wx.showToast({ title: "登录成功", icon: "success" });
+        setTimeout(() => {
+          wx.reLaunch({ url: "/pages/index/index" });
+        }, 800);
+      } else {
+        wx.showToast({ title: res.msg || "登录失败", icon: "none" });
       }
-      common_vendor.index.showLoading({ title: "登录中...", mask: true });
-      try {
-        const res = await api_index.api.login({
-          username: phone.value,
-          password: password.value
-        });
-        common_vendor.index.hideLoading();
-        if ((res.code === 200 || res.code === 0) && res.data && res.data.token) {
-          utils_request.setToken(res.data.token);
-          common_vendor.index.showToast({ title: "登录成功", icon: "success" });
-          setTimeout(() => {
-            common_vendor.index.reLaunch({ url: "/pages/index/index" });
-          }, 1500);
-        } else {
-          common_vendor.index.showToast({ title: res.msg || "登录失败", icon: "none" });
-        }
-      } catch (e) {
-        common_vendor.index.hideLoading();
-        common_vendor.index.__f__("error", "at pages/login/password.vue:112", "Login Error:", e);
-        common_vendor.index.showToast({
-          title: e.msg || e.errMsg || "网络连接错误",
-          icon: "none"
-        });
-      }
-    };
-    return (_ctx, _cache) => {
-      return common_vendor.e({
-        a: phone.value,
-        b: common_vendor.o(($event) => phone.value = $event.detail.value),
-        c: phone.value
-      }, phone.value ? {
-        d: common_vendor.o(($event) => phone.value = "")
-      } : {}, {
-        e: showPwd.value ? "text" : "password",
-        f: password.value,
-        g: common_vendor.o(($event) => password.value = $event.detail.value),
-        h: common_vendor.t(showPwd.value ? "👁" : "👁‍🗨"),
-        i: common_vendor.o(($event) => showPwd.value = !showPwd.value),
-        j: common_vendor.o(handleForgot),
-        k: canSubmit.value ? 1 : "",
-        l: common_vendor.o(handleLogin),
-        m: common_vendor.o(goRegister)
-      });
-    };
+    } catch (e) {
+      // toast 已由 request 处理
+    }
   }
-};
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-f5737803"]]);
-wx.createPage(MiniProgramPage);
-//# sourceMappingURL=../../../.sourcemap/mp-weixin/pages/login/password.js.map
+});

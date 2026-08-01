@@ -1,9 +1,5 @@
 {
-  "navigationStyle": "custom",
-  "navigationBarTitleText": "报修工单",
-  "usingComponents": {
-    "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar",
-    "uni-icons": "../../node-modules/@dcloudio/uni-ui/lib/uni-icons/uni-icons",
-    "uni-load-more": "../../node-modules/@dcloudio/uni-ui/lib/uni-load-more/uni-load-more"
-  }
+  "navigationBarTitleText": "\u62a5\u4fee\u5de5\u5355",
+  "enablePullDownRefresh": true,
+  "usingComponents": {}
 }

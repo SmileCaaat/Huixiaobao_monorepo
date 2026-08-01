@@ -65,11 +65,12 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label">系统名称：</label>
                 <div class="col-sm-8">
-                    <input name="systemName" id="systemName" list="systemNameList" class="form-control"
-                        th:value="*{systemName}" placeholder="可选择或直接输入">
-                    <datalist id="systemNameList">
-                        <option th:each="name : ${systemNames}" th:value="${name}"></option>
-                    </datalist>
+                    <select name="systemName" id="systemName" class="form-control m-b" th:field="*{systemName}">
+                        <option value="">请选择</option>
+                        <option th:if="${equipment.systemName != null and !#arrays.contains(systemNames, equipment.systemName)}"
+                            th:value="${equipment.systemName}" th:text="${equipment.systemName}"></option>
+                        <option th:each="name : ${systemNames}" th:value="${name}" th:text="${name}"></option>
+                    </select>
                 </div>
             </div>
             <!-- 4. 项目类别 -->
@@ -87,8 +88,13 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label">设备名称：</label>
                 <div class="col-sm-8">
-                    <input name="equipmentName" th:field="*{equipmentName}" class="form-control" type="text"
-                        placeholder="请选择或输入">
+                    <select name="equipmentName" id="equipmentName" class="form-control m-b"
+                        th:field="*{equipmentName}">
+                        <option value="">请选择</option>
+                        <option th:if="${equipment.equipmentName != null and !#arrays.contains(systemNames, equipment.equipmentName)}"
+                            th:value="${equipment.equipmentName}" th:text="${equipment.equipmentName}"></option>
+                        <option th:each="name : ${systemNames}" th:value="${name}" th:text="${name}"></option>
+                    </select>
                 </div>
             </div>
 

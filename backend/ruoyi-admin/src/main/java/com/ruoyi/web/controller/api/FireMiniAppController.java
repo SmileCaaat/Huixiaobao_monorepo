@@ -6,6 +6,7 @@ import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -80,6 +81,9 @@ public class FireMiniAppController extends BaseController {
 
     @Autowired
     private IFireMaintenanceTemplateCategoryService templateCategoryService;
+
+    @Autowired
+    private IGeoCodingService geoCodingService;
 
     // ==================== 公司相关接口 ====================
 
@@ -160,6 +164,105 @@ public class FireMiniAppController extends BaseController {
         return AjaxResult.success(company);
     }
 
+    /**
+     * 小程序首页统计（公司范围）。禁止小程序再请求管理端 HTML GET /fire/home。
+     * data: projectName/projectAddr、monthPlan{done,total}、deviceStats{normal,abnormal}
+     */
+    @GetMapping("/home")
+    public AjaxResult miniHome() {
+        Map<String, Object> data = new HashMap<>();
+        FireCompany company = resolveCurrentCompanyOrNull();
+        if (company != null) {
+            data.put("companyId", company.getCompanyId());
+            data.put("projectName", company.getCompanyName());
+            data.put("projectAddr", company.getAddress());
+        } else {
+            data.put("projectName", "");
+            data.put("projectAddr", "");
+        }
+
+        FireMaintenanceTask taskQuery = new FireMaintenanceTask();
+        if (company != null) {
+            taskQuery.setCompanyId(company.getCompanyId());
+        }
+        fireDataPermissionService.applyTaskListScope(taskQuery, ShiroUtils.getSysUser());
+        if (taskQuery.getManagerId() == null && !isSysAdmin()
+                && !fireDataPermissionService.hasGlobalBizDataScope(ShiroUtils.getSysUser())) {
+            taskQuery.setManagerId(ShiroUtils.getUserId());
+        }
+        List<FireMaintenanceTask> tasks = taskService.selectFireMaintenanceTaskList(taskQuery);
+        Calendar now = Calendar.getInstance();
+        int year = now.get(Calendar.YEAR);
+        int month = now.get(Calendar.MONTH);
+        int monthTotal = 0;
+        int monthDone = 0;
+        if (tasks != null) {
+            for (FireMaintenanceTask t : tasks) {
+                Date planStart = t.getPlanStartTime();
+                if (planStart == null) {
+                    continue;
+                }
+                Calendar pc = Calendar.getInstance();
+                pc.setTime(planStart);
+                if (pc.get(Calendar.YEAR) != year || pc.get(Calendar.MONTH) != month) {
+                    continue;
+                }
+                monthTotal++;
+                if ("2".equals(t.getTaskStatus())) {
+                    monthDone++;
+                }
+            }
+        }
+        Map<String, Object> monthPlan = new HashMap<>();
+        monthPlan.put("done", monthDone);
+        monthPlan.put("total", monthTotal);
+        data.put("monthPlan", monthPlan);
+
+        int normal = 0;
+        int abnormal = 0;
+        if (company != null) {
+            FireEquipment eqQuery = new FireEquipment();
+            eqQuery.setCompanyId(company.getCompanyId());
+            eqQuery.setStatus("0");
+            List<FireEquipment> equipments = equipmentService.selectEquipmentList(eqQuery);
+            if (equipments != null) {
+                for (FireEquipment e : equipments) {
+                    String es = e.getEquipmentStatus();
+                    if (es == null || "normal".equalsIgnoreCase(es)) {
+                        normal++;
+                    } else {
+                        abnormal++;
+                    }
+                }
+            }
+        }
+        Map<String, Object> deviceStats = new HashMap<>();
+        deviceStats.put("normal", normal);
+        deviceStats.put("abnormal", abnormal);
+        data.put("deviceStats", deviceStats);
+        return AjaxResult.success(data);
+    }
+
+    private FireCompany resolveCurrentCompanyOrNull() {
+        Object companyIdObj = ShiroUtils.getSession().getAttribute("currentCompanyId");
+        if (companyIdObj == null) {
+            Long userId = ShiroUtils.getUserId();
+            List<FireCompany> userCompanies = taskService.selectCompanyListByTaskUserId(userId);
+            if (userCompanies != null && !userCompanies.isEmpty()) {
+                FireCompany first = userCompanies.get(0);
+                ShiroUtils.getSession().setAttribute("currentCompanyId", first.getCompanyId());
+                return first;
+            }
+            return null;
+        }
+        try {
+            Long companyId = Long.parseLong(companyIdObj.toString());
+            return companyService.selectFireCompanyById(companyId);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     // ==================== 签到相关接口 ====================
 
     /**
@@ -229,6 +332,20 @@ public class FireMiniAppController extends BaseController {
         ajax.put("checkOutRecord", pair.get("checkOutRecord"));
         ajax.put("historyUnlinkedTask", checkIn.getTaskId() == null);
         return ajax;
+    }
+
+    /**
+     * 逆地理编码：GCJ-02 经纬度 → 中文地址（服务端调用地图服务，不暴露密钥给小程序）
+     */
+    @GetMapping("/checkIn/reverseGeocode")
+    public AjaxResult reverseGeocode(Double longitude, Double latitude) {
+        try {
+            return AjaxResult.success(geoCodingService.reverseGeocode(longitude, latitude));
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        } catch (Exception e) {
+            return AjaxResult.error("地址解析失败");
+        }
     }
 
     /**
@@ -488,6 +605,7 @@ public class FireMiniAppController extends BaseController {
 
         Integer pageNum = getIntValue(params, "pageNum");
         Integer pageSize = getIntValue(params, "pageSize");
+        // 优先 body；否则走 query（pageNum/pageSize），与小程序 request 约定一致
         if (pageNum != null && pageSize != null) {
             PageHelper.startPage(pageNum, pageSize);
         } else {

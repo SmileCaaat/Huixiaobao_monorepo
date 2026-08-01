@@ -37,7 +37,6 @@
     "navigationBarBackgroundColor": "#E53935",
     "backgroundColor": "#F5F5F5"
   },
-  "lazyCodeLoading": "requiredComponents",
   "permission": {
     "scope.userLocation": {
       "desc": "您的位置信息将用于维保签到"

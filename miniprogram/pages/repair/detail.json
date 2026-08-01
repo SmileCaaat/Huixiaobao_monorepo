@@ -1,9 +1,4 @@
 {
-  "navigationStyle": "custom",
-  "navigationBarTitleText": "工单详情",
-  "usingComponents": {
-    "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar",
-    "uni-icons": "../../node-modules/@dcloudio/uni-ui/lib/uni-icons/uni-icons",
-    "uni-popup": "../../node-modules/@dcloudio/uni-ui/lib/uni-popup/uni-popup"
-  }
+  "navigationBarTitleText": "\u62a5\u4fee\u8be6\u60c5",
+  "usingComponents": {}
 }

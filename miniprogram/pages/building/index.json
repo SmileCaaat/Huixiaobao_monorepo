@@ -1,7 +1,5 @@
 {
-  "navigationStyle": "custom",
-  "navigationBarTitleText": "建筑列表",
-  "usingComponents": {
-    "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar"
-  }
+  "navigationBarTitleText": "\u5efa\u7b51\u4fe1\u606f",
+  "enablePullDownRefresh": true,
+  "usingComponents": {}
 }

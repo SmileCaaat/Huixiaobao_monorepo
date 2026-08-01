@@ -24,3 +24,6 @@ local_sever/node_modules/
 local_sever/logs/
 local_sever/.pids/
 local_sever/state/
+
+backend/ruoyi-admin/uploadPath/
+*.wipbak

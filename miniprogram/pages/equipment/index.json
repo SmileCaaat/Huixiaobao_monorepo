@@ -1,7 +1,4 @@
 {
-  "navigationStyle": "custom",
-  "navigationBarTitleText": "设备管理",
-  "usingComponents": {
-    "uni-nav-bar": "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar"
-  }
+  "navigationBarTitleText": "\u8bbe\u5907\u4fe1\u606f",
+  "usingComponents": {}
 }

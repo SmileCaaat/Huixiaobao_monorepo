@@ -1,392 +1,370 @@
-"use strict";
-const common_vendor = require("../../common/vendor.js");
-const common_assets = require("../../common/assets.js");
-const api_index = require("../../api/index.js");
-const utils_request = require("../../utils/request.js");
-if (!Array) {
-  const _easycom_uni_nav_bar2 = common_vendor.resolveComponent("uni-nav-bar");
-  _easycom_uni_nav_bar2();
-}
-const _easycom_uni_nav_bar = () => "../../node-modules/@dcloudio/uni-ui/lib/uni-nav-bar/uni-nav-bar.js";
-if (!Math) {
-  _easycom_uni_nav_bar();
-}
-const _sfc_main = {
-  __name: "index",
-  setup(__props) {
-    const latitude = common_vendor.ref(21.8567);
-    const longitude = common_vendor.ref(111.9632);
-    const markers = common_vendor.ref([]);
-    const currentAddress = common_vendor.ref("");
-    const selectedCompanyName = common_vendor.ref("");
-    const selectedCompanyId = common_vendor.ref(null);
-    const selectedTaskId = common_vendor.ref(null);
-    const selectedTaskName = common_vendor.ref("");
-    const recentList = common_vendor.ref([]);
-    const taskList = common_vendor.ref([]);
-    const showDrawer = common_vendor.ref(false);
-    const checkType = common_vendor.ref("0");
-    const imageList = common_vendor.ref([]);
-    const remark = common_vendor.ref("正常打卡");
-    common_vendor.watch(selectedCompanyId, (newVal, oldVal) => {
-      if (newVal !== oldVal) {
-        selectedTaskId.value = null;
-        selectedTaskName.value = "";
-        taskList.value = [];
-      }
-      if (newVal) {
-        fetchTasks();
-      }
-    });
-    const fetchTasks = async () => {
-      if (!selectedCompanyId.value)
+const { api } = require("../../api/index.js");
+const { uploadFile } = require("../../services/upload.js");
+
+const ADDR_LOCATING = "\u6b63\u5728\u83b7\u53d6\u4f4d\u7f6e...";
+const ADDR_FAIL_LOCATE = "\u83b7\u53d6\u4f4d\u7f6e\u5931\u8d25\uff0c\u8bf7\u70b9\u51fb\u5237\u65b0\u91cd\u8bd5";
+const ADDR_FAIL_GEO = "\u81ea\u52a8\u5730\u5740\u89e3\u6790\u4e0d\u53ef\u7528\uff0c\u8bf7\u9009\u62e9\u4f4d\u7f6e";
+const ADDR_RESOLVING = "\u6b63\u5728\u89e3\u6790\u5730\u5740...";
+
+Page({
+  data: {
+    companyId: null,
+    companyName: "",
+    latitude: null,
+    longitude: null,
+    addressText: ADDR_LOCATING,
+    addressMode: "auto",
+    addressFailed: false,
+    locating: false,
+    checkInType: "0",
+    taskList: [],
+    taskIndex: -1,
+    selectedTaskId: null,
+    selectedTaskName: "",
+    images: [],
+    remark: "\u6b63\u5e38\u6253\u5361",
+    submitting: false
+  },
+
+  onLoad(options) {
+    if (options && options.taskId) {
+      this.setData({ selectedTaskId: options.taskId });
+    }
+  },
+
+  onShow() {
+    if (this._pageInitialized) return;
+    this._pageInitialized = true;
+    this.initPage();
+  },
+
+  async initPage() {
+    await this.loadCompany();
+    this.getLocation();
+    if (this.data.companyId) {
+      await this.fetchTasks();
+    }
+    if (this.data.selectedTaskId && this.data.taskList.length) {
+      this.syncTaskSelection(this.data.selectedTaskId);
+    }
+  },
+
+  async loadCompany() {
+    try {
+      const res = await api.getCurrentCompany();
+      if (res && res.data) {
+        this.setData({
+          companyId: res.data.companyId,
+          companyName: res.data.companyName || "\u5f53\u524d\u516c\u53f8"
+        });
         return;
-      try {
-        const res = await api_index.api.getCheckInTaskList({
-          companyId: selectedCompanyId.value
+      }
+    } catch (e) {}
+    this.setData({
+      companyId: null,
+      companyName: "\u672a\u9009\u62e9\u516c\u53f8"
+    });
+  },
+
+  getLocation() {
+    if (this.data.locating) return;
+    this.setData({
+      locating: true,
+      addressMode: "auto",
+      addressFailed: false,
+      addressText: ADDR_LOCATING
+    });
+    wx.getLocation({
+      type: "gcj02",
+      success: (res) => {
+        const lat = res.latitude;
+        const lng = res.longitude;
+        this.setData({
+          latitude: Number(lat.toFixed(6)),
+          longitude: Number(lng.toFixed(6)),
+          addressText: ADDR_RESOLVING,
+          addressFailed: false
         });
-        if (res && (res.code === 200 || res.code === 0)) {
-          taskList.value = res.rows || res.data || [];
-          if (selectedTaskId.value) {
-            const task = taskList.value.find(
-              (t) => t.taskId == selectedTaskId.value
-            );
-            if (task) {
-              selectedTaskName.value = task.taskName;
-            } else {
-              selectedTaskId.value = null;
-              selectedTaskName.value = "";
-              common_vendor.index.showToast({ title: "预选任务不可用，请重新选择", icon: "none" });
-            }
-          }
-        }
-      } catch (e) {
-        common_vendor.index.__f__("error", "at pages/checkin/index.vue:212", "获取任务列表失败", e);
-      }
-    };
-    const onTaskChange = (e) => {
-      const index = e.detail.value;
-      const task = taskList.value[index];
-      if (task) {
-        selectedTaskId.value = task.taskId;
-        selectedTaskName.value = task.taskName;
-      }
-    };
-    const goBack = () => {
-      common_vendor.index.navigateBack();
-    };
-    const goHistory = () => {
-      common_vendor.index.navigateTo({
-        url: "/pages/checkin/history"
-      });
-    };
-    const getLocation = () => {
-      currentAddress.value = "正在获取位置...";
-      common_vendor.index.getLocation({
-        type: "gcj02",
-        success: (res) => {
-          latitude.value = res.latitude;
-          longitude.value = res.longitude;
-          updateMarkers();
-          reverseGeocode(res.latitude, res.longitude);
-        },
-        fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/checkin/index.vue:269", "获取位置失败", err);
-          currentAddress.value = "获取位置失败，请点击刷新重试";
-          common_vendor.index.showToast({
-            title: "获取位置失败",
-            icon: "none"
-          });
-        }
-      });
-    };
-    const reverseGeocode = (lat, lng) => {
-      const key = "M6CBZ-PLKCQ-LWE5M-2EIAU-OX5T6-7HBLQ";
-      const url = `https://apis.map.qq.com/ws/geocoder/v1/?location=${lat},${lng}&key=${key}&get_poi=0`;
-      common_vendor.index.request({
-        url,
-        method: "GET",
-        success: (res) => {
-          if (res.statusCode === 200 && res.data && res.data.status === 0) {
-            currentAddress.value = res.data.result.address || `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-          } else {
-            common_vendor.index.__f__("error", "at pages/checkin/index.vue:292", "逆地理编码失败", res);
-            currentAddress.value = `当前位置: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-          }
-        },
-        fail: (err) => {
-          common_vendor.index.__f__("error", "at pages/checkin/index.vue:297", "请求失败", err);
-          currentAddress.value = `当前位置: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-        }
-      });
-    };
-    const updateMarkers = () => {
-      markers.value = [
-        {
-          id: 1,
-          latitude: latitude.value,
-          longitude: longitude.value,
-          iconPath: "/static/tabbar/info.png",
-          // 使用存在的图标
-          width: 32,
-          height: 32
-        }
-      ];
-    };
-    const openDrawer = (type) => {
-      checkType.value = type;
-      showDrawer.value = true;
-      imageList.value = [];
-      remark.value = "正常打卡";
-      fetchTasks();
-    };
-    const closeDrawer = () => {
-      showDrawer.value = false;
-    };
-    const chooseImage = () => {
-      common_vendor.index.chooseImage({
-        count: 2 - imageList.value.length,
-        sizeType: ["compressed"],
-        sourceType: ["album", "camera"],
-        success: (res) => {
-          res.tempFilePaths.forEach((path) => {
-            uploadImg(path);
-          });
-        }
-      });
-    };
-    const uploadImg = async (tempPath) => {
-      try {
-        const imgObj = { tempPath, serverUrl: "", uploading: true };
-        imageList.value.push(imgObj);
-        const currentIndex = imageList.value.length - 1;
-        const token = common_vendor.index.getStorageSync("token");
-        common_vendor.index.uploadFile({
-          url: utils_request.BASE_URL + "/api/common/upload",
-          filePath: tempPath,
-          name: "file",
-          formData: {},
-          header: {
-            Authorization: token ? `Bearer ${token}` : ""
-          },
-          success: (uploadRes) => {
-            try {
-              common_vendor.index.__f__("log", "at pages/checkin/index.vue:365", "上传响应原始数据:", uploadRes.data);
-              const res = JSON.parse(uploadRes.data);
-              common_vendor.index.__f__("log", "at pages/checkin/index.vue:367", "上传响应解析后:", res);
-              let url = res.fileName || res.data && res.data.fileName;
-              if (!url) {
-                url = res.url || res.filePath || res.data && (res.data.url || res.data.filePath);
-              }
-              common_vendor.index.__f__("log", "at pages/checkin/index.vue:380", "提取的URL:", url);
-              if (url) {
-                imageList.value[currentIndex].serverUrl = url;
-                imageList.value[currentIndex].uploading = false;
-                common_vendor.index.__f__("log", "at pages/checkin/index.vue:385", "图片上传成功，URL:", url);
-              } else {
-                common_vendor.index.__f__("error", "at pages/checkin/index.vue:387", "上传返回无效URL:", res);
-                imageList.value.splice(currentIndex, 1);
-                common_vendor.index.showToast({ title: res.msg || "上传失败", icon: "none" });
-              }
-            } catch (e) {
-              common_vendor.index.__f__("error", "at pages/checkin/index.vue:392", "解析上传响应失败", e, uploadRes.data);
-              imageList.value.splice(currentIndex, 1);
-              common_vendor.index.showToast({ title: "上传失败", icon: "none" });
-            }
-          },
-          fail: (err) => {
-            common_vendor.index.__f__("error", "at pages/checkin/index.vue:398", "上传图片失败", err);
-            imageList.value.splice(currentIndex, 1);
-            common_vendor.index.showToast({ title: "上传失败", icon: "none" });
-          }
+        this.resolveAddress(lng, lat);
+      },
+      fail: () => {
+        this.setData({
+          locating: false,
+          addressFailed: true,
+          addressText: ADDR_FAIL_LOCATE,
+          latitude: null,
+          longitude: null
         });
-      } catch (e) {
-        common_vendor.index.__f__("error", "at pages/checkin/index.vue:404", "上传图片失败", e);
-        common_vendor.index.showToast({ title: "上传失败", icon: "none" });
-      }
-    };
-    const removeImage = (index) => {
-      imageList.value.splice(index, 1);
-    };
-    const previewImage = (imgObj) => {
-      common_vendor.index.previewImage({
-        urls: imageList.value.map((i) => i.tempPath),
-        current: imgObj.tempPath
-      });
-    };
-    const handleSubmit = async () => {
-      if (!selectedTaskId.value) {
-        return common_vendor.index.showToast({ title: "请选择维保任务", icon: "none" });
-      }
-      if (imageList.value.length === 0) {
-        return common_vendor.index.showToast({ title: "请至少上传一张照片", icon: "none" });
-      }
-      const pendingImages = imageList.value.filter((img) => !img.serverUrl);
-      if (pendingImages.length > 0) {
-        return common_vendor.index.showToast({ title: "图片上传中，请稍候", icon: "none" });
-      }
-      try {
-        common_vendor.index.showLoading({ title: "提交中...", mask: true });
-        common_vendor.index.__f__("log", "at pages/checkin/index.vue:434", imageList.value);
-        const payload = {
-          companyId: selectedCompanyId.value,
-          companyName: selectedCompanyName.value,
-          taskId: selectedTaskId.value,
-          checkInType: checkType.value,
-          address: currentAddress.value,
-          latitude: latitude.value,
-          longitude: longitude.value,
-          remark: remark.value,
-          images: imageList.value.map((img, index) => ({
-            imageUrl: img.serverUrl,
-            imageName: `${checkType.value === "0" ? "签到" : "签退"}图片${index + 1}`,
-            sortOrder: index + 1
-          }))
-        };
-        const res = await api_index.api.addCheckIn(payload);
-        if (res && (res.code === 200 || res.code === 0)) {
-          common_vendor.wx$1.showToast({ title: "签到成功", icon: "success" });
-          if (res.data) {
-            common_vendor.index.__f__("log", "at pages/checkin/index.vue:457", "签到ID:", res.data.checkInId);
-            common_vendor.index.__f__("log", "at pages/checkin/index.vue:458", "是否在范围内:", res.data.isInRange);
-          }
-          setTimeout(() => {
-            closeDrawer();
-            loadRecentList();
-          }, 1500);
-        } else {
-          common_vendor.index.showToast({ title: res && res.msg || "操作失败", icon: "none" });
-        }
-      } catch (e) {
-        common_vendor.index.__f__("error", "at pages/checkin/index.vue:468", "提交失败", e);
-        common_vendor.index.showToast({ title: "网络请求失败", icon: "none" });
-      } finally {
-        common_vendor.index.hideLoading();
-      }
-    };
-    const loadRecentList = async () => {
-      try {
-        const res = await api_index.api.getCheckInList({
-          companyId: selectedCompanyId.value,
-          taskId: selectedTaskId.value,
-          pageNum: 1,
-          pageSize: 5
-        });
-        if (res && (res.code === 200 || res.code === 0)) {
-          recentList.value = res.rows || res.data || [];
-        }
-      } catch (e) {
-        common_vendor.index.__f__("error", "at pages/checkin/index.vue:488", "获取最近记录失败", e);
-      }
-    };
-    const formatTime = (timeStr) => {
-      if (!timeStr)
-        return "";
-      if (typeof timeStr !== "string")
-        return String(timeStr);
-      return timeStr.substring(0, 19).replace("T", " ");
-    };
-    common_vendor.onMounted(async () => {
-      try {
-        const pages = getCurrentPages();
-        const currentPage = pages[pages.length - 1];
-        const options = currentPage.options || {};
-        if (options.taskId) {
-          selectedTaskId.value = options.taskId;
-          common_vendor.index.showLoading({ title: "加载任务信息..." });
-          try {
-            const res = await api_index.api.getTaskDetail(options.taskId);
-            if ((res.code === 200 || res.code === 0) && res.data) {
-              selectedCompanyId.value = res.data.companyId;
-              selectedCompanyName.value = res.data.companyName || "关联公司";
-              selectedTaskName.value = res.data.taskName || "";
-            }
-          } catch (err) {
-            common_vendor.index.__f__("error", "at pages/checkin/index.vue:517", "获取任务详情失败", err);
-          } finally {
-            common_vendor.index.hideLoading();
-          }
-        } else {
-          try {
-            const res = await api_index.api.getCurrentCompany();
-            if ((res.code === 200 || res.code === 0) && res.data) {
-              selectedCompanyId.value = res.data.companyId;
-              selectedCompanyName.value = res.data.companyName || "当前公司";
-            }
-          } catch (err) {
-            common_vendor.index.__f__("error", "at pages/checkin/index.vue:530", "获取当前公司失败", err);
-            selectedCompanyName.value = "未选择公司";
-          }
-        }
-        getLocation();
-        loadRecentList();
-      } catch (e) {
-        common_vendor.index.__f__("error", "at pages/checkin/index.vue:538", "onMounted 错误", e);
+        wx.showToast({ title: "\u83b7\u53d6\u4f4d\u7f6e\u5931\u8d25", icon: "none" });
       }
     });
-    return (_ctx, _cache) => {
-      return common_vendor.e({
-        a: common_vendor.o(goBack),
-        b: common_vendor.p({
-          fixed: true,
-          ["status-bar"]: true,
-          ["left-icon"]: "back",
-          title: "维保签到",
-          ["background-color"]: "#e53935",
-          color: "#ffffff"
-        }),
-        c: latitude.value,
-        d: longitude.value,
-        e: markers.value,
-        f: selectedCompanyName.value
-      }, selectedCompanyName.value ? {
-        g: common_vendor.t(selectedCompanyName.value)
-      } : {}, {
-        h: common_assets._imports_3,
-        i: common_vendor.t(currentAddress.value || "正在获取位置..."),
-        j: common_vendor.o(getLocation),
-        k: common_vendor.o(($event) => openDrawer("0")),
-        l: common_vendor.o(($event) => openDrawer("1")),
-        m: common_vendor.f(recentList.value, (item, index, i0) => {
-          return {
-            a: common_vendor.n(item.checkInType === "0" ? "in" : "out"),
-            b: common_vendor.t(item.checkInType === "0" ? "签到" : "签退"),
-            c: common_vendor.t(formatTime(item.checkInTime || item.createTime)),
-            d: common_vendor.t(item.address || item.checkInAddress),
-            e: index
-          };
-        }),
-        n: common_vendor.o(goHistory),
-        o: showDrawer.value
-      }, showDrawer.value ? common_vendor.e({
-        p: common_vendor.t(checkType.value === "0" ? "签到确认" : "签退确认"),
-        q: common_vendor.o(closeDrawer),
-        r: common_vendor.t(selectedTaskName.value || "请选择任务名称（必选）"),
-        s: taskList.value,
-        t: common_vendor.o(onTaskChange),
-        v: common_vendor.f(imageList.value, (img, idx, i0) => {
-          return {
-            a: img.tempPath,
-            b: common_vendor.o(($event) => previewImage(img), idx),
-            c: common_vendor.o(($event) => removeImage(idx), idx),
-            d: idx
-          };
-        }),
-        w: imageList.value.length < 2
-      }, imageList.value.length < 2 ? {
-        x: common_vendor.o(chooseImage)
-      } : {}, {
-        y: remark.value,
-        z: common_vendor.o(($event) => remark.value = $event.detail.value),
-        A: common_vendor.t(checkType.value === "0" ? "立即签到" : "立即签退"),
-        B: common_vendor.o(handleSubmit),
-        C: common_vendor.o(() => {
-        }),
-        D: common_vendor.o(closeDrawer)
-      }) : {});
+  },
+
+  async resolveAddress(longitude, latitude) {
+    try {
+      const res = await api.reverseGeocode({ longitude: longitude, latitude: latitude }, { loading: false, showError: false });
+      const address = res && res.data && res.data.address;
+      if (!address || this.isCoordText(address)) {
+        this.handleAddressResolveFailure();
+        return;
+      }
+      this.setData({
+        locating: false,
+        addressMode: "auto",
+        addressFailed: false,
+        addressText: address,
+        latitude: res.data.latitude != null ? res.data.latitude : this.data.latitude,
+        longitude: res.data.longitude != null ? res.data.longitude : this.data.longitude
+      });
+    } catch (e) {
+      this.handleAddressResolveFailure();
+    }
+  },
+
+  handleAddressResolveFailure() {
+    this.setData({
+      locating: false,
+      addressMode: "auto",
+      addressFailed: true,
+      addressText: ADDR_FAIL_GEO
+    });
+    if (this._mapSelectionPrompted) return;
+    this._mapSelectionPrompted = true;
+    wx.showModal({
+      title: "\u9009\u62e9\u7b7e\u5230\u4f4d\u7f6e",
+      content: "\u81ea\u52a8\u5730\u5740\u89e3\u6790\u6682\u4e0d\u53ef\u7528\uff0c\u8bf7\u5728\u5730\u56fe\u4e2d\u9009\u62e9\u5f53\u524d\u7b7e\u5230\u4f4d\u7f6e\u3002",
+      confirmText: "\u9009\u62e9\u4f4d\u7f6e",
+      success: (result) => {
+        if (result.confirm) this.chooseMapLocation();
+      }
+    });
+  },
+
+  onLocationAction() {
+    if (this.data.locating) return;
+    if (this.data.addressFailed) {
+      this.chooseMapLocation();
+      return;
+    }
+    this.getLocation();
+  },
+
+  chooseMapLocation() {
+    if (this.data.locating) return;
+    this.setData({ locating: true });
+    wx.chooseLocation({
+      success: (result) => {
+        const baseAddress = String(result.address || "").trim();
+        const placeName = String(result.name || "").trim();
+        const address = baseAddress && placeName && baseAddress.indexOf(placeName) < 0
+          ? baseAddress + placeName
+          : (baseAddress || placeName);
+        if (!this.isChineseAddress(address)) {
+          this.setData({
+            locating: false,
+            addressMode: "auto",
+            addressFailed: true,
+            addressText: ADDR_FAIL_GEO
+          });
+          wx.showToast({ title: "\u672a\u83b7\u53d6\u5230\u4e2d\u6587\u5730\u5740", icon: "none" });
+          return;
+        }
+        this.setData({
+          latitude: Number(Number(result.latitude).toFixed(6)),
+          longitude: Number(Number(result.longitude).toFixed(6)),
+          addressText: address,
+          addressMode: "map",
+          addressFailed: false,
+          locating: false
+        });
+      },
+      fail: (error) => {
+        this.setData({ locating: false });
+        const message = String(error && error.errMsg || "");
+        if (message.indexOf("cancel") < 0) {
+          wx.showToast({ title: "\u9009\u62e9\u4f4d\u7f6e\u5931\u8d25", icon: "none" });
+        }
+      }
+    });
+  },
+
+  isChineseAddress(text) {
+    const value = String(text || "").trim();
+    return value.length >= 2
+      && value.length <= 255
+      && /[\u4e00-\u9fff]/.test(value)
+      && !this.isCoordText(value)
+      && value.indexOf("\u89e3\u6790\u5931\u8d25") < 0;
+  },
+
+  isCoordText(text) {
+    return /^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(String(text || "").trim());
+  },
+
+  async fetchTasks() {
+    if (!this.data.companyId) return;
+    try {
+      const res = await api.listTasksByCompany({ companyId: this.data.companyId });
+      const taskList = (res && (res.rows || res.data)) || [];
+      this.setData({ taskList: taskList });
+      if (this.data.selectedTaskId) {
+        this.syncTaskSelection(this.data.selectedTaskId);
+      }
+    } catch (e) {
+      this.setData({ taskList: [] });
+    }
+  },
+
+  syncTaskSelection(taskId) {
+    const idx = this.data.taskList.findIndex((t) => String(t.taskId) === String(taskId));
+    if (idx >= 0) {
+      const task = this.data.taskList[idx];
+      this.setData({
+        taskIndex: idx,
+        selectedTaskId: task.taskId,
+        selectedTaskName: task.taskName || ""
+      });
+    } else {
+      this.setData({ taskIndex: -1, selectedTaskId: null, selectedTaskName: "" });
+    }
+  },
+
+  onTypeTap(e) {
+    const type = e.currentTarget.dataset.type;
+    if (type === "0" || type === "1") {
+      this.setData({ checkInType: type });
+    }
+  },
+
+  onTaskChange(e) {
+    const idx = Number(e.detail.value);
+    const task = this.data.taskList[idx];
+    if (!task) return;
+    this.setData({
+      taskIndex: idx,
+      selectedTaskId: task.taskId,
+      selectedTaskName: task.taskName || ""
+    });
+  },
+
+  chooseImage() {
+    const remain = 2 - this.data.images.length;
+    if (remain <= 0) return;
+    wx.chooseImage({
+      count: remain,
+      sizeType: ["compressed"],
+      sourceType: ["album", "camera"],
+      success: (res) => {
+        (res.tempFilePaths || []).forEach((p) => this.uploadImg(p));
+      }
+    });
+  },
+
+  async uploadImg(tempPath) {
+    const images = this.data.images.concat([{ tempPath: tempPath, serverUrl: "", uploading: true }]);
+    const index = images.length - 1;
+    this.setData({ images: images });
+    try {
+      const body = await uploadFile(tempPath);
+      const url = body.fileName || body.url || (body.data && (body.data.fileName || body.data.url));
+      if (!url) {
+        this.removeImageByIndex(index);
+        return;
+      }
+      this.setData({
+        ["images[" + index + "].serverUrl"]: url,
+        ["images[" + index + "].uploading"]: false
+      });
+    } catch (e) {
+      this.removeImageByIndex(index);
+    }
+  },
+
+  removeImageByIndex(index) {
+    const images = this.data.images.slice();
+    images.splice(index, 1);
+    this.setData({ images: images });
+  },
+
+  removeImage(e) {
+    this.removeImageByIndex(e.currentTarget.dataset.index);
+  },
+
+  previewImage(e) {
+    const idx = e.currentTarget.dataset.index;
+    const urls = this.data.images.map((i) => i.tempPath || i.serverUrl);
+    wx.previewImage({ urls: urls, current: urls[idx] });
+  },
+
+  onRemarkInput(e) {
+    this.setData({ remark: e.detail.value || "" });
+  },
+
+  goHistory() {
+    wx.navigateTo({ url: "/pages/checkin/history" });
+  },
+
+  async handleSubmit() {
+    if (this.data.submitting) return;
+    if (!this.data.companyId) {
+      wx.showToast({ title: "\u8bf7\u5148\u9009\u62e9\u516c\u53f8", icon: "none" });
+      return;
+    }
+    if (!this.data.selectedTaskId) {
+      wx.showToast({ title: "\u8bf7\u9009\u62e9\u7ef4\u4fdd\u4efb\u52a1", icon: "none" });
+      return;
+    }
+    if (this.data.latitude == null || this.data.longitude == null) {
+      wx.showToast({ title: "\u8bf7\u5148\u83b7\u53d6\u5b9a\u4f4d", icon: "none" });
+      return;
+    }
+    if (this.data.addressFailed || !this.data.addressText || this.isCoordText(this.data.addressText)) {
+      wx.showToast({ title: "\u8bf7\u5148\u89e3\u6790\u4e2d\u6587\u5730\u5740", icon: "none" });
+      return;
+    }
+    if (!this.data.images.length) {
+      wx.showToast({ title: "\u8bf7\u81f3\u5c11\u4e0a\u4f20\u4e00\u5f20\u7167\u7247", icon: "none" });
+      return;
+    }
+    if (this.data.images.some((img) => img.uploading || !img.serverUrl)) {
+      wx.showToast({ title: "\u56fe\u7247\u4e0a\u4f20\u4e2d\uff0c\u8bf7\u7a0d\u5019", icon: "none" });
+      return;
+    }
+
+    const typeLabel = this.data.checkInType === "0" ? "\u7b7e\u5230" : "\u7b7e\u9000";
+    const payload = {
+      companyId: this.data.companyId,
+      companyName: this.data.companyName,
+      taskId: this.data.selectedTaskId,
+      checkInType: this.data.checkInType,
+      address: this.data.addressText,
+      locatedAddress: this.data.addressText,
+      addressMode: this.data.addressMode,
+      latitude: this.data.latitude,
+      longitude: this.data.longitude,
+      remark: this.data.remark,
+      images: this.data.images.map((img, index) => ({
+        imageUrl: img.serverUrl,
+        imageName: typeLabel + "\u56fe\u7247" + (index + 1),
+        sortOrder: index + 1
+      }))
     };
+
+    this.setData({ submitting: true });
+    wx.showLoading({ title: "\u63d0\u4ea4\u4e2d...", mask: true });
+    try {
+      await api.addCheckIn(payload);
+      wx.showToast({ title: typeLabel + "\u6210\u529f", icon: "success" });
+      this.setData({
+        images: [],
+        remark: "\u6b63\u5e38\u6253\u5361",
+        checkInType: "0"
+      });
+    } catch (e) {
+      wx.showToast({ title: (e && e.msg) || "\u64cd\u4f5c\u5931\u8d25", icon: "none" });
+    } finally {
+      wx.hideLoading();
+      this.setData({ submitting: false });
+    }
   }
-};
-const MiniProgramPage = /* @__PURE__ */ common_vendor._export_sfc(_sfc_main, [["__scopeId", "data-v-a8aeee56"]]);
-wx.createPage(MiniProgramPage);
-//# sourceMappingURL=../../../.sourcemap/mp-weixin/pages/checkin/index.js.map
+});

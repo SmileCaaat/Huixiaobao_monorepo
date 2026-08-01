@@ -1,0 +1,78 @@
+.drawer-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 2000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.drawer-container {
+  width: 100%;
+  max-height: 70vh;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  position: relative;
+}
+
+.drawer-header {
+  margin-bottom: 16rpx;
+}
+
+.drawer-title {
+  font-size: 32rpx;
+  font-weight: 600;
+}
+
+.search-box {
+  margin-bottom: 16rpx;
+}
+
+.search-input {
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+}
+
+.company-list {
+  max-height: 50vh;
+}
+
+.company-item {
+  padding: 20rpx 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.company-item.active .company-name {
+  color: #e53935;
+}
+
+.company-name {
+  font-size: 30rpx;
+  margin-bottom: 8rpx;
+}
+
+.current-tag {
+  margin-left: 12rpx;
+  font-size: 22rpx;
+  color: #e53935;
+  background: #ffebee;
+  padding: 2rpx 10rpx;
+  border-radius: 8rpx;
+}
+
+.company-address {
+  color: #999;
+  font-size: 24rpx;
+}
+
+.empty-state,
+.loading-mask {
+  text-align: center;
+  color: #999;
+  padding: 40rpx 0;
+}

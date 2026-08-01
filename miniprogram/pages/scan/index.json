@@ -1,7 +1,6 @@
 {
-  "navigationStyle": "custom",
   "navigationBarTitleText": "扫一扫",
   "usingComponents": {
-    "tab-bar": "../../components/TabBar"
+    "tab-bar": "/components/tab-bar/tab-bar"
   }
 }

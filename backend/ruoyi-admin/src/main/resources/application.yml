@@ -17,6 +17,11 @@ ruoyi:
     libreOfficePath: ${LIBREOFFICE_PATH:}
   # 获取ip地址开关
   addressEnabled: false
+  # 地图服务（密钥仅服务端，勿写入文档或小程序）
+  map:
+    amapWebKey: ${AMAP_WEB_KEY:}
+    connectTimeoutMs: 3000
+    readTimeoutMs: 5000
 
 # 开发环境配置
 server:
