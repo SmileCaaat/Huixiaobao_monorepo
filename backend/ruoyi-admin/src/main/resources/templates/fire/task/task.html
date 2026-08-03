@@ -541,11 +541,13 @@
                             actions.push('<a class="btn btn-default btn-xs disabled" style="margin-bottom: 5px;" href="javascript:void(0)" title="请先下发任务"><i class="fa fa-clipboard"></i> 消防维护</a> ');
                         }
                         // 未完成的任务显示一键完成按钮（仅超级管理员权限 fire:task:completeAll）
+                        // 一键完成 / 编辑 / 删除固定第二行，避免挤成三行
+                        actions.push('<br/>');
                         if (row.taskStatus == '1') {
-                            actions.push('<a class="btn btn-success btn-xs ' + completeAllFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="completeAllTask(\'' + row.taskId + '\')"><i class="fa fa-check-circle"></i> 一键完成</a> ');
+                            actions.push('<a class="btn btn-success btn-xs ' + completeAllFlag + '" style="margin-top: 2px; margin-bottom: 5px;" href="javascript:void(0)" onclick="completeAllTask(\'' + row.taskId + '\')"><i class="fa fa-check-circle"></i> 一键完成</a> ');
                         }
-                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.taskId + '\')"><i class="fa fa-edit"></i> 编辑</a> ');
-                        actions.push('<a class="btn btn-danger btn-xs ' + rowRemoveFlag + '" style="margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.taskId + '\')"><i class="fa fa-remove"></i> 删除</a>');
+                        actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" style="margin-top: 2px; margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.taskId + '\')"><i class="fa fa-edit"></i> 编辑</a> ');
+                        actions.push('<a class="btn btn-danger btn-xs ' + rowRemoveFlag + '" style="margin-top: 2px; margin-bottom: 5px;" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.taskId + '\')"><i class="fa fa-remove"></i> 删除</a>');
                         return actions.join('');
                     }
                 }]

@@ -21,6 +21,10 @@ public class FireInspectionTestEquipmentGroup
     private Integer completedItems = 0;
     private Integer uncompletedItems = 0;
     private String status;
+    /** 0=巡查，1=测试，2=保养。 */
+    private String recordType;
+    /** 由后端统一生成，前端只负责展示。 */
+    private String recordTypeLabel;
 
     /** ��������ά���ֶΣ�ȡ fireTest ���¼�� */
     private String deviceLocation;
@@ -139,6 +143,26 @@ public class FireInspectionTestEquipmentGroup
     public void setStatus(String status)
     {
         this.status = status;
+    }
+
+    public String getRecordType()
+    {
+        return recordType;
+    }
+
+    public void setRecordType(String recordType)
+    {
+        this.recordType = recordType;
+    }
+
+    public String getRecordTypeLabel()
+    {
+        return recordTypeLabel;
+    }
+
+    public void setRecordTypeLabel(String recordTypeLabel)
+    {
+        this.recordTypeLabel = recordTypeLabel;
     }
 
     public String getDeviceLocation()

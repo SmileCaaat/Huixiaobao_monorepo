@@ -67,8 +67,9 @@ WHERE parent_id = @fire_parent_id
   AND perms <> 'fire:inspection:view'
   AND order_num >= @inspection_order;
 
+-- Sidebar C menu label: 巡查测试 (hex E5B7A1E69FA5E6B58BE8AF95). Button F menus keep 巡检测试* prefix.
 UPDATE sys_menu
-SET menu_name = CONVERT(UNHEX('E5B7A1E6A380E6B58BE8AF95') USING utf8mb4),
+SET menu_name = CONVERT(UNHEX('E5B7A1E69FA5E6B58BE8AF95') USING utf8mb4),
     parent_id = @fire_parent_id,
     order_num = @inspection_order,
     url = '/fire/inspection',
@@ -85,7 +86,7 @@ INSERT INTO sys_menu (
   perms, icon, create_by, create_time, remark
 )
 SELECT
-  CONVERT(UNHEX('E5B7A1E6A380E6B58BE8AF95') USING utf8mb4),
+  CONVERT(UNHEX('E5B7A1E69FA5E6B58BE8AF95') USING utf8mb4),
   @fire_parent_id,
   @inspection_order,
   '/fire/inspection',

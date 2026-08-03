@@ -12,7 +12,8 @@
         .equipment-item:hover { background: #f5f9ff; }
         .equipment-item:last-child { border-bottom: none; }
         .equipment-info { flex: 1; cursor: pointer; }
-        .equipment-name { font-size: 16px; font-weight: 500; color: #333; margin-bottom: 5px; }
+        .equipment-name { display: flex; align-items: baseline; gap: 8px; font-size: 16px; font-weight: 500; color: #333; margin-bottom: 5px; }
+        .inspection-type-label { color: #999; font-size: 12px; font-weight: 400; line-height: 1; white-space: nowrap; }
         .equipment-stats { font-size: 13px; color: #666; }
         .equipment-stats span { margin-right: 15px; }
         .equipment-actions { display: flex; align-items: center; gap: 10px; }
@@ -37,7 +38,10 @@
         <div class="equipment-list" id="equipmentList">
             <div th:each="equipment : ${equipments}" class="equipment-item" th:data-equipment-key="${equipment.equipmentKey}">
                 <div class="equipment-info js-open-equipment">
-                    <div class="equipment-name" th:text="${equipment.equipmentName}">设备名称</div>
+                    <div class="equipment-name">
+                        <span th:text="${equipment.equipmentName}">设备名称</span>
+                        <small class="inspection-type-label" th:text="${equipment.recordTypeLabel}">巡查</small>
+                    </div>
                     <div class="equipment-stats">
                         <span>总项 <strong th:text="${equipment.totalItems}">10</strong></span>
                         <span>已完成 <strong th:text="${equipment.completedItems}">0</strong></span>

@@ -29,6 +29,7 @@ import com.ruoyi.fire.domain.dto.FireInspectionTestCategoryGroup;
 import com.ruoyi.fire.domain.dto.FireInspectionTestDetailVO;
 import com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
+import com.ruoyi.fire.service.support.FireInspectionTestGroupKeys;
 import com.ruoyi.fire.service.support.FireInspectionTestKeys;
 
 /**
@@ -144,6 +145,8 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
         Set<Long> existingTemplateIds = new HashSet<>();
         int added = generateMissingRecordsForLevel1Ids(taskId, selectedSystemIds, "0", templates, existingTemplateIds);
         added += generateMissingRecordsForLevel1Ids(taskId, selectedFireTestIds, "1", templates, existingTemplateIds);
+        Set<Long> selectedUpkeepIds = collectRelatedLevel1Ids(templates, selectedSystemIds, "2");
+        added += generateMissingRecordsForLevel1Ids(taskId, selectedUpkeepIds, "2", templates, existingTemplateIds);
 
         int[] counts = refreshTaskStatistics(taskId);
         log.info("创建维保任务 taskId={}, systems={}, fireTests={}, addedRecords={}, completed={}/{}",
@@ -209,11 +212,16 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
         Set<Long> removeSystems = diff(oldSystemIds, newSystemIds);
         Set<Long> addFires = diff(newFireIds, oldFireIds);
         Set<Long> removeFires = diff(oldFireIds, newFireIds);
+        Set<Long> oldUpkeepIds = collectRelatedLevel1Ids(templates, oldSystemIds, "2");
+        Set<Long> newUpkeepIds = collectRelatedLevel1Ids(templates, newSystemIds, "2");
+        Set<Long> addUpkeep = diff(newUpkeepIds, oldUpkeepIds);
+        Set<Long> removeUpkeep = diff(oldUpkeepIds, newUpkeepIds);
 
         validateSelectedLevel1Ids(newSystemIds, templates, false, "维保系统");
         validateSelectedLevel1Ids(newFireIds, templates, true, "消防设施测试");
         assertRemovableLevel1Trees(taskId, removeSystems, "0");
         assertRemovableLevel1Trees(taskId, removeFires, "1");
+        assertRemovableLevel1Trees(taskId, removeUpkeep, "2");
 
         int rows = fireMaintenanceTaskMapper.updateFireMaintenanceTask(fireMaintenanceTask);
         int normalized = normalizeHistoricalRecordTypes(taskId, templates);
@@ -226,9 +234,11 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
 
         int added = generateMissingRecordsForLevel1Ids(taskId, addSystems, "0", templates, existingTemplateIds);
         added += generateMissingRecordsForLevel1Ids(taskId, addFires, "1", templates, existingTemplateIds);
+        added += generateMissingRecordsForLevel1Ids(taskId, addUpkeep, "2", templates, existingTemplateIds);
 
         int removed = removeEmptyLevel1Trees(taskId, removeSystems, "0");
         removed += removeEmptyLevel1Trees(taskId, removeFires, "1");
+        removed += removeEmptyLevel1Trees(taskId, removeUpkeep, "2");
 
         int[] counts = refreshTaskStatistics(taskId);
         String syncMessage = String.format("新增检查记录%d条，清理未填写记录%d条，完成度%d/%d",
@@ -275,7 +285,7 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
             if (template == null) {
                 continue;
             }
-            String expected = isFireTestTemplate(template) ? "1" : "0";
+            String expected = normalizeTemplateType(template);
             if (!expected.equals(record.getRecordType())) {
                 FireMaintenanceRecord update = new FireMaintenanceRecord();
                 update.setRecordId(record.getRecordId());
@@ -317,16 +327,40 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
 
     private Set<Long> collectLevel1Ids(List<FireMaintenanceTemplate> templates, boolean fireTest) {
         Set<Long> ids = new HashSet<>();
+        String expectedType = fireTest ? "1" : "0";
         for (FireMaintenanceTemplate template : templates) {
-            if (template.getLevel() != null && template.getLevel() == 1 && isFireTestTemplate(template) == fireTest) {
+            if (template.getLevel() != null && template.getLevel() == 1
+                    && expectedType.equals(normalizeTemplateType(template))) {
                 ids.add(template.getId());
             }
         }
         return ids;
     }
 
-    private boolean isFireTestTemplate(FireMaintenanceTemplate template) {
-        return "1".equals(template.getTemplateType());
+    private String normalizeTemplateType(FireMaintenanceTemplate template) {
+        if (template == null || template.getTemplateType() == null) {
+            return "0";
+        }
+        return StringUtils.isEmpty(template.getTemplateType()) ? "0" : template.getTemplateType();
+    }
+
+    /**
+     * 保养模板不单独增加任务选择字段，而是跟随已选择的巡查一级类目。
+     */
+    private Set<Long> collectRelatedLevel1Ids(List<FireMaintenanceTemplate> templates,
+            Set<Long> selectedPatrolIds, String templateType) {
+        Set<String> selectedNames = templates.stream()
+                .filter(t -> t.getLevel() != null && t.getLevel() == 1)
+                .filter(t -> selectedPatrolIds.contains(t.getId()))
+                .map(t -> FireInspectionTestKeys.normalizeText(t.getItemName()).toLowerCase())
+                .collect(Collectors.toSet());
+        return templates.stream()
+                .filter(t -> t.getLevel() != null && t.getLevel() == 1)
+                .filter(t -> templateType.equals(normalizeTemplateType(t)))
+                .filter(t -> selectedNames.contains(
+                        FireInspectionTestKeys.normalizeText(t.getItemName()).toLowerCase()))
+                .map(FireMaintenanceTemplate::getId)
+                .collect(Collectors.toSet());
     }
 
     /**
@@ -343,13 +377,14 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
         List<FireMaintenanceRecord> records = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
         Map<Long, FireMaintenanceTemplate> templateMap = templates.stream()
                 .collect(Collectors.toMap(FireMaintenanceTemplate::getId, t -> t, (a, b) -> a));
+        String expectedType = fireTest ? "1" : "0";
         Set<Long> fromRecords = records.stream()
                 .filter(r -> r.getLevel() != null && r.getLevel() == 1)
                 // 历史消防测试一级记录曾因插入 SQL 漏写 record_type 被标成 0，
                 // 因此回显以模板真实类型为准，不能只信记录上的旧值。
                 .filter(r -> {
                     FireMaintenanceTemplate template = templateMap.get(r.getTemplateId());
-                    return template != null && isFireTestTemplate(template) == fireTest;
+                    return template != null && expectedType.equals(normalizeTemplateType(template));
                 })
                 .map(FireMaintenanceRecord::getTemplateId)
                 .collect(Collectors.toSet());
@@ -361,12 +396,13 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
 
     private void validateSelectedLevel1Ids(Set<Long> ids, List<FireMaintenanceTemplate> templates,
             boolean fireTest, String moduleName) {
+        String expectedType = fireTest ? "1" : "0";
         Map<Long, FireMaintenanceTemplate> templateMap = templates.stream()
                 .collect(Collectors.toMap(FireMaintenanceTemplate::getId, t -> t, (a, b) -> a));
         List<Long> invalidIds = ids.stream().filter(id -> {
             FireMaintenanceTemplate template = templateMap.get(id);
             return template == null || template.getLevel() == null || template.getLevel() != 1
-                    || isFireTestTemplate(template) != fireTest;
+                    || !expectedType.equals(normalizeTemplateType(template));
         }).collect(Collectors.toList());
         if (!invalidIds.isEmpty()) {
             throw new ServiceException(moduleName + "包含无效类目ID：" + invalidIds);
@@ -393,7 +429,7 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
             if (level1 == null || level1.getLevel() == null || level1.getLevel() != 1) {
                 continue;
             }
-            if (isFireTestTemplate(level1) != "1".equals(recordType)) {
+            if (!normalizeTemplateType(level1).equals(recordType)) {
                 continue;
             }
 
@@ -405,6 +441,7 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
             List<FireMaintenanceTemplate> level2List = templates.stream()
                     .filter(t -> t.getLevel() != null && t.getLevel() == 2)
                     .filter(t -> level1Id.equals(t.getParentId()))
+                    .filter(t -> recordType.equals(normalizeTemplateType(t)))
                     .collect(Collectors.toList());
 
             for (FireMaintenanceTemplate level2 : level2List) {
@@ -420,6 +457,7 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                 List<FireMaintenanceTemplate> level3List = templates.stream()
                         .filter(t -> t.getLevel() != null && t.getLevel() == 3)
                         .filter(t -> level2.getId().equals(t.getParentId()))
+                        .filter(t -> recordType.equals(normalizeTemplateType(t)))
                         .collect(Collectors.toList());
                 List<FireMaintenanceRecord> l3Records = new ArrayList<>();
                 for (FireMaintenanceTemplate level3 : level3List) {
@@ -661,6 +699,8 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
         Set<Long> existingTemplateIds = new HashSet<>();
         int added = generateMissingRecordsForLevel1Ids(taskId, selectedSystemIds, "0", templates, existingTemplateIds);
         added += generateMissingRecordsForLevel1Ids(taskId, selectedFireTestIds, "1", templates, existingTemplateIds);
+        Set<Long> selectedUpkeepIds = collectRelatedLevel1Ids(templates, selectedSystemIds, "2");
+        added += generateMissingRecordsForLevel1Ids(taskId, selectedUpkeepIds, "2", templates, existingTemplateIds);
 
         refreshTaskStatistics(taskId);
         if (cancelled) {
@@ -738,10 +778,7 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                         .thenComparing(r -> r.getRecordId() == null ? 0L : r.getRecordId()))
                 .collect(Collectors.toList());
         for (FireMaintenanceRecord l1 : level1) {
-            String key = FireInspectionTestKeys.businessKey(l1);
-            if (StringUtils.isEmpty(key) || "n:".equals(key)) {
-                key = "id:" + l1.getRecordId();
-            }
+            String key = FireInspectionTestGroupKeys.categoryBusinessKey(l1);
             l1ByKey.computeIfAbsent(key, k -> new ArrayList<>()).add(l1);
         }
 
@@ -794,15 +831,13 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                 .filter(r -> r.getLevel() != null && r.getLevel() == 2)
                 .filter(r -> r.getParentRecordId() != null && categoryRootIds.contains(r.getParentRecordId()))
                 .sorted(Comparator
-                        .comparing((FireMaintenanceRecord r) -> r.getSortOrder() == null ? Integer.MAX_VALUE : r.getSortOrder())
+                        .comparingInt(this::recordTypeOrder)
+                        .thenComparing(r -> r.getSortOrder() == null ? Integer.MAX_VALUE : r.getSortOrder())
                         .thenComparing(r -> r.getRecordId() == null ? 0L : r.getRecordId()))
                 .collect(Collectors.toList());
         Map<String, List<FireMaintenanceRecord>> byKey = new LinkedHashMap<>();
         for (FireMaintenanceRecord l2 : level2) {
-            String key = FireInspectionTestKeys.businessKey(l2);
-            if (StringUtils.isEmpty(key) || "n:".equals(key)) {
-                key = "id:" + l2.getRecordId();
-            }
+            String key = FireInspectionTestGroupKeys.equipmentBusinessKey(l2);
             byKey.computeIfAbsent(key, k -> new ArrayList<>()).add(l2);
         }
         List<FireInspectionTestEquipmentGroup> groups = new ArrayList<>();
@@ -818,6 +853,7 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                     .filter(s -> s != null)
                     .min(Integer::compareTo)
                     .orElse(first.getSortOrder()));
+            String groupRecordType = normalizeRecordType(first.getRecordType());
             List<FireMaintenanceRecord> checkItems = new ArrayList<>();
             for (FireMaintenanceRecord src : sources) {
                 if ("1".equals(src.getRecordType())) {
@@ -845,6 +881,8 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                     checkItems.addAll(children);
                 }
             }
+            group.setRecordType(groupRecordType);
+            group.setRecordTypeLabel(recordTypeLabel(groupRecordType));
             group.setCheckItems(checkItems);
             int total = checkItems.size();
             int completed = (int) checkItems.stream()
@@ -857,6 +895,24 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
             groups.add(group);
         }
         return groups;
+    }
+
+    private int recordTypeOrder(FireMaintenanceRecord record) {
+        return Integer.parseInt(normalizeRecordType(record == null ? null : record.getRecordType()));
+    }
+
+    private String normalizeRecordType(String recordType) {
+        return "1".equals(recordType) || "2".equals(recordType) ? recordType : "0";
+    }
+
+    private String recordTypeLabel(String recordType) {
+        if ("1".equals(recordType)) {
+            return "测试";
+        }
+        if ("2".equals(recordType)) {
+            return "保养";
+        }
+        return "巡查";
     }
 
     private boolean belongsToAnyRoot(FireMaintenanceRecord record, Set<Long> rootIds,

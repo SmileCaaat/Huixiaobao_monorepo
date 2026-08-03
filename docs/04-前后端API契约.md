@@ -11,7 +11,7 @@
 | 上传 | §3 | `/api/common/upload` |
 | 公司/首页 | §4 | `/api/fire/company/*`、`GET /api/fire/home` |
 | 建筑/设备/任务 | §5–7 | `/api/fire/building|equipment|task/*` |
-| 巡检测试 | §8 | `/api/fire/inspection/*` |
+| 巡查测试（独立模块） | §8 | `/api/fire/inspection/*`（侧边栏菜单名「巡查测试」） |
 | 签到/报修/报告 | §9–11 | `/api/fire/checkIn|repair|report/*` |
 | 签到逆地理 | §9 | `GET /api/fire/checkIn/reverseGeocode` |
 | 字典/部门 | §11 | `/api/fire/dict/*`、`/api/fire/dept/*` |

@@ -23,7 +23,7 @@ Page({
       return;
     }
     this.setData({ taskId });
-    wx.setNavigationBarTitle({ title: "\u4efb\u52a1\u8be6\u60c5" });
+    wx.setNavigationBarTitle({ title: "\u6d88\u9632\u7ef4\u62a4\uff08\u5de1\u67e5\u6d4b\u8bd5\uff09" });
     this.loadDetail();
   },
 

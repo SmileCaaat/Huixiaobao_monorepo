@@ -3,7 +3,10 @@
   <view wx:if="{{equipments.length === 0 && !loading}}" class="empty">暂无设备</view>
   <view class="card item-card" wx:for="{{equipments}}" wx:key="equipmentKey" bindtap="goDevice" data-key="{{item.equipmentKey}}">
     <view class="card-hd">
-      <text class="title">{{item.displayName}}</text>
+      <view class="equipment-name-line">
+        <text class="title">{{item.displayName}}</text>
+        <text class="inspection-type-label">{{item.recordTypeLabel}}</text>
+      </view>
       <text class="sub" wx:if="{{item.progressText}}">{{item.progressText}}</text>
     </view>
   </view>
