@@ -135,6 +135,24 @@ public class FireMaintenanceTask extends BaseEntity
     @JsonFormat(pattern = "yyyy-MM-dd")
     private Date maintenanceTime;
 
+    /** 巡查汇总表备注 */
+    private String patrolSummaryRemark;
+
+    /** 测试汇总表备注 */
+    private String testSummaryRemark;
+
+    /** 维护保养表备注 */
+    private String upkeepSummaryRemark;
+
+    /** 其他巡查内容 */
+    private String otherPatrolContent;
+
+    /** 其他测试内容 */
+    private String otherTestContent;
+
+    /** 消防报警主机测试打印凭证 */
+    private String alarmHostVoucher;
+
     /** 系统列表（一级记录） */
     private List<FireMaintenanceRecord> systems;
 
@@ -432,6 +450,66 @@ public class FireMaintenanceTask extends BaseEntity
     public Date getMaintenanceTime() 
     {
         return maintenanceTime;
+    }
+
+    public void setPatrolSummaryRemark(String patrolSummaryRemark)
+    {
+        this.patrolSummaryRemark = patrolSummaryRemark;
+    }
+
+    public String getPatrolSummaryRemark()
+    {
+        return patrolSummaryRemark;
+    }
+
+    public void setTestSummaryRemark(String testSummaryRemark)
+    {
+        this.testSummaryRemark = testSummaryRemark;
+    }
+
+    public String getTestSummaryRemark()
+    {
+        return testSummaryRemark;
+    }
+
+    public void setUpkeepSummaryRemark(String upkeepSummaryRemark)
+    {
+        this.upkeepSummaryRemark = upkeepSummaryRemark;
+    }
+
+    public String getUpkeepSummaryRemark()
+    {
+        return upkeepSummaryRemark;
+    }
+
+    public void setOtherPatrolContent(String otherPatrolContent)
+    {
+        this.otherPatrolContent = otherPatrolContent;
+    }
+
+    public String getOtherPatrolContent()
+    {
+        return otherPatrolContent;
+    }
+
+    public void setOtherTestContent(String otherTestContent)
+    {
+        this.otherTestContent = otherTestContent;
+    }
+
+    public String getOtherTestContent()
+    {
+        return otherTestContent;
+    }
+
+    public void setAlarmHostVoucher(String alarmHostVoucher)
+    {
+        this.alarmHostVoucher = alarmHostVoucher;
+    }
+
+    public String getAlarmHostVoucher()
+    {
+        return alarmHostVoucher;
     }
 
     public void setSystems(List<FireMaintenanceRecord> systems) 

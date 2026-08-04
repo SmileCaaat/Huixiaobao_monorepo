@@ -1,14 +1,18 @@
 <view class="page">
   <view class="section-title" wx:if="{{equipmentName}}">{{equipmentName}}</view>
   <view wx:if="{{checkItems.length === 0 && !loading}}" class="empty">暂无检查项</view>
-  <view class="card check-card" wx:for="{{checkItems}}" wx:key="recordId">
+  <view class="card check-card" wx:for="{{checkItems}}" wx:key="recordId" bindtap="openCheckDetail" data-id="{{item.recordId}}">
     <view class="card-hd">
       <text class="title">{{item.displayName}}</text>
       <text class="badge {{item.checkResult === '2' ? 'badge-bad' : (item.checkResult === '1' ? 'badge-ok' : 'badge-muted')}}">{{item.resultText}}</text>
     </view>
     <view class="btn-row">
-      <view class="btn-mini ok" data-id="{{item.recordId}}" data-result="1" bindtap="setResult">正常</view>
-      <view class="btn-mini bad" data-id="{{item.recordId}}" data-result="2" bindtap="setResult">故障</view>
+      <view class="btn-mini ok" data-id="{{item.recordId}}" data-result="1" catchtap="setResult">正常</view>
+      <view class="btn-mini bad" data-id="{{item.recordId}}" data-result="2" catchtap="setResult">故障</view>
+    </view>
+    <view class="detail-entry">
+      <text>其他说明及附件</text>
+      <text class="detail-arrow">›</text>
     </view>
   </view>
   <view class="footer-tip" wx:if="{{loading}}">加载中...</view>

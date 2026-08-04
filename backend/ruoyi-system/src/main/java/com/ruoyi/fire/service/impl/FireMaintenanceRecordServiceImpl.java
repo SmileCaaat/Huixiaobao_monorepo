@@ -260,4 +260,17 @@ public class FireMaintenanceRecordServiceImpl implements IFireMaintenanceRecordS
         }
         return rows;
     }
+
+    @Override
+    @Transactional
+    public int markAllNoDeviceByRecordIds(Long taskId, Long[] recordIds) {
+        if (recordIds == null || recordIds.length == 0) {
+            return 0;
+        }
+        int rows = fireMaintenanceRecordMapper.markAllNoDeviceByRecordIds(recordIds);
+        if (taskId != null) {
+            updateTaskStatistics(taskId);
+        }
+        return rows;
+    }
 }

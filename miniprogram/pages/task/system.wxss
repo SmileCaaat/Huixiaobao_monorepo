@@ -3,3 +3,43 @@
 .equipment-name-line { display: flex; align-items: baseline; min-width: 0; }
 .equipment-name-line .title { min-width: 0; }
 .inspection-type-label { flex-shrink: 0; margin-left: 12rpx; color: #999; font-size: 22rpx; font-weight: 400; }
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin: 28rpx 24rpx 0;
+}
+.section-title-left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1;
+}
+.section-icon {
+  color: #1565c0;
+  margin-right: 10rpx;
+  font-size: 28rpx;
+}
+.section-title-row .section-title {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.all-normal-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 10rpx 20rpx;
+  border-radius: 28rpx;
+  background: #e3f2fd;
+  color: #1565c0;
+  font-size: 24rpx;
+}
+.all-normal-icon {
+  font-size: 24rpx;
+  font-weight: 700;
+}
+.all-normal-btn.is-disabled { opacity: 0.6; }

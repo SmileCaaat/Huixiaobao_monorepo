@@ -1,0 +1,71 @@
+<view class="detail-page">
+  <view class="custom-nav">
+    <view class="nav-inner">
+      <view class="nav-back" bindtap="goBack">‹</view>
+      <text class="nav-title">维保详情内容</text>
+      <view class="nav-save" bindtap="saveDetail">保存</view>
+    </view>
+  </view>
+
+  <scroll-view class="detail-scroll" scroll-y>
+    <view class="content-wrap">
+      <view class="item-title">{{displayName}}</view>
+
+      <view class="form-card">
+        <view class="question">{{displayName}}是否完好？</view>
+        <view class="choice-row">
+          <view class="choice-item" bindtap="setIntact" data-value="yes">
+            <view class="check-box {{intact === 'yes' ? 'checked' : ''}}">{{intact === 'yes' ? '✓' : ''}}</view>
+            <text>是</text>
+          </view>
+          <view class="choice-item" bindtap="setIntact" data-value="no">
+            <view class="check-box {{intact === 'no' ? 'checked' : ''}}">{{intact === 'no' ? '✓' : ''}}</view>
+            <text>否</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-card">
+        <view class="card-title">设备状态</view>
+        <view class="status-row">
+          <view class="status-item" bindtap="selectStatus" data-value="1">
+            <view class="check-box {{checkResult === '1' ? 'checked' : ''}}">{{checkResult === '1' ? '✓' : ''}}</view>
+            <text>正常</text>
+          </view>
+          <view class="status-item" bindtap="selectStatus" data-value="2">
+            <view class="check-box {{checkResult === '2' ? 'checked fault' : ''}}">{{checkResult === '2' ? '✓' : ''}}</view>
+            <text>故障</text>
+          </view>
+          <view class="status-item" bindtap="selectStatus" data-value="3">
+            <view class="check-box {{checkResult === '3' ? 'checked none' : ''}}">{{checkResult === '3' ? '✓' : ''}}</view>
+            <text>无此设备</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-card notes-card">
+        <view class="card-title">其他说明</view>
+        <textarea class="notes-input" value="{{otherNotes}}" maxlength="500" placeholder="请输入其他说明" bindinput="onNotesInput"></textarea>
+        <view class="counter">{{notesLength}}/500</view>
+      </view>
+
+      <view class="form-card attachment-card">
+        <view class="card-title">附件</view>
+        <view class="image-grid">
+          <view class="upload-tile" bindtap="chooseAttachment" wx:if="{{images.length < 5}}">
+            <text class="camera-icon">📷</text>
+            <text class="upload-label">拍照/上传</text>
+          </view>
+          <view class="image-item" wx:for="{{images}}" wx:key="serverUrl">
+            <image class="attachment-image" src="{{item.previewUrl}}" mode="aspectFill" bindtap="previewImage" data-index="{{index}}"></image>
+            <view class="remove-image" catchtap="removeImage" data-index="{{index}}">×</view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="bottom-save-wrap">
+    <view class="bottom-save {{saving ? 'disabled' : ''}}" bindtap="saveDetail">{{saving ? '保存中...' : '保存'}}</view>
+  </view>
+</view>

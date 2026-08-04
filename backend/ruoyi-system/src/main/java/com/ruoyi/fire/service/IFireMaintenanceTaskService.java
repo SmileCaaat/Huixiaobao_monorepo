@@ -32,6 +32,9 @@ public interface IFireMaintenanceTaskService {
      */
     public FireMaintenanceTask selectFireMaintenanceTaskByTaskId(Long taskId, String recordType);
 
+    /** 仅查询任务主表，不装载系统树；用于权限校验和层级页面。 */
+    public FireMaintenanceTask selectFireMaintenanceTaskBaseByTaskId(Long taskId);
+
     /**
      * 查询维保任务列表
      * 
@@ -60,6 +63,16 @@ public interface IFireMaintenanceTaskService {
      * 仅更新维保简报字段（maintenanceSummary / maintenanceTime）
      */
     int updateTaskBriefing(Long taskId, String maintenanceSummary, java.util.Date maintenanceTime, String updateBy);
+
+    /**
+     * 更新消防维护「情况简述/结论」
+     */
+    int updateTaskConclusion(FireMaintenanceTask task);
+
+    /**
+     * 引用同公司上一任务的结论字段（summary/patrol/test）
+     */
+    FireMaintenanceTask selectPreviousTaskForConclusion(Long companyId, Long taskId, java.util.Date beforeTime);
 
     /**
      * 批量删除维保任务

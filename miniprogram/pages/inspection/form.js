@@ -48,6 +48,8 @@ function nowDateParts() {
 
 Page({
   data: {
+    linked: false,
+    customerAddress: "",
     form: {
       companyId: null,
       companyName: "",
@@ -95,7 +97,7 @@ Page({
     tempDay: 0
   },
 
-  onLoad() {
+  onLoad(options) {
     const parts = nowDateParts();
     const datePart = `${parts.year}-${pad(parts.month)}-${pad(parts.day)}`;
     this.setData({
@@ -105,7 +107,32 @@ Page({
       days: buildDays(parts.year, parts.month)
     });
     this.initDatePickerTo(parts.year, parts.month, parts.day);
-    this.initCompanyAndOptions();
+    if (options && options.linked === "1") {
+      this.initLinkedContext(options);
+    } else {
+      this.initCompanyAndOptions();
+    }
+  },
+
+  async initLinkedContext(options) {
+    const decode = (value) => value ? decodeURIComponent(value) : "";
+    const companyId = options.companyId || null;
+    const categoryKey = decode(options.categoryKey);
+    this.setData({
+      linked: true,
+      customerAddress: decode(options.customerAddress),
+      "form.companyId": companyId,
+      "form.companyName": decode(options.companyName),
+      "form.inspectionType": "0",
+      "form.categoryKey": categoryKey,
+      "form.systemType": categoryKey,
+      "form.systemName": decode(options.systemName),
+      "form.equipmentKey": decode(options.equipmentKey),
+      "form.equipmentName": decode(options.equipmentName),
+      "form.equipmentStatus": "0"
+    });
+    await Promise.all([this.loadBuildings(companyId), this.loadSystemTypes()]);
+    await this.loadEquipmentTypes(categoryKey);
   },
 
   async initCompanyAndOptions() {
@@ -174,7 +201,35 @@ Page({
   },
 
   onStatusChange(e) {
-    this.setData({ "form.equipmentStatus": e.detail.value ? "0" : "1" });
+    const status = e.detail.value ? "0" : "1";
+    this.setData({ "form.equipmentStatus": status });
+    if (this.data.linked && status === "1") {
+      wx.showModal({
+        title: "提示",
+        content: "是否上报故障？",
+        cancelText: "否",
+        confirmText: "是",
+        success: (res) => {
+          if (res.confirm) this.openLinkedRepair();
+        }
+      });
+    }
+  },
+
+  openLinkedRepair() {
+    const form = this.data.form;
+    const params = {
+      linked: "1",
+      companyId: form.companyId || "",
+      companyName: form.companyName || "",
+      systemTypeName: form.systemName || "",
+      equipmentName: form.equipmentName || "",
+      customerAddress: this.data.customerAddress || "",
+      isReported: "1",
+      faultDescription: (form.equipmentName || "设备") + "巡检测试异常"
+    };
+    const query = Object.keys(params).map((key) => key + "=" + encodeURIComponent(params[key])).join("&");
+    wx.navigateTo({ url: "/pages/repair/form?" + query });
   },
 
   onLocationInput(e) {
@@ -288,10 +343,12 @@ Page({
   },
 
   openSystemPicker() {
+    if (this.data.linked) return wx.showToast({ title: "系统名称已关联锁定", icon: "none" });
     this.openPicker("system", "选择系统名称", this.data.systemOptions);
   },
 
   openEquipmentPicker() {
+    if (this.data.linked) return wx.showToast({ title: "设备名称已关联锁定", icon: "none" });
     if (!this.data.form.categoryKey) {
       wx.showToast({ title: "请先选择系统名称", icon: "none" });
       return;

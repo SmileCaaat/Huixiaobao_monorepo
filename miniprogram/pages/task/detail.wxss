@@ -1,2 +1,16 @@
 @import "../../styles/biz.wxss";
 .item-card { margin-top: 0; }
+.section-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 28rpx 24rpx 0;
+}
+.section-title-row .section-title { margin: 0; }
+.conclusion-btn {
+  padding: 8rpx 22rpx;
+  border-radius: 28rpx;
+  background: #1565c0;
+  color: #fff;
+  font-size: 24rpx;
+}

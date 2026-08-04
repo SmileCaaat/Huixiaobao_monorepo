@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:include="include :: header('其他说明')" />
+    <th:block th:include="include :: header('维保详情内容')" />
     <style>
         .detail-container { padding: 20px; background: #f5f5f5; min-height: 100vh; }
         .item-header { background: linear-gradient(135deg, #1565c0, #42a5f5); color: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
@@ -19,6 +19,22 @@
         .status-normal { background: #d4edda; color: #155724; }
         .status-fault { background: #f8d7da; color: #721c24; }
         .status-nodevice { background: #fff3cd; color: #856404; }
+        .condition-question { font-size: 18px; color: #333; margin-bottom: 18px; }
+        .condition-options { display: flex; align-items: center; gap: 42px; }
+        .condition-option { display: inline-flex; align-items: center; gap: 9px; font-size: 16px; font-weight: 400; cursor: pointer; }
+        .condition-option input { width: 19px; height: 19px; margin: 0; cursor: pointer; }
+        .detail-status-row { display: flex; gap: 18px; flex-wrap: wrap; }
+        .detail-status-btn { min-width: 150px; height: 48px; border: 2px solid #d5d9dd; border-radius: 8px; background: #fff; color: #555; font-size: 16px; cursor: pointer; transition: all .15s; }
+        .detail-status-btn i { margin-right: 7px; }
+        .detail-status-btn.status-normal.active { border-color: #2d8cf0; background: #2d8cf0; color: #fff; }
+        .detail-status-btn.status-fault.active { border-color: #dc3545; background: #dc3545; color: #fff; }
+        .detail-status-btn.status-nodevice.active { border-color: #f0ad4e; background: #f0ad4e; color: #fff; }
+        .handling-panel { display: none; }
+        .handling-panel.show { display: block; }
+        .handling-row { display: flex; gap: 22px; flex-wrap: wrap; }
+        .handling-btn { min-width: 190px; height: 52px; border: 2px solid #d5d9dd; border-radius: 8px; background: #fff; color: #555; font-size: 17px; cursor: pointer; }
+        .handling-btn i { margin-right: 8px; }
+        .handling-btn.active { border-color: #2d8cf0; background: #2d8cf0; color: #fff; }
         .notes-area textarea { width: 100%; min-height: 120px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; resize: vertical; }
         .image-preview-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
         .image-preview-item { position: relative; width: 96px; height: 96px; }
@@ -34,30 +50,51 @@
     <div class="item-header">
         <h3>
             <i class="fa fa-file-text-o"></i>
-            <span>其他说明 - </span>
+            <span>维保详情内容 - </span>
             <span th:text="${item.itemName}">检查项</span>
         </h3>
     </div>
-    <div class="btn-toolbar">
-        <a class="btn btn-default" href="javascript:void(0)" id="btnBack"><i class="fa fa-arrow-left"></i> 返回</a>
+
+    <div class="card-panel">
+        <div class="condition-question"><span th:text="${item.itemName}">检查项</span>是否完好？</div>
+        <div class="condition-options">
+            <label class="condition-option">
+                <input type="radio" name="isGood" value="1" th:checked="${item.checkResult == '1'}"> 是
+            </label>
+            <label class="condition-option">
+                <input type="radio" name="isGood" value="0" th:checked="${item.checkResult == '2' or item.checkResult == '3'}"> 否
+            </label>
+        </div>
     </div>
 
     <div class="card-panel">
-        <h4>基本信息</h4>
-        <div class="info-row">
-            <span class="label-text">检查项名称：</span>
-            <span class="value-text" th:text="${item.itemName}">-</span>
+        <h4>设备状态</h4>
+        <div class="detail-status-row" id="deviceStatus">
+            <button type="button" class="detail-status-btn status-normal" data-status="1">
+                <i class="fa fa-check-square-o"></i>正常
+            </button>
+            <button type="button" class="detail-status-btn status-fault" data-status="2">
+                <i class="fa fa-square-o"></i>故障
+            </button>
+            <button type="button" class="detail-status-btn status-nodevice" data-status="3">
+                <i class="fa fa-square-o"></i>无此设备
+            </button>
         </div>
-        <div class="info-row">
-            <span class="label-text">检查项编码：</span>
-            <span class="value-text" th:text="${item.itemCode}">-</span>
+    </div>
+
+    <div class="card-panel handling-panel" id="handlingPanel">
+        <h4>处理措施</h4>
+        <div class="handling-row" id="handlingMeasures">
+            <button type="button" class="handling-btn" data-measure="现场解决">
+                <i class="fa fa-square-o"></i>现场解决
+            </button>
+            <button type="button" class="handling-btn" data-measure="故障报修">
+                <i class="fa fa-square-o"></i>故障报修
+            </button>
         </div>
-        <div class="info-row">
-            <span class="label-text">当前状态：</span>
-            <span class="status-pill"
-                  th:classappend="${item.checkResult == '1' ? 'status-normal' : (item.checkResult == '2' ? 'status-fault' : (item.checkResult == '3' ? 'status-nodevice' : 'status-pending'))}"
-                  th:text="${item.checkResult == '1' ? '正常' : (item.checkResult == '2' ? '故障' : (item.checkResult == '3' ? '无此设备' : '未检查'))}">未检查</span>
-        </div>
+    </div>
+    <div class="btn-toolbar">
+        <a class="btn btn-default" href="javascript:void(0)" id="btnBack"><i class="fa fa-arrow-left"></i> 返回</a>
     </div>
 
     <div class="card-panel notes-area">
@@ -85,8 +122,92 @@
     var categoryKey = /*[[${categoryKey}]]*/ '';
     var equipmentKey = /*[[${equipmentKey}]]*/ '';
     var initialImages = /*[[${item.faultImages}]]*/ '';
+    var selectedCheckResult = /*[[${item.checkResult}]]*/ '0';
+    var selectedHandlingMeasure = /*[[${item.repairSuggestion}]]*/ '';
+    var repairCompanyId = /*[[${repairCompanyId}]]*/ null;
+    var repairCompanyName = /*[[${repairCompanyName}]]*/ '';
+    var repairSystemTypeName = /*[[${repairSystemTypeName}]]*/ '';
+    var repairEquipmentName = /*[[${repairEquipmentName}]]*/ '';
+    var repairCustomerAddress = /*[[${repairCustomerAddress}]]*/ '';
+    var repairItemName = /*[[${item.itemName}]]*/ '';
     var pendingFaultImages = [];
     var detailSaving = false;
+
+    function setDetailStatus(status) {
+        selectedCheckResult = String(status || '0');
+        $('.detail-status-btn').removeClass('active').find('i').removeClass('fa-check-square-o').addClass('fa-square-o');
+        var $active = $('.detail-status-btn[data-status="' + selectedCheckResult + '"]');
+        $active.addClass('active').find('i').removeClass('fa-square-o').addClass('fa-check-square-o');
+        if (selectedCheckResult === '1') {
+            $('input[name="isGood"][value="1"]').prop('checked', true);
+        } else if (selectedCheckResult === '2' || selectedCheckResult === '3') {
+            $('input[name="isGood"][value="0"]').prop('checked', true);
+        }
+        if (selectedCheckResult === '2') {
+            $('#handlingPanel').addClass('show');
+        } else {
+            $('#handlingPanel').removeClass('show');
+            selectedHandlingMeasure = '';
+        }
+        renderHandlingMeasure();
+        var labels = { '0': '未检查', '1': '正常', '2': '故障', '3': '无此设备' };
+        $('.status-pill').removeClass('status-pending status-normal status-fault status-nodevice')
+            .addClass(selectedCheckResult === '1' ? 'status-normal' : (selectedCheckResult === '2' ? 'status-fault' : (selectedCheckResult === '3' ? 'status-nodevice' : 'status-pending')))
+            .text(labels[selectedCheckResult] || labels['0']);
+    }
+
+    function renderHandlingMeasure() {
+        $('.handling-btn').removeClass('active').find('i').removeClass('fa-check-square-o').addClass('fa-square-o');
+        if (!selectedHandlingMeasure) {
+            return;
+        }
+        var $active = $('.handling-btn[data-measure="' + selectedHandlingMeasure + '"]');
+        $active.addClass('active').find('i').removeClass('fa-square-o').addClass('fa-check-square-o');
+    }
+
+    function openLinkedRepair() {
+        var notes = $('#otherNotes').val() || '';
+        var description = repairItemName + '：' + (notes || '检查发现故障');
+        var query = $.param({
+            linked: true,
+            companyId: repairCompanyId,
+            companyName: repairCompanyName,
+            systemTypeName: repairSystemTypeName,
+            equipmentName: repairEquipmentName,
+            customerAddress: repairCustomerAddress,
+            faultDescription: description
+        });
+        var url = ctx + 'fire/repair/add?' + query;
+        top.$.modal.open('新增故障报修', url, 900, 650);
+    }
+
+    function confirmFaultReport() {
+        top.layer.open({
+            type: 0,
+            title: '提示',
+            content: '<div style="font-size:18px;text-align:center;padding:12px 8px;">是否上报故障？</div>',
+            btn: ['否', '是'],
+            yes: function (index) {
+                top.layer.close(index);
+            },
+            btn2: function (index) {
+                top.layer.close(index);
+                $.ajax({
+                    url: prefix + '/updateCheckDetail',
+                    type: 'post',
+                    data: {
+                        recordId: recordId,
+                        checkResult: '2',
+                        repairSuggestion: '故障报修'
+                    },
+                    complete: function () {
+                        openLinkedRepair();
+                    }
+                });
+                return false;
+            }
+        });
+    }
 
     function goBack() {
         window.location.href = prefix + "/inspectionTestEquipment/" + taskId + "/"
@@ -124,6 +245,14 @@
         if (otherNotes == null) {
             otherNotes = '';
         }
+        if (selectedCheckResult === '0' || !selectedCheckResult) {
+            $.modal.alertWarning('请选择设备状态');
+            return;
+        }
+        if (selectedCheckResult === '2' && !selectedHandlingMeasure) {
+            $.modal.alertWarning('请选择处理措施');
+            return;
+        }
         var fileInput = document.getElementById('fileUpload');
         detailSaving = true;
         var $btn = $('#btnSave');
@@ -140,6 +269,8 @@
                 type: "post",
                 data: {
                     recordId: recordId,
+                    checkResult: selectedCheckResult,
+                    repairSuggestion: selectedHandlingMeasure,
                     otherNotes: otherNotes,
                     faultImages: imageUrls == null ? '' : imageUrls
                 },
@@ -203,6 +334,25 @@
         e.preventDefault();
         saveOtherNotes();
     });
+    $('#deviceStatus').on('click', '.detail-status-btn', function (e) {
+        e.preventDefault();
+        setDetailStatus($(this).attr('data-status'));
+    });
+    $('#handlingMeasures').on('click', '.handling-btn', function (e) {
+        e.preventDefault();
+        selectedHandlingMeasure = $(this).attr('data-measure') || '';
+        renderHandlingMeasure();
+        if (selectedHandlingMeasure === '故障报修') {
+            confirmFaultReport();
+        }
+    });
+    $('input[name="isGood"]').on('change', function () {
+        if ($(this).val() === '1') {
+            setDetailStatus('1');
+        } else if (selectedCheckResult === '0' || selectedCheckResult === '1') {
+            setDetailStatus('2');
+        }
+    });
     $('#imagePreview').on('click', '.js-preview-image', function (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -221,6 +371,7 @@
         }
     });
 
+    setDetailStatus(selectedCheckResult);
     initPendingImages();
 </script>
 </body>

@@ -62,5 +62,12 @@ Page({
         "&categoryKey=" +
         encodeURIComponent(categoryKey)
     });
+  },
+
+  goConclusion() {
+    if (!this.data.taskId) return;
+    wx.navigateTo({
+      url: "/pages/task/conclusion?taskId=" + this.data.taskId
+    });
   }
 });

@@ -1,0 +1,58 @@
+<view class="page conclusion-page">
+  <view class="card block">
+    <view class="field-hd">
+      <text class="label">本次维保情况简述</text>
+      <view class="quote" bindtap="quoteSummary">
+        <text>引用</text>
+      </view>
+    </view>
+    <textarea class="textarea" placeholder="请输入本次维保概况简述" maxlength="2000" value="{{maintenanceSummary}}" bindinput="onInput" data-field="maintenanceSummary" />
+  </view>
+
+  <view class="card block">
+    <view class="field-hd"><text class="label">巡查汇总表备注</text></view>
+    <input class="input" placeholder="请输入本次巡查汇总表备注" maxlength="500" value="{{patrolSummaryRemark}}" bindinput="onInput" data-field="patrolSummaryRemark" />
+    <view class="field-hd field-hd-gap"><text class="label">测试汇总表备注</text></view>
+    <input class="input" placeholder="请输入本次测试汇总表备注" maxlength="500" value="{{testSummaryRemark}}" bindinput="onInput" data-field="testSummaryRemark" />
+    <view class="field-hd field-hd-gap"><text class="label">维护保养表备注</text></view>
+    <input class="input" placeholder="请输入本次维护保养表备注" maxlength="500" value="{{upkeepSummaryRemark}}" bindinput="onInput" data-field="upkeepSummaryRemark" />
+  </view>
+
+  <view class="card block">
+    <view class="field-hd">
+      <text class="label">其他巡查内容</text>
+      <view class="quote" bindtap="quotePatrol">
+        <text>引用上月巡查内容</text>
+      </view>
+    </view>
+    <textarea class="textarea textarea-lg" placeholder="请输入其他巡查内容" maxlength="5000" value="{{otherPatrolContent}}" bindinput="onInput" data-field="otherPatrolContent" />
+  </view>
+
+  <view class="card block">
+    <view class="field-hd">
+      <text class="label">其他测试内容</text>
+      <view class="quote" bindtap="quoteTest">
+        <text>引用上月测试内容</text>
+      </view>
+    </view>
+    <textarea class="textarea textarea-lg" placeholder="请输入其他测试内容" maxlength="5000" value="{{otherTestContent}}" bindinput="onInput" data-field="otherTestContent" />
+  </view>
+
+  <view class="card block">
+    <view class="field-hd"><text class="label">消防报警主机测试打印凭证</text></view>
+    <view class="voucher-row">
+      <block wx:for="{{images}}" wx:key="index">
+        <view class="thumb-wrap">
+          <image class="thumb" src="{{item.previewUrl || item.tempPath || item.serverUrl}}" mode="aspectFill" data-index="{{index}}" bindtap="previewImage" />
+          <view class="thumb-del" data-index="{{index}}" catchtap="removeImage">×</view>
+          <view class="thumb-mask" wx:if="{{item.uploading}}">上传中</view>
+        </view>
+      </block>
+      <view class="thumb-add" wx:if="{{images.length < 5}}" bindtap="chooseImage">+</view>
+    </view>
+  </view>
+
+  <view class="bottom-bar">
+    <view class="btn-block {{saving ? 'is-disabled' : ''}}" bindtap="handleSave">保存</view>
+  </view>
+</view>

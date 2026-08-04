@@ -54,6 +54,18 @@ public interface FireMaintenanceTaskMapper
             @Param("updateBy") String updateBy);
 
     /**
+     * 更新消防维护「情况简述/结论」字段
+     */
+    int updateTaskConclusion(FireMaintenanceTask task);
+
+    /**
+     * 查询同公司上一份可引用结论的任务
+     */
+    FireMaintenanceTask selectPreviousTaskForConclusion(@Param("companyId") Long companyId,
+            @Param("taskId") Long taskId,
+            @Param("beforeTime") java.util.Date beforeTime);
+
+    /**
      * 删除维保任务
      * 
      * @param taskId 维保任务主键

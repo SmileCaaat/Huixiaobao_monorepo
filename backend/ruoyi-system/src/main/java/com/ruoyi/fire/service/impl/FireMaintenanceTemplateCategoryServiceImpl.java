@@ -140,6 +140,15 @@ public class FireMaintenanceTemplateCategoryServiceImpl implements IFireMaintena
                 return vo;
             }
         }
+        // 兼容消防维护任务树传入的 Base64 编码键
+        String normalized = normalizeIncomingCategoryKey(categoryKey);
+        if (StringUtils.isNotEmpty(normalized) && !normalized.equals(categoryKey)) {
+            for (FireInspectionTemplateCategoryVO vo : listInspectionLevel1Categories()) {
+                if (normalized.equals(vo.getCategoryKey())) {
+                    return vo;
+                }
+            }
+        }
         return null;
     }
 
@@ -148,16 +157,62 @@ public class FireMaintenanceTemplateCategoryServiceImpl implements IFireMaintena
         if (StringUtils.isEmpty(categoryKey) || StringUtils.isEmpty(equipmentKey)) {
             return null;
         }
-        for (FireInspectionTemplateEquipmentVO vo : listEquipmentsByCategoryKey(categoryKey)) {
-            if (equipmentKey.equals(vo.getEquipmentKey())) {
+        String resolvedCategoryKey = categoryKey;
+        FireInspectionTemplateCategoryVO category = findLevel1ByCategoryKey(categoryKey);
+        if (category != null) {
+            resolvedCategoryKey = category.getCategoryKey();
+        }
+        String resolvedEquipmentKey = normalizeIncomingEquipmentKey(equipmentKey);
+        for (FireInspectionTemplateEquipmentVO vo : listEquipmentsByCategoryKey(resolvedCategoryKey)) {
+            if (equipmentKey.equals(vo.getEquipmentKey()) || resolvedEquipmentKey.equals(vo.getEquipmentKey())) {
                 return vo;
             }
         }
         return null;
     }
 
+    private String normalizeIncomingCategoryKey(String categoryKey) {
+        if (StringUtils.isEmpty(categoryKey)) {
+            return categoryKey;
+        }
+        if (categoryKey.startsWith("n:") || categoryKey.startsWith("c:") || categoryKey.startsWith("id:")) {
+            return categoryKey;
+        }
+        try {
+            return FireInspectionTestKeys.decodeKey(categoryKey);
+        }
+        catch (IllegalArgumentException ex) {
+            return categoryKey;
+        }
+    }
+
+    private String normalizeIncomingEquipmentKey(String equipmentKey) {
+        if (StringUtils.isEmpty(equipmentKey)) {
+            return equipmentKey;
+        }
+        String key = equipmentKey;
+        if (!(key.startsWith("n:") || key.startsWith("c:") || key.startsWith("id:") || key.startsWith("t:"))) {
+            try {
+                key = FireInspectionTestKeys.decodeKey(key);
+            }
+            catch (IllegalArgumentException ignored) {
+                return equipmentKey;
+            }
+        }
+        // 任务树二级键形如 t:1|n:消防炮
+        if (key.startsWith("t:") && key.indexOf('|') > 0) {
+            return key.substring(key.indexOf('|') + 1);
+        }
+        return key;
+    }
+
     private Set<Long> collectLevel1TemplateIds(List<FireMaintenanceTemplate> templates, String categoryKey) {
         Set<Long> ids = new HashSet<>();
+        String resolvedKey = categoryKey;
+        FireInspectionTemplateCategoryVO matched = findLevel1ByCategoryKey(categoryKey);
+        if (matched != null) {
+            resolvedKey = matched.getCategoryKey();
+        }
         for (FireMaintenanceTemplate template : templates) {
             if (template == null || template.getLevel() == null || template.getLevel() != 1) {
                 continue;
@@ -166,7 +221,7 @@ public class FireMaintenanceTemplateCategoryServiceImpl implements IFireMaintena
             if (!"0".equals(type) && !"1".equals(type)) {
                 continue;
             }
-            if (categoryKey.equals(buildLevel1MergeKey(template))) {
+            if (resolvedKey.equals(buildLevel1MergeKey(template))) {
                 ids.add(template.getId());
             }
         }

@@ -108,4 +108,7 @@ public interface IFireMaintenanceRecordService {
      * @return 更新行数
      */
     public int markUncheckedNormalByRecordIds(Long taskId, Long[] recordIds);
+
+    /** 将指定设备下的全部三级检查项统一标记为“无此设备”。 */
+    public int markAllNoDeviceByRecordIds(Long taskId, Long[] recordIds);
 }

@@ -128,4 +128,7 @@ public interface FireMaintenanceRecordMapper {
      * @return 更新行数
      */
     public int markUncheckedNormalByRecordIds(Long[] recordIds);
+
+    /** 将指定范围的三级检查项全部标记为“无此设备”。 */
+    public int markAllNoDeviceByRecordIds(Long[] recordIds);
 }

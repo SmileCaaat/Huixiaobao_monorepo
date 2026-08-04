@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -23,11 +24,19 @@ import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.fire.domain.FireBuilding;
 import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireInspection;
+import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.service.IFireBuildingService;
 import com.ruoyi.fire.service.IFireCompanyService;
 import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireInspectionService;
 import com.ruoyi.fire.service.IFireMaintenanceTemplateCategoryService;
+import com.ruoyi.fire.service.IFireMaintenanceTaskService;
+import com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO;
+import com.ruoyi.fire.domain.dto.FireInspectionTemplateEquipmentVO;
+import com.ruoyi.fire.domain.dto.FireInspectionTestCategoryGroup;
+import com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup;
+import com.ruoyi.fire.service.support.FireInspectionTestKeys;
+import com.ruoyi.common.utils.StringUtils;
 
 /**
  * 巡检测试Controller
@@ -49,6 +58,9 @@ public class FireInspectionController extends BaseController {
 
     @Autowired
     private IFireMaintenanceTemplateCategoryService templateCategoryService;
+
+    @Autowired
+    private IFireMaintenanceTaskService maintenanceTaskService;
 
     @Autowired
     private IFireDataPermissionService fireDataPermissionService;
@@ -84,9 +96,53 @@ public class FireInspectionController extends BaseController {
     }
 
     @GetMapping("/add")
-    public String add(ModelMap mmap) {
+    public String add(@RequestParam(value = "linked", required = false, defaultValue = "false") boolean linked,
+            @RequestParam(value = "taskId", required = false) Long taskId,
+            @RequestParam(value = "companyId", required = false) Long companyId,
+            @RequestParam(value = "categoryKey", required = false) String categoryKey,
+            @RequestParam(value = "equipmentKey", required = false) String equipmentKey,
+            ModelMap mmap) {
         mmap.put("companies", companyService.selectCompanyAll());
         mmap.put("systemTypes", templateCategoryService.listInspectionLevel1Categories());
+        mmap.put("linkedInspection", linked);
+        if (linked) {
+            FireMaintenanceTask task = maintenanceTaskService.selectFireMaintenanceTaskBaseByTaskId(taskId);
+            if (task == null) {
+                throw new ServiceException("关联的维保任务不存在");
+            }
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
+            companyId = task.getCompanyId();
+            FireCompany company = companyService.selectFireCompanyById(companyId);
+            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), companyId);
+            FireInspectionTestCategoryGroup category =
+                    maintenanceTaskService.buildInspectionTestSystem(taskId, categoryKey);
+            FireInspectionTestEquipmentGroup equipment = category.getEquipments().stream()
+                    .filter(item -> item != null && equipmentKey.equals(item.getEquipmentKey()))
+                    .findFirst()
+                    .orElseThrow(() -> new ServiceException("关联设备不存在或不属于当前类目"));
+            if (company == null || category == null || equipment == null) {
+                throw new ServiceException("关联的单位、系统或设备不存在，请刷新任务后重试");
+            }
+            // 消防维护页传入的是任务树编码键；表单/落库需要模板类目键（如 n:消防栓（消防炮）灭火系统）
+            FireInspectionTemplateCategoryVO templateCategory = resolveTemplateCategory(category);
+            if (templateCategory == null) {
+                throw new ServiceException("关联系统类目无效，请确认模板中存在：" + category.getCategoryName());
+            }
+            FireInspectionTemplateEquipmentVO templateEquipment =
+                    resolveTemplateEquipment(templateCategory.getCategoryKey(), equipment);
+            if (templateEquipment == null) {
+                throw new ServiceException("关联设备类目无效，请确认模板中存在：" + equipment.getEquipmentName());
+            }
+            mmap.put("linkedCompany", company);
+            mmap.put("linkedCategory", category);
+            mmap.put("linkedEquipment", equipment);
+            mmap.put("linkedTemplateCategory", templateCategory);
+            mmap.put("linkedTemplateEquipment", templateEquipment);
+            mmap.put("linkedBuildingId", task.getBuildingId());
+            mmap.put("linkedBuildingName", task.getBuildingName());
+            mmap.put("equipmentTypes",
+                    templateCategoryService.listEquipmentsByCategoryKey(templateCategory.getCategoryKey()));
+        }
         return prefix + "/add_new";
     }
 
@@ -198,6 +254,57 @@ public class FireInspectionController extends BaseController {
     @ResponseBody
     public AjaxResult equipmentTypes(String categoryKey) {
         return AjaxResult.success(templateCategoryService.listEquipmentsByCategoryKey(categoryKey));
+    }
+
+    private FireInspectionTemplateCategoryVO resolveTemplateCategory(FireInspectionTestCategoryGroup group) {
+        if (group == null) {
+            return null;
+        }
+        FireInspectionTemplateCategoryVO byKey = templateCategoryService.findLevel1ByCategoryKey(group.getCategoryKey());
+        if (byKey != null) {
+            return byKey;
+        }
+        String name = FireInspectionTestKeys.normalizeText(group.getCategoryName());
+        if (StringUtils.isNotEmpty(name)) {
+            FireInspectionTemplateCategoryVO byName =
+                    templateCategoryService.findLevel1ByCategoryKey("n:" + name.toLowerCase());
+            if (byName != null) {
+                return byName;
+            }
+            for (FireInspectionTemplateCategoryVO vo : templateCategoryService.listInspectionLevel1Categories()) {
+                if (name.equalsIgnoreCase(FireInspectionTestKeys.normalizeText(vo.getCategoryName()))) {
+                    return vo;
+                }
+            }
+        }
+        return null;
+    }
+
+    private FireInspectionTemplateEquipmentVO resolveTemplateEquipment(String templateCategoryKey,
+            FireInspectionTestEquipmentGroup group) {
+        if (StringUtils.isEmpty(templateCategoryKey) || group == null) {
+            return null;
+        }
+        FireInspectionTemplateEquipmentVO byKey =
+                templateCategoryService.findEquipment(templateCategoryKey, group.getEquipmentKey());
+        if (byKey != null) {
+            return byKey;
+        }
+        String name = FireInspectionTestKeys.normalizeText(group.getEquipmentName());
+        if (StringUtils.isNotEmpty(name)) {
+            FireInspectionTemplateEquipmentVO byName =
+                    templateCategoryService.findEquipment(templateCategoryKey, "n:" + name.toLowerCase());
+            if (byName != null) {
+                return byName;
+            }
+            for (FireInspectionTemplateEquipmentVO vo : templateCategoryService
+                    .listEquipmentsByCategoryKey(templateCategoryKey)) {
+                if (name.equalsIgnoreCase(FireInspectionTestKeys.normalizeText(vo.getEquipmentName()))) {
+                    return vo;
+                }
+            }
+        }
+        return null;
     }
 
     private String resolveInspectorName() {

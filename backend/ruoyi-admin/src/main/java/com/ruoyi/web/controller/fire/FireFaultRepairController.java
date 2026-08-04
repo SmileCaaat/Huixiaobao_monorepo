@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import com.ruoyi.common.annotation.Log;
 import com.ruoyi.common.core.controller.BaseController;
@@ -92,13 +93,54 @@ public class FireFaultRepairController extends BaseController {
     }
 
     @GetMapping("/add")
-    public String add(ModelMap mmap) {
-        mmap.put("companies", companyService.selectCompanyAll());
-        mmap.put("systemTypes", systemTypeService.selectFireSystemTypeAll());
+    public String add(@RequestParam(value = "linked", required = false, defaultValue = "false") boolean linked,
+            @RequestParam(value = "companyId", required = false) Long companyId,
+            @RequestParam(value = "systemTypeName", required = false) String systemTypeName,
+            @RequestParam(value = "equipmentName", required = false) String equipmentName,
+            @RequestParam(value = "customerAddress", required = false) String customerAddress,
+            @RequestParam(value = "faultDescription", required = false) String faultDescription,
+            ModelMap mmap) {
+        List<com.ruoyi.fire.domain.FireCompany> companies = companyService.selectCompanyAll();
+        List<com.ruoyi.fire.domain.FireSystemType> systemTypes = systemTypeService.selectFireSystemTypeAll();
+        com.ruoyi.fire.domain.FireCompany linkedCompany = linked && companyId != null
+                ? companyService.selectFireCompanyById(companyId) : null;
+        Long resolvedSystemTypeId = null;
+        if (linked && StringUtils.isNotEmpty(systemTypeName)) {
+            String normalizedRequested = normalizeSystemName(systemTypeName);
+            for (com.ruoyi.fire.domain.FireSystemType type : systemTypes) {
+                if (type != null && normalizedRequested.equals(normalizeSystemName(type.getTypeName()))) {
+                    resolvedSystemTypeId = type.getTypeId();
+                    systemTypeName = type.getTypeName();
+                    break;
+                }
+            }
+        }
+        if (linkedCompany != null) {
+            companyId = linkedCompany.getCompanyId();
+            customerAddress = linkedCompany.getAddress();
+        }
+        mmap.put("companies", companies);
+        mmap.put("systemTypes", systemTypes);
         mmap.put("equipments", equipmentService.selectEquipmentAll());
         mmap.put("urgencyLevels", UrgencyLevel.values());
         mmap.put("equipmentNames", com.ruoyi.fire.enums.FireEquipmentCategory.allLabels());
+        mmap.put("linkedRepair", linked);
+        mmap.put("prefillCompanyId", companyId);
+        mmap.put("prefillCompanyName", linkedCompany != null ? linkedCompany.getCompanyName() : "");
+        mmap.put("prefillSystemTypeId", resolvedSystemTypeId);
+        mmap.put("prefillSystemTypeName", StringUtils.defaultString(systemTypeName));
+        mmap.put("prefillEquipmentName", StringUtils.defaultString(equipmentName));
+        mmap.put("prefillCustomerAddress", StringUtils.defaultString(customerAddress));
+        mmap.put("prefillFaultDescription", StringUtils.defaultString(faultDescription));
         return prefix + "/add";
+    }
+
+    private String normalizeSystemName(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replace('（', '(').replace('）', ')')
+                .replace("/", "").replace("防排烟", "防烟排烟");
     }
 
     @RequiresPermissions("fire:repair:add")

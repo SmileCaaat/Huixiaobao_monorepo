@@ -57,6 +57,11 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
     }
 
     @Override
+    public FireMaintenanceTask selectFireMaintenanceTaskBaseByTaskId(Long taskId) {
+        return fireMaintenanceTaskMapper.selectFireMaintenanceTaskByTaskId(taskId);
+    }
+
+    @Override
     public FireMaintenanceTask selectFireMaintenanceTaskByTaskId(Long taskId, String recordType) {
         FireMaintenanceTask task = fireMaintenanceTaskMapper.selectFireMaintenanceTaskByTaskId(taskId);
         if (task != null) {
@@ -74,21 +79,25 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
                 query.setRecordType(recordType);
             }
             List<FireMaintenanceRecord> systems = fireMaintenanceRecordMapper.selectFireMaintenanceRecordList(query);
+            // 一次读取整棵任务树并复用，避免每个一级系统都重新查询全部记录。
+            List<FireMaintenanceRecord> allRecords = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
+            Map<Long, FireMaintenanceRecord> recordsById = allRecords.stream()
+                    .collect(Collectors.toMap(FireMaintenanceRecord::getRecordId, r -> r, (a, b) -> a));
             for (FireMaintenanceRecord system : systems) {
-                calculateSystemStats(system, taskId);
+                calculateSystemStats(system, allRecords, recordsById);
             }
             task.setSystems(systems);
         }
         return task;
     }
 
-    private void calculateSystemStats(FireMaintenanceRecord system, Long taskId) {
-        List<FireMaintenanceRecord> allRecords = fireMaintenanceRecordMapper.selectRecordsByTaskId(taskId);
+    private void calculateSystemStats(FireMaintenanceRecord system, List<FireMaintenanceRecord> allRecords,
+            Map<Long, FireMaintenanceRecord> recordsById) {
         int totalItems = 0;
         int completedItems = 0;
         int uncompletedItems = 0;
         for (FireMaintenanceRecord record : allRecords) {
-            if (record.getLevel() == 3 && isUnderSystem(record, system.getRecordId(), allRecords)) {
+            if (record.getLevel() == 3 && isUnderSystem(record, system.getRecordId(), recordsById)) {
                 totalItems++;
                 if (!"0".equals(record.getCheckResult())) {
                     completedItems++;
@@ -104,17 +113,16 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
     }
 
     private boolean isUnderSystem(FireMaintenanceRecord record, Long systemRecordId,
-            List<FireMaintenanceRecord> allRecords) {
+            Map<Long, FireMaintenanceRecord> recordsById) {
         if (record.getParentRecordId() == null) {
             return false;
         }
-        for (FireMaintenanceRecord parent : allRecords) {
-            if (parent.getRecordId().equals(record.getParentRecordId())) {
-                if (parent.getLevel() == 1) {
-                    return parent.getRecordId().equals(systemRecordId);
-                }
-                return isUnderSystem(parent, systemRecordId, allRecords);
+        FireMaintenanceRecord parent = recordsById.get(record.getParentRecordId());
+        if (parent != null) {
+            if (parent.getLevel() == 1) {
+                return parent.getRecordId().equals(systemRecordId);
             }
+            return isUnderSystem(parent, systemRecordId, recordsById);
         }
         return false;
     }
@@ -271,6 +279,29 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
             throw new ServiceException("维保时间不能为空");
         }
         return fireMaintenanceTaskMapper.updateTaskBriefing(taskId, maintenanceSummary, maintenanceTime, updateBy);
+    }
+
+    @Override
+    public int updateTaskConclusion(FireMaintenanceTask task) {
+        if (task == null || task.getTaskId() == null) {
+            throw new ServiceException("任务ID不能为空");
+        }
+        FireMaintenanceTask existing = fireMaintenanceTaskMapper.selectFireMaintenanceTaskByTaskId(task.getTaskId());
+        if (existing == null) {
+            throw new ServiceException("维保任务不存在");
+        }
+        if (StringUtils.isEmpty(task.getMaintenanceSummary())) {
+            throw new ServiceException("维保情况简述不能为空");
+        }
+        return fireMaintenanceTaskMapper.updateTaskConclusion(task);
+    }
+
+    @Override
+    public FireMaintenanceTask selectPreviousTaskForConclusion(Long companyId, Long taskId, Date beforeTime) {
+        if (companyId == null || taskId == null) {
+            return null;
+        }
+        return fireMaintenanceTaskMapper.selectPreviousTaskForConclusion(companyId, taskId, beforeTime);
     }
 
     /**
@@ -858,7 +889,8 @@ public class FireMaintenanceTaskServiceImpl implements IFireMaintenanceTaskServi
             for (FireMaintenanceRecord src : sources) {
                 if ("1".equals(src.getRecordType())) {
                     group.setFireTestRecordId(src.getRecordId());
-                    group.setHasMaintenance(true);
+                    // 测试类目不再提供独立「维护」入口，检查项走三级页
+                    group.setHasMaintenance(false);
                     group.setDeviceLocation(src.getDeviceLocation());
                     group.setTestSituation(src.getTestSituation());
                     group.setTestTime(src.getTestTime());

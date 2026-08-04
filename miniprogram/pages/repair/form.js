@@ -6,6 +6,11 @@ Page({
   data: {
     companyId: null,
     companyName: "",
+    linked: false,
+    systemTypeName: "",
+    equipmentName: "",
+    customerAddress: "",
+    isReported: "0",
     urgencyLevel: "0",
     urgencyOptions: [
       { label: "\u4e00\u822c", value: "0" },
@@ -19,8 +24,22 @@ Page({
     saving: false
   },
 
-  onLoad() {
-    this.loadCompany();
+  onLoad(options) {
+    if (options && options.linked === "1") {
+      const decode = (value) => value ? decodeURIComponent(value) : "";
+      this.setData({
+        linked: true,
+        companyId: options.companyId || null,
+        companyName: decode(options.companyName),
+        systemTypeName: decode(options.systemTypeName),
+        equipmentName: decode(options.equipmentName),
+        customerAddress: decode(options.customerAddress),
+        isReported: "1",
+        faultDescription: decode(options.faultDescription)
+      });
+    } else {
+      this.loadCompany();
+    }
   },
 
   async loadCompany() {
@@ -131,6 +150,11 @@ Page({
       const faultImages = this.data.images.map((i) => i.serverUrl).filter(Boolean).join(",");
       await api.addRepair({
         companyId: this.data.companyId,
+        companyName: this.data.companyName,
+        systemTypeName: this.data.systemTypeName,
+        equipmentName: this.data.equipmentName,
+        customerAddress: this.data.customerAddress,
+        isReported: this.data.linked ? "1" : this.data.isReported,
         urgencyLevel: this.data.urgencyLevel,
         faultDescription,
         faultImages

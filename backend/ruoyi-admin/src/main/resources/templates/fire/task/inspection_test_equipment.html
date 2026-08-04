@@ -310,6 +310,7 @@
         var checkItemsData = [[${checkItems}]] || [];
         var savingRecords = {};
         var statusSeqMap = {};
+        var navigationBusy = false;
 
         var taskId = [[${task.taskId}]];
         var categoryKey = /*[[${categoryKey}]]*/ '';
@@ -320,7 +321,10 @@
         }
 
         function openItemDetail(recordId) {
-            if (!recordId) { return; }
+            if (!recordId || navigationBusy) { return; }
+            navigationBusy = true;
+            $('#checkList').css('pointer-events', 'none');
+            layer.load(2, { shade: [0.08, '#fff'] });
             window.location.href = prefix + "/inspectionTestItemDetail/" + taskId + "/"
                 + encodeURIComponent(categoryKey) + "/" + encodeURIComponent(equipmentKey) + "/" + recordId;
         }

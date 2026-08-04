@@ -34,7 +34,12 @@ Page({
     }
     this.setData({ taskId, categoryKey, equipmentKey });
     wx.setNavigationBarTitle({ title: "\u68c0\u67e5\u9879" });
-    this.loadEquipment();
+  },
+
+  onShow() {
+    if (this.data.taskId && this.data.categoryKey && this.data.equipmentKey) {
+      this.loadEquipment();
+    }
   },
 
   async loadEquipment() {
@@ -83,6 +88,22 @@ Page({
     } catch (err) {
       // toast handled by request
     }
+  },
+
+  openCheckDetail(e) {
+    const recordId = e.currentTarget.dataset.id;
+    if (!recordId) return;
+    wx.navigateTo({
+      url:
+        "/pages/task/check-detail?taskId=" +
+        this.data.taskId +
+        "&categoryKey=" +
+        encodeURIComponent(this.data.categoryKey) +
+        "&equipmentKey=" +
+        encodeURIComponent(this.data.equipmentKey) +
+        "&recordId=" +
+        recordId
+    });
   },
 
   promptFaultDesc(recordId) {

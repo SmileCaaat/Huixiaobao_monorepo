@@ -36,6 +36,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="selectedFireTestIds"    column="selected_fire_test_ids"    />
         <result property="maintenanceSummary"    column="maintenance_summary"    />
         <result property="maintenanceTime"    column="maintenance_time"    />
+        <result property="patrolSummaryRemark"    column="patrol_summary_remark"    />
+        <result property="testSummaryRemark"    column="test_summary_remark"    />
+        <result property="upkeepSummaryRemark"    column="upkeep_summary_remark"    />
+        <result property="otherPatrolContent"    column="other_patrol_content"    />
+        <result property="otherTestContent"    column="other_test_content"    />
+        <result property="alarmHostVoucher"    column="alarm_host_voucher"    />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"    column="create_time"    />
         <result property="updateBy"    column="update_by"    />
@@ -61,7 +67,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectFireMaintenanceTaskVo">
-        select task_id, task_name, company_id, company_name, plan_start_time, plan_end_time, actual_start_time, actual_end_time, task_status, total_items, completed_items, normal_items, fault_items, no_device_items, executor_id, executor_name, task_type, period_type, period_year, period_num, manager_id, manager_name, manager_phone, operator_ids, operator_names, building_id, building_name, selected_system_ids, selected_fire_test_ids, maintenance_summary, maintenance_time, create_by, create_time, update_by, update_time, remark from fire_maintenance_task
+        select task_id, task_name, company_id, company_name, plan_start_time, plan_end_time, actual_start_time, actual_end_time, task_status, total_items, completed_items, normal_items, fault_items, no_device_items, executor_id, executor_name, task_type, period_type, period_year, period_num, manager_id, manager_name, manager_phone, operator_ids, operator_names, building_id, building_name, selected_system_ids, selected_fire_test_ids, maintenance_summary, maintenance_time, patrol_summary_remark, test_summary_remark, upkeep_summary_remark, other_patrol_content, other_test_content, alarm_host_voucher, create_by, create_time, update_by, update_time, remark from fire_maintenance_task
     </sql>
 
     <sql id="effectiveTaskStatusExpr">
@@ -89,6 +95,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             t.manager_id, t.manager_name, t.manager_phone, t.operator_ids, t.operator_names,
             t.building_id, t.building_name, t.selected_system_ids, t.selected_fire_test_ids,
             t.maintenance_summary, t.maintenance_time,
+            t.patrol_summary_remark, t.test_summary_remark, t.upkeep_summary_remark,
+            t.other_patrol_content, t.other_test_content, t.alarm_host_voucher,
             t.create_by, t.create_time, t.update_by, t.update_time, t.remark
         from fire_maintenance_task t
         <where>  
@@ -166,6 +174,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="selectedFireTestIds != null">selected_fire_test_ids,</if>
             <if test="maintenanceSummary != null">maintenance_summary,</if>
             <if test="maintenanceTime != null">maintenance_time,</if>
+            <if test="patrolSummaryRemark != null">patrol_summary_remark,</if>
+            <if test="testSummaryRemark != null">test_summary_remark,</if>
+            <if test="upkeepSummaryRemark != null">upkeep_summary_remark,</if>
+            <if test="otherPatrolContent != null">other_patrol_content,</if>
+            <if test="otherTestContent != null">other_test_content,</if>
+            <if test="alarmHostVoucher != null">alarm_host_voucher,</if>
             <if test="createBy != null">create_by,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateBy != null">update_by,</if>
@@ -203,6 +217,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="selectedFireTestIds != null">#{selectedFireTestIds},</if>
             <if test="maintenanceSummary != null">#{maintenanceSummary},</if>
             <if test="maintenanceTime != null">#{maintenanceTime},</if>
+            <if test="patrolSummaryRemark != null">#{patrolSummaryRemark},</if>
+            <if test="testSummaryRemark != null">#{testSummaryRemark},</if>
+            <if test="upkeepSummaryRemark != null">#{upkeepSummaryRemark},</if>
+            <if test="otherPatrolContent != null">#{otherPatrolContent},</if>
+            <if test="otherTestContent != null">#{otherTestContent},</if>
+            <if test="alarmHostVoucher != null">#{alarmHostVoucher},</if>
             <if test="createBy != null">#{createBy},</if>
             <if test="createTime != null">#{createTime},</if>
             <if test="updateBy != null">#{updateBy},</if>
@@ -264,6 +284,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             </choose>
             <if test="maintenanceSummary != null">maintenance_summary = #{maintenanceSummary},</if>
             <if test="maintenanceTime != null">maintenance_time = #{maintenanceTime},</if>
+            <if test="patrolSummaryRemark != null">patrol_summary_remark = #{patrolSummaryRemark},</if>
+            <if test="testSummaryRemark != null">test_summary_remark = #{testSummaryRemark},</if>
+            <if test="upkeepSummaryRemark != null">upkeep_summary_remark = #{upkeepSummaryRemark},</if>
+            <if test="otherPatrolContent != null">other_patrol_content = #{otherPatrolContent},</if>
+            <if test="otherTestContent != null">other_test_content = #{otherTestContent},</if>
+            <if test="alarmHostVoucher != null">alarm_host_voucher = #{alarmHostVoucher},</if>
             <if test="createBy != null">create_by = #{createBy},</if>
             <if test="createTime != null">create_time = #{createTime},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
@@ -281,6 +307,37 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             update_time = sysdate()
         where task_id = #{taskId}
     </update>
+
+    <update id="updateTaskConclusion" parameterType="FireMaintenanceTask">
+        update fire_maintenance_task
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="maintenanceSummary != null">maintenance_summary = #{maintenanceSummary},</if>
+            <if test="patrolSummaryRemark != null">patrol_summary_remark = #{patrolSummaryRemark},</if>
+            <if test="testSummaryRemark != null">test_summary_remark = #{testSummaryRemark},</if>
+            <if test="upkeepSummaryRemark != null">upkeep_summary_remark = #{upkeepSummaryRemark},</if>
+            <if test="otherPatrolContent != null">other_patrol_content = #{otherPatrolContent},</if>
+            <if test="otherTestContent != null">other_test_content = #{otherTestContent},</if>
+            <if test="alarmHostVoucher != null">alarm_host_voucher = #{alarmHostVoucher},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where task_id = #{taskId}
+    </update>
+
+    <select id="selectPreviousTaskForConclusion" resultMap="FireMaintenanceTaskResult">
+        <include refid="selectFireMaintenanceTaskVo"/>
+        where company_id = #{companyId}
+          and task_id &lt;&gt; #{taskId}
+          and task_status in ('1', '2')
+        <if test="beforeTime != null">
+          and (
+            (plan_start_time is not null and plan_start_time &lt; #{beforeTime})
+            or (plan_start_time is null and create_time &lt; #{beforeTime})
+          )
+        </if>
+        order by ifnull(plan_start_time, create_time) desc, task_id desc
+        limit 1
+    </select>
 
     <delete id="deleteFireMaintenanceTaskByTaskId" parameterType="Long">
         delete from fire_maintenance_task where task_id = #{taskId}

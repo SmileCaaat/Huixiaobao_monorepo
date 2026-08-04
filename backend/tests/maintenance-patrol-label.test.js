@@ -32,6 +32,9 @@ assert.ok(systemPage.includes(label), "secondary category page uses 消防维护
 assert.ok(equipmentPage.includes(label), "check item page uses 消防维护");
 assert.ok(systemPage.includes("inspection-type-label"), "PC secondary categories render the small type label");
 assert.ok(systemPage.includes("equipment.recordTypeLabel"), "PC secondary category labels come from the backend");
+assert.ok(!systemPage.includes("js-open-maintenance"), "test categories no longer expose 维护 button");
+assert.ok(!systemPage.includes("openMaintenance"), "maintenance dialog removed from system page");
+assert.ok(taskService.includes("group.setHasMaintenance(false)"), "backend disables hasMaintenance for test groups");
 assert.ok(
   miniDetail.includes("\\u5de1\\u67e5\\u6d4b\\u8bd5") ||
     fs.readFileSync(path.join(root, "miniprogram/pages/task/detail.json"), "utf8").includes(label),

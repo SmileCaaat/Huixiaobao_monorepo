@@ -1,3 +1,7 @@
+| GET | `/api/fire/task/conclusion/{taskId}` | apiToken | 情况简述 | |
+| GET | `/api/fire/task/conclusion/previous/{taskId}` | apiToken | 引用上月结论字段 | |
+| POST | `/api/fire/task/saveConclusion` | apiToken | 保存情况简述 | |
+| POST | `/api/fire/task/inspectionTest/markCategoryAllNormal/{taskId}/{categoryKey}` | apiToken | 类目级全部正常（排除测试与已保存） | |
 # 原生小程序重构总纲与 Cursor 执行指令
 
 > 状态：待执行。本文是交给 Cursor Agent 的总任务书，也是本轮重构的范围、顺序和验收依据。

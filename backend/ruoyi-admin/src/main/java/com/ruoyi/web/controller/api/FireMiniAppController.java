@@ -687,6 +687,99 @@ public class FireMiniAppController extends BaseController {
         }
     }
 
+    /** 测试设备选择“无”后，覆盖其全部三级子项为无此设备。 */
+    @PostMapping("/task/inspectionTest/noDevice/{taskId}/{categoryKey}/{equipmentKey}")
+    public AjaxResult inspectionTestNoDevice(@PathVariable("taskId") Long taskId,
+            @PathVariable("categoryKey") String categoryKey,
+            @PathVariable("equipmentKey") String equipmentKey) {
+        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null) {
+            return AjaxResult.error("维保任务不存在");
+        }
+        if (!isTaskRelated(task, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权操作该任务");
+        }
+        try {
+            com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup equipment =
+                    taskService.buildInspectionTestEquipment(taskId, categoryKey, equipmentKey);
+            if (!"1".equals(equipment.getRecordType())) {
+                return AjaxResult.error("只有带“测试”标签的设备可执行此操作");
+            }
+            java.util.List<Long> ids = new java.util.ArrayList<>();
+            for (FireMaintenanceRecord item : equipment.getCheckItems()) {
+                if (item != null && item.getRecordId() != null && taskId.equals(item.getTaskId())) {
+                    ids.add(item.getRecordId());
+                }
+            }
+            if (ids.isEmpty()) {
+                return AjaxResult.error("当前设备没有检查子项");
+            }
+            int rows = recordService.markAllNoDeviceByRecordIds(taskId, ids.toArray(new Long[0]));
+            return AjaxResult.success("已将 " + rows + " 项设为无此设备");
+        } catch (IllegalArgumentException e) {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 类目级「全部正常」：排除测试类设备，且不覆盖已保存过的检查项
+     */
+    @PostMapping("/task/inspectionTest/markCategoryAllNormal/{taskId}/{categoryKey}")
+    public AjaxResult markCategoryAllNormal(@PathVariable("taskId") Long taskId,
+            @PathVariable("categoryKey") String categoryKey) {
+        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null) {
+            return AjaxResult.error("维保任务不存在");
+        }
+        if (!isTaskRelated(task, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权操作该任务");
+        }
+        try {
+            com.ruoyi.fire.domain.dto.FireInspectionTestCategoryGroup category =
+                    taskService.buildInspectionTestSystem(taskId, categoryKey);
+            java.util.List<com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup> equipments =
+                    category.getEquipments();
+            if (equipments == null || equipments.isEmpty()) {
+                return AjaxResult.error("当前类目没有设备");
+            }
+            java.util.List<Long> uncheckedIds = new java.util.ArrayList<>();
+            for (com.ruoyi.fire.domain.dto.FireInspectionTestEquipmentGroup equipment : equipments) {
+                if (equipment == null || "1".equals(equipment.getRecordType())) {
+                    continue;
+                }
+                java.util.List<FireMaintenanceRecord> checkItems = equipment.getCheckItems();
+                if (checkItems == null || checkItems.isEmpty()) {
+                    continue;
+                }
+                for (FireMaintenanceRecord item : checkItems) {
+                    if (item == null || item.getRecordId() == null) {
+                        continue;
+                    }
+                    if (item.getTaskId() != null && !taskId.equals(item.getTaskId())) {
+                        continue;
+                    }
+                    if ("1".equals(item.getRecordType())) {
+                        continue;
+                    }
+                    String result = item.getCheckResult();
+                    if (result == null || result.isEmpty() || "0".equals(result)) {
+                        uncheckedIds.add(item.getRecordId());
+                    }
+                }
+            }
+            if (uncheckedIds.isEmpty()) {
+                return AjaxResult.success("没有可设置的未检查项（已排除测试与已保存项）");
+            }
+            int rows = recordService.markUncheckedNormalByRecordIds(taskId,
+                    uncheckedIds.toArray(new Long[0]));
+            return AjaxResult.success("已将 " + rows + " 项设为正常");
+        } catch (IllegalArgumentException e) {
+            return AjaxResult.error(e.getMessage());
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
     /**
      * 获取系统详情（二级页面：设备列表）
      * 校验当前用户是否为该任务的相关人员。
@@ -1691,7 +1784,7 @@ public class FireMiniAppController extends BaseController {
         return resolved != null ? resolved : Paths.get(System.getProperty("user.dir"), "report", fileName);
     }
 
-    // ==================== 维保简报相关接口 ====================
+    // ==================== 维保简报 / 情况简述相关接口 ====================
 
     /**
      * 获取任务简报信息
@@ -1713,6 +1806,100 @@ public class FireMiniAppController extends BaseController {
         result.put("planEndTime", task.getPlanEndTime());
 
         return AjaxResult.success(result);
+    }
+
+    /**
+     * 获取消防维护「情况简述/结论」
+     */
+    @GetMapping("/task/conclusion/{taskId}")
+    public AjaxResult getTaskConclusion(@PathVariable("taskId") Long taskId) {
+        FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (task == null) {
+            return AjaxResult.error("任务不存在");
+        }
+        if (!isTaskRelated(task, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权查看该任务");
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("taskId", task.getTaskId());
+        result.put("taskName", task.getTaskName());
+        result.put("companyName", task.getCompanyName());
+        result.put("taskStatus", task.getTaskStatus());
+        result.put("maintenanceSummary", task.getMaintenanceSummary());
+        result.put("patrolSummaryRemark", task.getPatrolSummaryRemark());
+        result.put("testSummaryRemark", task.getTestSummaryRemark());
+        result.put("upkeepSummaryRemark", task.getUpkeepSummaryRemark());
+        result.put("otherPatrolContent", task.getOtherPatrolContent());
+        result.put("otherTestContent", task.getOtherTestContent());
+        result.put("alarmHostVoucher", task.getAlarmHostVoucher());
+        return AjaxResult.success(result);
+    }
+
+    /**
+     * 引用同公司上一任务的结论字段
+     */
+    @GetMapping("/task/conclusion/previous/{taskId}")
+    public AjaxResult getPreviousTaskConclusion(@PathVariable("taskId") Long taskId) {
+        FireMaintenanceTask existing = taskService.selectFireMaintenanceTaskByTaskId(taskId);
+        if (existing == null) {
+            return AjaxResult.error("任务不存在");
+        }
+        if (!isTaskRelated(existing, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权查看该任务");
+        }
+        Date beforeTime = existing.getPlanStartTime() != null ? existing.getPlanStartTime() : existing.getCreateTime();
+        FireMaintenanceTask previous = taskService.selectPreviousTaskForConclusion(
+                existing.getCompanyId(), taskId, beforeTime);
+        if (previous == null) {
+            return AjaxResult.error("暂无上月可引用内容");
+        }
+        Map<String, Object> data = new HashMap<>();
+        data.put("taskId", previous.getTaskId());
+        data.put("taskName", previous.getTaskName());
+        data.put("maintenanceSummary", previous.getMaintenanceSummary());
+        data.put("patrolSummaryRemark", previous.getPatrolSummaryRemark());
+        data.put("testSummaryRemark", previous.getTestSummaryRemark());
+        data.put("upkeepSummaryRemark", previous.getUpkeepSummaryRemark());
+        data.put("otherPatrolContent", previous.getOtherPatrolContent());
+        data.put("otherTestContent", previous.getOtherTestContent());
+        data.put("alarmHostVoucher", previous.getAlarmHostVoucher());
+        return AjaxResult.success(data);
+    }
+
+    /**
+     * 保存消防维护「情况简述/结论」
+     */
+    @PostMapping("/task/saveConclusion")
+    public AjaxResult saveTaskConclusion(@RequestBody FireMaintenanceTask form) {
+        if (form == null || form.getTaskId() == null) {
+            return AjaxResult.error("任务ID不能为空");
+        }
+        FireMaintenanceTask existing = taskService.selectFireMaintenanceTaskByTaskId(form.getTaskId());
+        if (existing == null) {
+            return AjaxResult.error("任务不存在");
+        }
+        if (!isTaskRelated(existing, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权操作该任务");
+        }
+        String status = existing.getTaskStatus();
+        if (!"1".equals(status) && !"2".equals(status)) {
+            return AjaxResult.error("请先下发任务后再填写情况简述");
+        }
+        try {
+            FireMaintenanceTask update = new FireMaintenanceTask();
+            update.setTaskId(form.getTaskId());
+            update.setMaintenanceSummary(form.getMaintenanceSummary());
+            update.setPatrolSummaryRemark(form.getPatrolSummaryRemark() != null ? form.getPatrolSummaryRemark() : "");
+            update.setTestSummaryRemark(form.getTestSummaryRemark() != null ? form.getTestSummaryRemark() : "");
+            update.setUpkeepSummaryRemark(form.getUpkeepSummaryRemark() != null ? form.getUpkeepSummaryRemark() : "");
+            update.setOtherPatrolContent(form.getOtherPatrolContent() != null ? form.getOtherPatrolContent() : "");
+            update.setOtherTestContent(form.getOtherTestContent() != null ? form.getOtherTestContent() : "");
+            update.setAlarmHostVoucher(form.getAlarmHostVoucher() != null ? form.getAlarmHostVoucher() : "");
+            update.setUpdateBy(ShiroUtils.getLoginName());
+            return toAjax(taskService.updateTaskConclusion(update));
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
     }
 
     /**

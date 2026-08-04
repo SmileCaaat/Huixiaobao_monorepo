@@ -10,12 +10,14 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">单位名称：</label>
                 <div class="col-sm-8">
-                    <select class="form-control" id="companyId" name="companyId" required>
+                    <select class="form-control" id="companyId" name="companyId" required th:disabled="${linkedInspection}">
                         <option value="">请选择</option>
                         <option th:each="company : ${companies}" th:value="${company.companyId}"
                             th:text="${company.companyName}" th:data-name="${company.companyName}"
-                            th:data-standard="${company.maintenanceStandard}"></option>
+                            th:data-standard="${company.maintenanceStandard}" th:data-address="${company.address}"
+                            th:selected="${linkedInspection and linkedCompany != null and linkedCompany.companyId == company.companyId}"></option>
                     </select>
+                    <input th:if="${linkedInspection}" type="hidden" name="companyId" th:value="${linkedCompany.companyId}" />
                     <input type="hidden" id="companyName" name="companyName" />
                     <input type="hidden" id="maintenanceStandard" name="maintenanceStandard" />
                 </div>
@@ -50,11 +52,13 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">系统名称：</label>
                 <div class="col-sm-8">
-                    <select class="form-control" id="categoryKey" name="categoryKey" required>
+                    <select class="form-control" id="categoryKey" name="categoryKey" required th:disabled="${linkedInspection}">
                         <option value="">请选择</option>
                         <option th:each="type : ${systemTypes}" th:value="${type.categoryKey}"
-                            th:data-name="${type.categoryName}" th:text="${type.categoryName}"></option>
+                            th:data-name="${type.categoryName}" th:text="${type.categoryName}"
+                            th:selected="${linkedInspection and linkedTemplateCategory != null and linkedTemplateCategory.categoryKey == type.categoryKey}"></option>
                     </select>
+                    <input th:if="${linkedInspection}" type="hidden" name="categoryKey" th:value="${linkedTemplateCategory.categoryKey}" />
                     <input type="hidden" id="systemName" name="systemName" />
                     <input type="hidden" id="systemType" name="systemType" />
                 </div>
@@ -62,9 +66,14 @@
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">设备名称：</label>
                 <div class="col-sm-8">
-                    <select class="form-control" id="equipmentKey" name="equipmentKey" required>
+                    <select class="form-control" id="equipmentKey" name="equipmentKey" required th:disabled="${linkedInspection}">
                         <option value="">请先选择系统名称</option>
+                        <option th:if="${linkedInspection and linkedTemplateEquipment != null}"
+                            th:value="${linkedTemplateEquipment.equipmentKey}"
+                            th:text="${linkedTemplateEquipment.equipmentName}"
+                            th:data-name="${linkedTemplateEquipment.equipmentName}" selected></option>
                     </select>
+                    <input th:if="${linkedInspection}" type="hidden" name="equipmentKey" th:value="${linkedTemplateEquipment.equipmentKey}" />
                     <input type="hidden" id="equipmentName" name="equipmentName" />
                 </div>
             </div>
@@ -122,8 +131,17 @@
     <script th:src="@{/ruoyi/js/fire-inspection-pickers.js}" charset="utf-8"></script>
     <script th:inline="javascript">
         var prefix = ctx + "fire/inspection";
+        var linkedInspection = [[${linkedInspection}]];
+        var linkedCompanyId = /*[[${linkedInspection ? linkedCompany.companyId : null}]]*/ null;
+        var linkedCategoryKey = /*[[${linkedInspection ? linkedTemplateCategory.categoryKey : ''}]]*/ '';
+        var linkedCategoryName = /*[[${linkedInspection ? linkedTemplateCategory.categoryName : ''}]]*/ '';
+        var linkedEquipmentKey = /*[[${linkedInspection ? linkedTemplateEquipment.equipmentKey : ''}]]*/ '';
+        var linkedEquipmentName = /*[[${linkedInspection ? linkedTemplateEquipment.equipmentName : ''}]]*/ '';
+        var linkedBuildingId = /*[[${linkedInspection ? linkedBuildingId : null}]]*/ null;
+        var linkedBuildingName = /*[[${linkedInspection ? linkedBuildingName : ''}]]*/ '';
+        var linkedCustomerAddress = /*[[${linkedInspection ? linkedCompany.address : ''}]]*/ '';
 
-        function loadBuildings(companyId, selectedId) {
+        function loadBuildings(companyId, selectedId, selectedName) {
             $("#buildingId").html('<option value="">请选择</option>');
             $("#buildingName").val('');
             if (!companyId) {
@@ -133,13 +151,18 @@
                 if (res.code == 0 || res.code == 200) {
                     var list = res.data || [];
                     var html = '<option value="">请选择</option>';
+                    var autoId = selectedId;
+                    if ((!autoId || autoId === 'null') && list.length === 1) {
+                        autoId = list[0].buildingId;
+                    }
                     for (var i = 0; i < list.length; i++) {
-                        var selected = selectedId && selectedId == list[i].buildingId ? ' selected' : '';
+                        var selected = autoId && String(autoId) === String(list[i].buildingId) ? ' selected' : '';
                         html += '<option value="' + list[i].buildingId + '" data-name="' + list[i].buildingName + '"' + selected + '>' + list[i].buildingName + '</option>';
                     }
                     $("#buildingId").html(html);
-                    if (selectedId) {
-                        $("#buildingName").val($("#buildingId option:selected").data("name") || '');
+                    if (autoId) {
+                        var name = $("#buildingId option:selected").data("name") || selectedName || '';
+                        $("#buildingName").val(name);
                     }
                 }
             });
@@ -181,6 +204,16 @@
                 defaultNow: true
             });
 
+            if (linkedInspection) {
+                $('#companyName').val($('#companyId option:selected').data('name') || '');
+                $('#maintenanceStandard').val($('#companyId option:selected').data('standard') || '');
+                $('#systemName').val(linkedCategoryName);
+                $('#systemType').val(linkedCategoryKey);
+                $('#equipmentName').val(linkedEquipmentName);
+                $('input[name="inspectionType"][value="0"]').prop('checked', true);
+                loadBuildings(linkedCompanyId, linkedBuildingId, linkedBuildingName);
+            }
+
             $("#companyId").change(function () {
                 var opt = $(this).find("option:selected");
                 $("#companyName").val(opt.data("name") || '');
@@ -213,6 +246,9 @@
                 } else {
                     $("#equipmentStatus").val("1");
                     $("#statusText").text("异常").css("color", "red");
+                    if (linkedInspection) {
+                        askReportFault();
+                    }
                 }
             });
 
@@ -224,6 +260,21 @@
                 }
             });
         });
+
+        function askReportFault() {
+            layer.open({
+                title: '提示', content: '是否上报故障？', btn: ['否', '是'],
+                yes: function (index) { layer.close(index); },
+                btn2: function () {
+                    var url = ctx + 'fire/repair/add?linked=true&companyId=' + encodeURIComponent(linkedCompanyId)
+                        + '&systemTypeName=' + encodeURIComponent(linkedCategoryName)
+                        + '&equipmentName=' + encodeURIComponent(linkedEquipmentName)
+                        + '&customerAddress=' + encodeURIComponent(linkedCustomerAddress || '')
+                        + '&faultDescription=' + encodeURIComponent(linkedEquipmentName + '巡检测试异常');
+                    top.$.modal.open('添加故障报修', url, 900, 700);
+                }
+            });
+        }
 
         function submitHandler() {
             if (!$("#floor").val()) {

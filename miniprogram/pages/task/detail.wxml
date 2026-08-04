@@ -5,7 +5,10 @@
     </view>
     <view class="sub">负责人：{{taskInfo.managerName || '-'}}</view>
   </view>
-  <view class="section-title">系统分类</view>
+  <view class="section-title-row">
+    <view class="section-title">系统分类</view>
+    <view class="conclusion-btn" bindtap="goConclusion">结论</view>
+  </view>
   <view wx:if="{{categories.length === 0 && !loading}}" class="empty">暂无分类数据</view>
   <view class="card item-card" wx:for="{{categories}}" wx:key="categoryKey" bindtap="goSystem" data-key="{{item.categoryKey}}">
     <view class="card-hd">

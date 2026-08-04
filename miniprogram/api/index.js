@@ -51,10 +51,26 @@ const getInspectionTestSystem = (taskId, categoryKey) =>
   request.get(
     `/api/fire/task/inspectionTest/system/${taskId}/${encodeURIComponent(categoryKey)}`
   );
+const markInspectionTestNoDevice = (taskId, categoryKey, equipmentKey) =>
+  request.post(
+    `/api/fire/task/inspectionTest/noDevice/${taskId}/${encodeURIComponent(categoryKey)}/${encodeURIComponent(equipmentKey)}`,
+    {}
+  );
+const markCategoryAllNormal = (taskId, categoryKey) =>
+  request.post(
+    `/api/fire/task/inspectionTest/markCategoryAllNormal/${taskId}/${encodeURIComponent(categoryKey)}`,
+    {}
+  );
 const getInspectionTestEquipment = (taskId, categoryKey, equipmentKey) =>
   request.get(
     `/api/fire/task/inspectionTest/equipment/${taskId}/${encodeURIComponent(categoryKey)}/${encodeURIComponent(equipmentKey)}`
   );
+const getTaskConclusion = (taskId) =>
+  request.get(`/api/fire/task/conclusion/${taskId}`);
+const getPreviousTaskConclusion = (taskId) =>
+  request.get(`/api/fire/task/conclusion/previous/${taskId}`);
+const saveTaskConclusion = (data) =>
+  request.post("/api/fire/task/saveConclusion", data);
 const updateCheckResult = (data) =>
   request.post("/api/fire/task/updateCheckResult", data);
 const updateFaultDesc = (data) =>
@@ -240,7 +256,12 @@ const api = {
   getDeviceDetail,
   getInspectionTestDetail,
   getInspectionTestSystem,
+  markInspectionTestNoDevice,
+  markCategoryAllNormal,
   getInspectionTestEquipment,
+  getTaskConclusion,
+  getPreviousTaskConclusion,
+  saveTaskConclusion,
   updateCheckResult,
   updateFaultDesc,
   updateCheckDetail,

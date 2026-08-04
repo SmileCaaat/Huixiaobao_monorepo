@@ -1,0 +1,89 @@
+@import "../../styles/biz.wxss";
+
+.conclusion-page { padding-bottom: 160rpx; }
+.block { margin-top: 20rpx; }
+.field-hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16rpx; }
+.field-hd-gap { margin-top: 24rpx; }
+.label { font-size: 28rpx; font-weight: 600; color: #333; }
+.quote { display: flex; align-items: center; color: #1976d2; font-size: 24rpx; }
+.quote-icon { margin-right: 4rpx; font-size: 22rpx; }
+.textarea, .input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #f7f8fa;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  font-size: 26rpx;
+  color: #333;
+}
+.textarea {
+  width: 100% !important;
+  height: 280rpx !important;
+  min-height: 280rpx !important;
+  max-height: 280rpx !important;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+.textarea-lg {
+  width: 100% !important;
+  height: 280rpx !important;
+  min-height: 280rpx !important;
+  max-height: 280rpx !important;
+  box-sizing: border-box;
+}
+.input { height: 80rpx; line-height: 40rpx; }
+.voucher-row { display: flex; flex-wrap: wrap; gap: 16rpx; }
+.thumb-wrap { position: relative; width: 148rpx; height: 148rpx; }
+.thumb, .thumb-add {
+  width: 148rpx;
+  height: 148rpx;
+  border-radius: 12rpx;
+  background: #f0f0f0;
+}
+.thumb-add {
+  border: 2rpx dashed #bbb;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48rpx;
+  box-sizing: border-box;
+}
+.thumb-del {
+  position: absolute;
+  top: 4rpx;
+  right: 4rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  text-align: center;
+  line-height: 32rpx;
+  font-size: 28rpx;
+}
+.thumb-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 22rpx;
+  text-align: center;
+  padding: 6rpx 0;
+}
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 20rpx 24rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: #fff;
+  box-shadow: 0 -4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+.btn-block {
+  background: #e53935 !important;
+  color: #fff !important;
+}
+.btn-block.is-disabled { opacity: 0.6; }

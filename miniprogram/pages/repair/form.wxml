@@ -1,5 +1,9 @@
 <view class="page">
   <view class="field"><text class="label">报修单位</text><text class="picker-val">{{companyName}}</text></view>
+  <view class="field" wx:if="{{linked}}"><text class="label">系统名称</text><text class="picker-val">{{systemTypeName}}</text></view>
+  <view class="field" wx:if="{{linked}}"><text class="label">设备名称</text><text class="picker-val">{{equipmentName}}</text></view>
+  <view class="field" wx:if="{{linked}}"><text class="label">客户地址</text><text class="picker-val">{{customerAddress || '-'}}</text></view>
+  <view class="field" wx:if="{{linked}}"><text class="label">是否上报</text><text class="picker-val">是</text></view>
   <picker mode="selector" range="{{urgencyOptions}}" range-key="label" value="{{urgencyIndex}}" bindchange="onUrgencyChange">
     <view class="field"><text class="label">紧急程度</text><text class="picker-val">{{urgencyText}}</text></view>
   </picker>

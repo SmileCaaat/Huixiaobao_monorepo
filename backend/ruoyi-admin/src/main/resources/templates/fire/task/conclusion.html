@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('情况简述')" />
+    <style>
+        .conclusion-page { padding: 16px; background: #f5f5f5; min-height: 100vh; box-sizing: border-box; padding-bottom: 80px; }
+        .page-head { background: linear-gradient(135deg, #1565c0, #42a5f5); color: #fff; border-radius: 10px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+        .page-head .title { font-size: 18px; font-weight: 600; }
+        .page-head .actions a { color: #fff; margin-left: 12px; cursor: pointer; }
+        .card { background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+        .field { margin-bottom: 14px; }
+        .field:last-child { margin-bottom: 0; }
+        .field-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; color: #333; font-weight: 500; }
+        .field-label .quote { color: #1976d2; font-size: 13px; cursor: pointer; font-weight: 400; }
+        .field-label .quote i { margin-right: 2px; }
+        .field textarea, .field input[type=text], .card > textarea {
+            width: 100%; border: 1px solid #e0e0e0; border-radius: 6px; padding: 10px 12px; resize: vertical; box-sizing: border-box;
+        }
+        .field textarea:focus, .field input[type=text]:focus, .card > textarea:focus { border-color: #42a5f5; outline: none; }
+        .section-title { font-size: 15px; font-weight: 600; color: #333; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .voucher-list { display: flex; flex-wrap: wrap; gap: 10px; }
+        .voucher-item, .voucher-add { width: 88px; height: 88px; border-radius: 8px; background: #f0f0f0; position: relative; overflow: hidden; }
+        .voucher-item img { width: 100%; height: 100%; object-fit: cover; }
+        .voucher-item .del { position: absolute; top: 2px; right: 4px; color: #fff; background: rgba(0,0,0,.45); border-radius: 50%; width: 20px; height: 20px; line-height: 18px; text-align: center; cursor: pointer; }
+        .voucher-add { border: 1px dashed #bbb; color: #999; display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; background: #fafafa; }
+        .footer-bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; padding: 10px 16px; box-shadow: 0 -2px 8px rgba(0,0,0,.06); z-index: 10; }
+        .footer-bar .btn-save {
+            width: 100%;
+            background: #e53935 !important;
+            border: 1px solid #e53935 !important;
+            color: #fff !important;
+            border-radius: 8px;
+            padding: 12px 0;
+            font-size: 15px;
+            cursor: pointer;
+        }
+        .footer-bar .btn-save:hover,
+        .footer-bar .btn-save:focus,
+        .footer-bar .btn-save:active {
+            background: #d32f2f !important;
+            border-color: #d32f2f !important;
+            color: #fff !important;
+        }
+        /* 其他巡查/测试：宽度铺满，高度固定为原先约 120px 的三倍 */
+        textarea.textarea-long {
+            display: block !important;
+            width: 100% !important;
+            height: 140px !important;
+            min-height: 140px !important;
+            max-height: 140px !important;
+            resize: none !important;
+            box-sizing: border-box !important;
+            overflow-y: auto;
+        }
+        .quote-link { color:#1976d2;font-size:13px;font-weight:400;cursor:pointer; }
+    </style>
+</head>
+<body>
+<div class="conclusion-page">
+    <div class="page-head">
+        <div>
+            <a href="javascript:history.back()" style="color:#fff;margin-right:10px;"><i class="fa fa-angle-left"></i></a>
+            <span class="title">情况简述</span>
+        </div>
+        <div class="actions">
+            <a href="javascript:void(0)" onclick="submitHandler()"><i class="fa fa-save"></i> 保存</a>
+        </div>
+    </div>
+
+    <form id="form-conclusion">
+        <input type="hidden" name="taskId" th:value="${task.taskId}">
+        <input type="hidden" id="alarmHostVoucher" name="alarmHostVoucher" th:value="${task.alarmHostVoucher}">
+
+        <div class="card">
+            <div class="field">
+                <div class="field-label">
+                    <span>本次维保情况简述</span>
+                    <span class="quote" onclick="quoteField('maintenanceSummary')"><i class="fa fa-paperclip"></i> 引用</span>
+                </div>
+                <textarea id="maintenanceSummary" name="maintenanceSummary" class="textarea-long" rows="6"
+                          style="display:block;width:100%;height:140px;resize:none;box-sizing:border-box;"
+                          placeholder="请输入本次维保概况简述" required
+                          th:text="${task.maintenanceSummary}"></textarea>
+            </div>
+            <div class="field">
+                <div class="field-label"><span>巡查汇总表备注</span></div>
+                <input type="text" id="patrolSummaryRemark" name="patrolSummaryRemark" placeholder="请输入本次巡查汇总表备注"
+                       th:value="${task.patrolSummaryRemark}">
+            </div>
+            <div class="field">
+                <div class="field-label"><span>测试汇总表备注</span></div>
+                <input type="text" id="testSummaryRemark" name="testSummaryRemark" placeholder="请输入本次测试汇总表备注"
+                       th:value="${task.testSummaryRemark}">
+            </div>
+            <div class="field">
+                <div class="field-label"><span>维护保养表备注</span></div>
+                <input type="text" id="upkeepSummaryRemark" name="upkeepSummaryRemark" placeholder="请输入本次维护保养表备注"
+                       th:value="${task.upkeepSummaryRemark}">
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">
+                <span>其他巡查内容</span>
+                <span class="quote-link" onclick="quoteField('otherPatrolContent')"><i class="fa fa-paperclip"></i> 引用上月巡查内容</span>
+            </div>
+            <textarea id="otherPatrolContent" name="otherPatrolContent" class="textarea-long" rows="12"
+                      style="display:block;width:100%;height: 140px;resize:none;box-sizing:border-box;"
+                      placeholder="请输入其他巡查内容"
+                      th:text="${task.otherPatrolContent}"></textarea>
+        </div>
+
+        <div class="card">
+            <div class="section-title">
+                <span>其他测试内容</span>
+                <span class="quote-link" onclick="quoteField('otherTestContent')"><i class="fa fa-paperclip"></i> 引用上月测试内容</span>
+            </div>
+            <textarea id="otherTestContent" name="otherTestContent" class="textarea-long" rows="12"
+                      style="display:block;width:100%;height: 140px;resize:none;box-sizing:border-box;"
+                      placeholder="请输入其他测试内容"
+                      th:text="${task.otherTestContent}"></textarea>
+        </div>
+
+        <div class="card">
+            <div class="section-title"><span>消防报警主机测试打印凭证</span></div>
+            <div class="voucher-list" id="voucherList"></div>
+            <input type="file" id="voucherInput" accept="image/*" style="display:none;" onchange="uploadVoucher(this)">
+        </div>
+    </form>
+</div>
+<div class="footer-bar">
+    <button type="button" class="btn-save" style="background:#e53935;border-color:#e53935;color:#fff;" onclick="submitHandler()">保存</button>
+</div>
+
+<th:block th:include="include :: footer" />
+<script th:inline="javascript">
+    var prefix = ctx + "fire/task";
+    var taskId = [[${task.taskId}]];
+    var vouchers = [];
+    var previousCache = null;
+
+    function splitUrls(value) {
+        if (!value) return [];
+        return String(value).split(',').map(function (s) { return $.trim(s); }).filter(Boolean);
+    }
+
+    function syncVoucherInput() {
+        $('#alarmHostVoucher').val(vouchers.join(','));
+    }
+
+    function renderVouchers() {
+        var html = '';
+        vouchers.forEach(function (url, index) {
+            var src = (/^https?:\/\//i.test(url) || url.charAt(0) === '/') ? url : (ctx + url);
+            html += '<div class="voucher-item"><img src="' + src + '" /><span class="del" data-index="' + index + '">&times;</span></div>';
+        });
+        if (vouchers.length < 5) {
+            html += '<div class="voucher-add" onclick="$(\'#voucherInput\').click()">+</div>';
+        }
+        $('#voucherList').html(html);
+        syncVoucherInput();
+    }
+
+    $('#voucherList').on('click', '.del', function () {
+        var index = parseInt($(this).attr('data-index'), 10);
+        vouchers.splice(index, 1);
+        renderVouchers();
+    });
+
+    function uploadVoucher(input) {
+        if (!input.files || !input.files[0]) return;
+        var formData = new FormData();
+        formData.append('file', input.files[0]);
+        $.ajax({
+            url: ctx + 'common/upload',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (res) {
+                if (res.code === 0 || res.code === 200) {
+                    var url = res.fileName || res.url;
+                    if (url) {
+                        vouchers.push(url);
+                        renderVouchers();
+                    }
+                } else {
+                    $.modal.msgError(res.msg || '上传失败');
+                }
+            },
+            error: function () {
+                $.modal.msgError('上传失败');
+            },
+            complete: function () {
+                input.value = '';
+            }
+        });
+    }
+
+    function loadPrevious(callback) {
+        if (previousCache) {
+            callback(previousCache);
+            return;
+        }
+        $.get(prefix + '/conclusion/previous/' + taskId, function (res) {
+            if (res.code !== 0 && res.code !== 200) {
+                $.modal.msgWarning(res.msg || '暂无上月可引用内容');
+                return;
+            }
+            previousCache = res.data || {};
+            callback(previousCache);
+        });
+    }
+
+    function quoteField(field) {
+        loadPrevious(function (data) {
+            var value = data[field] || '';
+            if (!value) {
+                $.modal.msgWarning('上月该字段为空');
+                return;
+            }
+            $('#' + field).val(value);
+            $.modal.msgSuccess('已引用上月内容');
+        });
+    }
+
+    function submitHandler() {
+        var summary = $.trim($('#maintenanceSummary').val() || '');
+        if (!summary) {
+            $.modal.msgWarning('请填写本次维保情况简述');
+            return;
+        }
+        syncVoucherInput();
+        $.operate.save(prefix + '/saveConclusion', $('#form-conclusion').serialize());
+    }
+
+    $(function () {
+        vouchers = splitUrls(/*[[${task.alarmHostVoucher}]]*/ '');
+        renderVouchers();
+    });
+</script>
+</body>
+</html>

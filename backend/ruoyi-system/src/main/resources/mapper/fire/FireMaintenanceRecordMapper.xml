@@ -202,4 +202,15 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{recordId}
         </foreach>
     </update>
+
+    <update id="markAllNoDeviceByRecordIds">
+        update fire_maintenance_record
+        set check_result = '3', check_time = sysdate(), fault_description = null,
+            repair_suggestion = null
+        where level = 3
+          and record_id in
+        <foreach item="recordId" collection="array" open="(" separator="," close=")">
+            #{recordId}
+        </foreach>
+    </update>
 </mapper>
