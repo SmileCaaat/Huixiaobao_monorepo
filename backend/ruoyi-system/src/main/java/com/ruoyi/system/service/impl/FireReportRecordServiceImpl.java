@@ -350,8 +350,13 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         // ========== 第二页内容 ==========
 
         // 获取一级列表
+        com.ruoyi.fire.domain.FireMaintenanceRecord patrolLevel1Query =
+                new com.ruoyi.fire.domain.FireMaintenanceRecord();
+        patrolLevel1Query.setTaskId(taskId);
+        patrolLevel1Query.setRecordType("0");
+        patrolLevel1Query.setLevel(1);
         java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> level1Records =
-                fireMaintenanceRecordService.selectLevel1List(taskId);
+                fireMaintenanceRecordService.selectFireMaintenanceRecordList(patrolLevel1Query);
 
         // 维保时间 - 优先使用维保简报中填写的时间，否则使用计划时间
         String maintenanceTimeStr = "";
@@ -523,140 +528,26 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
                 "注3：本表由单位存档，存档时间不得少于6年。";
         data.put("reportNotes", com.deepoove.poi.data.Texts.of(noteContent).create());
 
-        // ========== 设备实测记录表格（使用消防测试第二级设备维护信息）==========
-        // 重用前面查询的 testLevel1Records（recordType=1的消防测试一级记录）
-        // 收集所有第二级设备记录
-        java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> allLevel2Equipments = new java.util.ArrayList<>();
-        if (testLevel1Records != null && !testLevel1Records.isEmpty()) {
-            for (com.ruoyi.fire.domain.FireMaintenanceRecord level1 : testLevel1Records) {
-                java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> level2Records =
-                        fireMaintenanceRecordService.selectLevel2List(taskId, level1.getRecordId());
-                if (level2Records != null && !level2Records.isEmpty()) {
-                    allLevel2Equipments.addAll(level2Records);
-                }
-            }
-        }
+        // ========== 设备实测记录：任务链记录 + 同单位任务周期内独立测试记录 ==========
+        // 每条巡检测试记录单独生成一个实测区块，现场照片随该条记录输出。
+        // 故障维修仅按 taskId 纳入当前任务链；保养汇总仅取 recordType=2。
+        Date[] reportRange = resolveTaskReportRange(task);
+        java.util.List<com.ruoyi.fire.domain.FireInspection> reportInspections =
+                fireInspectionService.selectReportInspectionRecords(
+                        taskId, task.getCompanyId(), reportRange[0], reportRange[1]);
+        data.put("testRecordTable", createInspectionActualRecordTable(reportInspections));
 
-        if (!allLevel2Equipments.isEmpty()) {
-            // 为每个设备创建独立的表格，然后组合
-            java.util.List<com.deepoove.poi.data.RowRenderData> allRows = new java.util.ArrayList<>();
+        com.ruoyi.fire.domain.FireFaultRepair repairQuery = new com.ruoyi.fire.domain.FireFaultRepair();
+        repairQuery.setTaskId(taskId);
+        java.util.List<com.ruoyi.fire.domain.FireFaultRepair> linkedRepairs =
+                fireFaultRepairService.selectFireFaultRepairList(repairQuery);
+        data.put("repairRecordTable", createRepairRecordTable(linkedRepairs));
 
-            for (int i = 0; i < allLevel2Equipments.size(); i++) {
-                com.ruoyi.fire.domain.FireMaintenanceRecord equipment = allLevel2Equipments.get(i);
-
-                // 表头行 - 增加行高到1.2cm，居中对齐
-                allRows.add(com.deepoove.poi.data.Rows.of("设备名称", "设备位置", "测试情况", "测试时间", "测试结果")
-                        .textBold().bgColor("D9D9D9").rowHeight(1.2)
-                        .center().create());
-
-                // 数据行 - 增加行高到1.5cm，支持多行文本，居中对齐
-                String testTime = equipment.getTestTime() != null
-                        ? DateUtils.parseDateToStr("yyyy/MM/dd", equipment.getTestTime())
-                        : "";
-                allRows.add(com.deepoove.poi.data.Rows.of(
-                        safeStr(equipment.getItemName()),
-                        safeStr(equipment.getDeviceLocation()),
-                        safeStr(equipment.getTestSituation()),
-                        testTime,
-                        safeStr(equipment.getTestResult())
-                ).rowHeight(1.5).center().create());
-
-                // 图片处理 - 始终显示现场照片行（即使没有图片也占位）
-                // 图片行 - 第一列为"现场照片"标签，后面是图片
-                java.util.List<com.deepoove.poi.data.CellRenderData> imageCells = new java.util.ArrayList<>();
-                imageCells.add(com.deepoove.poi.data.Cells.of("现场照片").verticalCenter().horizontalCenter().create());
-
-                if (equipment.getSitePhotos() != null && !equipment.getSitePhotos().isEmpty()) {
-                    String[] photoUrls = equipment.getSitePhotos().split(",");
-                    log.info("设备 {} 有 {} 张现场照片", equipment.getItemName(), photoUrls.length);
-                    for (String imgUrl : photoUrls) {
-                        if (imgUrl != null && !imgUrl.trim().isEmpty()) {
-                            try {
-                                String localPath = convertUrlToLocalPath(imgUrl.trim());
-                                log.info("图片URL: {} -> 本地路径: {}", imgUrl, localPath);
-                                java.io.File imgFile = new java.io.File(localPath);
-                                if (imgFile.exists() && imgFile.isFile()) {
-                                    log.info("图片文件存在: {}", localPath);
-                                    imageCells.add(com.deepoove.poi.data.Cells.of(
-                                            com.deepoove.poi.data.Pictures.ofLocal(localPath)
-                                                    .size(150, 110)  // 增大图片尺寸
-                                                    .create()
-                                    ).verticalCenter().horizontalCenter().create());
-                                } else {
-                                    log.warn("图片文件不存在: {}, Profile配置: {}", localPath,
-                                            com.ruoyi.common.config.RuoYiConfig.getProfile());
-                                    imageCells.add(com.deepoove.poi.data.Cells.of("").verticalCenter().horizontalCenter().create());
-                                }
-                            } catch (Exception e) {
-                                log.warn("处理图片失败: {} - {}", imgUrl, e.getMessage());
-                                imageCells.add(com.deepoove.poi.data.Cells.of("").verticalCenter().horizontalCenter().create());
-                            }
-                        }
-                    }
-                } else {
-                    log.info("设备 {} 没有现场照片", equipment.getItemName());
-                }
-
-                // 填充空单元格到5列
-                while (imageCells.size() < 5) {
-                    imageCells.add(com.deepoove.poi.data.Cells.of("").verticalCenter().horizontalCenter().create());
-                }
-                // 如果超过5列，截取前5个
-                if (imageCells.size() > 5) {
-                    imageCells = imageCells.subList(0, 5);
-                }
-
-                com.deepoove.poi.data.RowRenderData imageRow = new com.deepoove.poi.data.RowRenderData();
-                imageRow.setCells(imageCells);
-//                imageRow.setHeight(3.5);  // 图片行高度设置为3.5cm
-                allRows.add(imageRow);
-
-                // 设备之间添加空行分隔（除了最后一个）- 增加间隔高度
-                if (i < allLevel2Equipments.size() - 1) {
-                    allRows.add(com.deepoove.poi.data.Rows.of("", "", "", "", "").rowHeight(1.0).create());
-                }
-            }
-
-            // 创建表格
-            com.deepoove.poi.data.TableRenderData testTable = com.deepoove.poi.data.Tables.ofPercentWidth("90%")
-                    .border(com.deepoove.poi.data.style.BorderStyle.DEFAULT)
-                    .create();
-            testTable.setRows(allRows);
-            data.put("testRecordTable", testTable);
-        } else {
-            // 无数据时设置为null（模板中占位符会被忽略）
-            data.put("testRecordTable", null);
-        }
-
-        // 2.3 生成故障维修记录表格（只包含已完成的维修记录）
-        java.util.List<com.ruoyi.fire.domain.FireFaultRepair> completedRepairs = getCompletedRepairRecords(task.getCompanyId(), task.getCreateTime());
-        if (!completedRepairs.isEmpty()) {
-            com.deepoove.poi.data.TableRenderData repairTable = createRepairRecordTable(completedRepairs);
-            data.put("repairRecordTable", repairTable);
-        } else {
-            data.put("repairRecordTable", null);
-        }
-
-        // 2.4 生成建筑消防设施维护保养记录表（使用保养类型的巡检数据）
-        java.util.List<com.ruoyi.fire.domain.FireInspection> maintenanceRecords =
-                fireInspectionService.selectRecentInspectionTests(task.getCompanyId());
-
-        // 过滤出保养类型的记录（inspectionType = "2"）
-        java.util.List<com.ruoyi.fire.domain.FireInspection> filteredMaintenanceRecords = new java.util.ArrayList<>();
-        if (maintenanceRecords != null) {
-            for (com.ruoyi.fire.domain.FireInspection inspection : maintenanceRecords) {
-                if ("2".equals(inspection.getInspectionType())) {
-                    filteredMaintenanceRecords.add(inspection);
-                }
-            }
-        }
-
-        if (!filteredMaintenanceRecords.isEmpty()) {
-            com.deepoove.poi.data.TableRenderData maintenanceTable = createMaintenanceRecordTable(filteredMaintenanceRecords);
-            data.put("maintenanceRecordTable", maintenanceTable);
-        } else {
-            data.put("maintenanceRecordTable", null);
-        }
+        java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> upkeepRecords =
+                fireMaintenanceRecordMapper.selectLevel3ByTaskId(taskId).stream()
+                        .filter(item -> "2".equals(item.getRecordType()))
+                        .collect(java.util.stream.Collectors.toList());
+        data.put("maintenanceRecordTable", createMaintenanceTaskRecordTable(upkeepRecords, task));
 
         // 3. 先生成并落盘 DOCX；再尝试转 PDF（PDF 失败不撤销 DOCX）
         String templatePath = getTemplatePath();
@@ -1316,6 +1207,9 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         int pendingItems = 0;
 
         for (com.ruoyi.fire.domain.FireMaintenanceRecord record : allLevel3Records) {
+            if (!"0".equals(record.getRecordType())) {
+                continue;
+            }
             totalCheckItems++;
             String checkResult = record.getCheckResult();
             if (checkResult == null) {
@@ -1727,6 +1621,129 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
      * @param startTime 开始时间（维保任务开始时间）
      * @return 已完成的维修记录列表
      */
+    private Date[] resolveTaskReportRange(FireMaintenanceTask task) {
+        Date start = task.getPlanStartTime() != null ? task.getPlanStartTime()
+                : (task.getActualStartTime() != null ? task.getActualStartTime() : task.getCreateTime());
+        Date end = task.getPlanEndTime() != null ? task.getPlanEndTime()
+                : (task.getActualEndTime() != null ? task.getActualEndTime() : new Date());
+        if (start == null) {
+            start = new Date(0L);
+        }
+        if (end == null) {
+            end = new Date();
+        }
+        java.util.Calendar endCalendar = java.util.Calendar.getInstance();
+        endCalendar.setTime(end);
+        if (endCalendar.get(java.util.Calendar.HOUR_OF_DAY) == 0
+                && endCalendar.get(java.util.Calendar.MINUTE) == 0
+                && endCalendar.get(java.util.Calendar.SECOND) == 0
+                && endCalendar.get(java.util.Calendar.MILLISECOND) == 0) {
+            endCalendar.set(java.util.Calendar.HOUR_OF_DAY, 23);
+            endCalendar.set(java.util.Calendar.MINUTE, 59);
+            endCalendar.set(java.util.Calendar.SECOND, 59);
+            endCalendar.set(java.util.Calendar.MILLISECOND, 999);
+            end = endCalendar.getTime();
+        }
+        if (end.before(start)) {
+            throw new ServiceException("维保任务结束时间不能早于开始时间");
+        }
+        return new Date[]{start, end};
+    }
+
+    /** 每条巡检测试记录生成一个独立的设备实测区块，并带出该记录自己的现场照片。 */
+    private com.deepoove.poi.data.TableRenderData createInspectionActualRecordTable(
+            java.util.List<com.ruoyi.fire.domain.FireInspection> inspections) {
+        if (inspections == null || inspections.isEmpty()) {
+            return null;
+        }
+        java.util.List<com.deepoove.poi.data.RowRenderData> rows = new java.util.ArrayList<>();
+        for (int i = 0; i < inspections.size(); i++) {
+            com.ruoyi.fire.domain.FireInspection inspection = inspections.get(i);
+            rows.add(com.deepoove.poi.data.Rows.of(
+                    "设备名称", "设备位置", "测试情况", "测试时间", "测试结果")
+                    .textBold().bgColor("D9D9D9").rowHeight(0.8).center().create());
+            String time = inspection.getInspectionTime() == null ? ""
+                    : DateUtils.parseDateToStr("yyyy/MM/dd", inspection.getInspectionTime());
+            String result = "0".equals(inspection.getEquipmentStatus()) ? "正常" : "异常";
+            rows.add(com.deepoove.poi.data.Rows.of(
+                    safeStr(inspection.getEquipmentName()),
+                    safeStr(inspection.getLocation()),
+                    safeStr(inspection.getRemark()),
+                    time,
+                    result).rowHeight(1.0).center().create());
+
+            java.util.List<com.deepoove.poi.data.CellRenderData> imageCells = new java.util.ArrayList<>();
+            imageCells.add(com.deepoove.poi.data.Cells.of("现场照片")
+                    .verticalCenter().horizontalCenter().create());
+            if (inspection.getImages() != null) {
+                for (String imageUrl : inspection.getImages()) {
+                    if (imageCells.size() >= 5 || StringUtils.isEmpty(imageUrl)) {
+                        break;
+                    }
+                    String localPath = convertUrlToLocalPath(imageUrl.trim());
+                    File imageFile = new File(localPath);
+                    if (imageFile.isFile()) {
+                        imageCells.add(com.deepoove.poi.data.Cells.of(
+                                com.deepoove.poi.data.Pictures.ofLocal(localPath)
+                                        .size(135, 100).create())
+                                .verticalCenter().horizontalCenter().create());
+                    }
+                }
+            }
+            while (imageCells.size() < 5) {
+                imageCells.add(com.deepoove.poi.data.Cells.of("").create());
+            }
+            com.deepoove.poi.data.RowRenderData imageRow = new com.deepoove.poi.data.RowRenderData();
+            imageRow.setCells(imageCells);
+            rows.add(imageRow);
+            if (i < inspections.size() - 1) {
+                rows.add(com.deepoove.poi.data.Rows.of("", "", "", "", "")
+                        .rowHeight(0.5).create());
+            }
+        }
+        com.deepoove.poi.data.TableRenderData table =
+                com.deepoove.poi.data.Tables.ofPercentWidth("90%")
+                        .border(com.deepoove.poi.data.style.BorderStyle.DEFAULT).create();
+        table.setRows(rows);
+        return table;
+    }
+
+    /** 当前维保任务中标记为“保养”的叶子项目动态生成维护保养记录表。 */
+    private com.deepoove.poi.data.TableRenderData createMaintenanceTaskRecordTable(
+            java.util.List<com.ruoyi.fire.domain.FireMaintenanceRecord> records,
+            FireMaintenanceTask task) {
+        if (records == null || records.isEmpty()) {
+            return null;
+        }
+        java.util.List<com.deepoove.poi.data.RowRenderData> rows = new java.util.ArrayList<>();
+        rows.add(com.deepoove.poi.data.Rows.of("作业日期", "保养项目", "保养完成情况")
+                .textBold().bgColor("D9D9D9").rowHeight(0.8).center().create());
+        for (com.ruoyi.fire.domain.FireMaintenanceRecord record : records) {
+            Date workTime = record.getCheckTime() != null ? record.getCheckTime()
+                    : (task.getMaintenanceTime() != null ? task.getMaintenanceTime() : task.getPlanEndTime());
+            String workDate = workTime == null ? "" : DateUtils.parseDateToStr("yyyy/MM/dd", workTime);
+            String status;
+            if ("1".equals(record.getCheckResult())) {
+                status = "已完成（正常）";
+            } else if ("2".equals(record.getCheckResult())) {
+                status = "已完成（故障）" + (StringUtils.isNotEmpty(record.getFaultDescription())
+                        ? "：" + record.getFaultDescription() : "");
+            } else if ("3".equals(record.getCheckResult())) {
+                status = "无此设备";
+            } else {
+                status = "未完成";
+            }
+            rows.add(com.deepoove.poi.data.Rows.of(
+                    workDate, safeStr(record.getItemName()), status)
+                    .rowHeight(0.9).create());
+        }
+        com.deepoove.poi.data.TableRenderData table =
+                com.deepoove.poi.data.Tables.ofPercentWidth("90%")
+                        .border(com.deepoove.poi.data.style.BorderStyle.DEFAULT).create();
+        table.setRows(rows);
+        return table;
+    }
+
     private java.util.List<com.ruoyi.fire.domain.FireFaultRepair> getCompletedRepairRecords(Long companyId, Date startTime) {
         if (companyId == null) {
             return new java.util.ArrayList<>();

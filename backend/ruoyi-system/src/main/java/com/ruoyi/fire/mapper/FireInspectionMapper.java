@@ -77,4 +77,14 @@ public interface FireInspectionMapper {
     public List<FireInspection> selectInspectionTestByCompanyIdAndTimeRange(
         @Param("companyId") Long companyId, 
         @Param("startTime") java.util.Date startTime);
+
+    /**
+     * 查询某个维保任务报告中的设备实测记录。
+     * 包含任务链直接创建的测试记录，以及同单位、任务周期内独立创建的测试记录。
+     */
+    public List<FireInspection> selectReportInspectionRecords(
+        @Param("taskId") Long taskId,
+        @Param("companyId") Long companyId,
+        @Param("startTime") java.util.Date startTime,
+        @Param("endTime") java.util.Date endTime);
 }

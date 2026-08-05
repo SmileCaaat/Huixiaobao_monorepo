@@ -13,7 +13,7 @@ test('测试设备有无判断与无设备批量接口同时覆盖电脑端和�
   assert.match(pc, /是否有该设备？/);
   assert.match(pc, /markEquipmentAllNoDevice/);
   assert.match(pc, /fire\/inspection\/add\?linked=true&taskId=/);
-  assert.match(mini, /itemList: \["有", "无"\]/);
+  assert.match(mini, /itemList: \[(?:"有"|"\\u6709"), (?:"无"|"\\u65e0")\]/);
   assert.match(mini, /markInspectionTestNoDevice/);
   assert.match(mapper, /check_result = '3'/);
 });

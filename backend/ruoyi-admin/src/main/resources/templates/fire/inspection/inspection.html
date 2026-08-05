@@ -2,16 +2,74 @@
 <html lang="zh" xmlns:th="http://www.thymeleaf.org" xmlns:shiro="http://www.pollix.at/thymeleaf/shiro">
 
 <head>
-    <th:block th:include="include :: header('巡检测试')" />
+    <th:block th:include="include :: header('巡查测试')" />
+    <style>
+        /* 本页搜索栏：单行紧凑布局，查询/重置置前 */
+        .fire-search-layout .select-list ul {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 4px 6px;
+            overflow-x: auto;
+        }
+
+        .fire-search-layout .select-list li {
+            float: none;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            margin: 2px 4px 2px 0;
+            flex-shrink: 0;
+        }
+
+        .fire-search-layout .select-list li.label-actions {
+            margin-right: 8px;
+        }
+
+        .fire-search-layout .select-list li label:not(.radio-box) {
+            float: none;
+            width: auto;
+            margin: 0 4px 0 0;
+            white-space: nowrap;
+            text-align: right;
+            line-height: 30px;
+        }
+
+        .fire-search-layout .select-list li input,
+        .fire-search-layout .select-list li select {
+            float: none;
+            width: 110px;
+            vertical-align: middle;
+        }
+
+        .fire-search-layout .select-list li input[name="keyword"] {
+            width: 150px;
+        }
+
+        .fire-search-layout .select-list li input[name="inspectionMonth"] {
+            width: 90px;
+        }
+
+        .fire-search-layout .select-list li .btn {
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+    </style>
 </head>
 
 <body class="gray-bg">
     <div class="container-div">
         <div class="row">
-            <div class="col-sm-12 search-collapse">
+            <div class="col-sm-12 search-collapse fire-search-layout">
                 <form id="formId">
                     <div class="select-list">
                         <ul>
+                            <li class="label-actions">
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
+                                        class="fa fa-search"></i>&nbsp;查询</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
+                                        class="fa fa-refresh"></i>&nbsp;重置</a>
+                            </li>
                             <li>
                                 <label>关键词：</label>
                                 <input type="text" name="keyword" placeholder="客户/建筑/设备/位置/操作员" />
@@ -39,12 +97,6 @@
                                     <option th:each="type : ${systemTypes}" th:value="${type.categoryKey}"
                                         th:text="${type.categoryName}"></option>
                                 </select>
-                            </li>
-                            <li>
-                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
-                                        class="fa fa-search"></i>&nbsp;查询</a>
-                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
-                                        class="fa fa-refresh"></i>&nbsp;重置</a>
                             </li>
                         </ul>
                     </div>
@@ -92,7 +144,7 @@
                 removeUrl: prefix + "/remove",
                 exportUrl: prefix + "/export",
                 detailUrl: prefix + "/detail/{id}",
-                modalName: "巡检测试",
+                modalName: "巡查测试",
                 columns: [{
                     checkbox: true
                 }, {

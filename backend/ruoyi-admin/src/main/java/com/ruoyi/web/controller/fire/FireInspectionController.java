@@ -140,6 +140,7 @@ public class FireInspectionController extends BaseController {
             mmap.put("linkedTemplateEquipment", templateEquipment);
             mmap.put("linkedBuildingId", task.getBuildingId());
             mmap.put("linkedBuildingName", task.getBuildingName());
+            mmap.put("linkedTaskId", task.getTaskId());
             mmap.put("equipmentTypes",
                     templateCategoryService.listEquipmentsByCategoryKey(templateCategory.getCategoryKey()));
         }
@@ -153,6 +154,16 @@ public class FireInspectionController extends BaseController {
     public AjaxResult addSave(@Validated FireInspection inspection) {
         try {
             fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), inspection.getCompanyId());
+            if (inspection.getTaskId() != null) {
+                FireMaintenanceTask linkedTask = maintenanceTaskService
+                        .selectFireMaintenanceTaskBaseByTaskId(inspection.getTaskId());
+                if (linkedTask == null || linkedTask.getCompanyId() == null
+                        || !linkedTask.getCompanyId().equals(inspection.getCompanyId())) {
+                    return AjaxResult.error("关联维保任务与所选单位不一致");
+                }
+                fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
+                inspection.setInspectionType("0");
+            }
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         }

@@ -310,6 +310,7 @@ CREATE TABLE IF NOT EXISTS `fire_fault_repair` (
   `repair_id` bigint NOT NULL AUTO_INCREMENT,
   `repair_no` varchar(64) DEFAULT NULL,
   `company_id` bigint DEFAULT NULL,
+  `task_id` bigint DEFAULT NULL,
   `company_name` varchar(200) DEFAULT NULL,
   `system_type_id` bigint DEFAULT NULL,
   `system_type_name` varchar(200) DEFAULT NULL,
@@ -345,7 +346,8 @@ CREATE TABLE IF NOT EXISTS `fire_fault_repair` (
   PRIMARY KEY (`repair_id`),
   KEY `idx_fire_fault_repair_reporter_id` (`reporter_id`),
   KEY `idx_fire_fault_repair_repair_user_id` (`repair_user_id`),
-  KEY `idx_fire_fault_repair_company_status` (`company_id`, `repair_status`)
+  KEY `idx_fire_fault_repair_company_status` (`company_id`, `repair_status`),
+  KEY `idx_fire_fault_repair_task` (`task_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='fault repair';
 
 CREATE TABLE IF NOT EXISTS `fire_check_in` (

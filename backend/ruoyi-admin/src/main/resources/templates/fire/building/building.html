@@ -33,6 +33,66 @@
             margin-left: 10px;
             color: #1890ff;
         }
+
+        /* 本页搜索栏：单行紧凑，编码/等级/状态更短 */
+        .fire-search-layout .select-list ul {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 4px 6px;
+            overflow-x: auto;
+        }
+
+        .fire-search-layout .select-list li {
+            float: none;
+            display: inline-flex;
+            align-items: center;
+            white-space: nowrap;
+            margin: 2px 4px 2px 0;
+            flex-shrink: 0;
+        }
+
+        .fire-search-layout .select-list li label:not(.radio-box) {
+            float: none;
+            width: auto;
+            margin: 0 4px 0 0;
+            white-space: nowrap;
+            text-align: right;
+            line-height: 30px;
+        }
+
+        .fire-search-layout .select-list li input,
+        .fire-search-layout .select-list li select {
+            float: none;
+            width: 120px;
+            vertical-align: middle;
+        }
+
+        .fire-search-layout .select-list li input[name="buildingCode"] {
+            width: 90px;
+        }
+
+        .fire-search-layout .select-list li select[name="fireLevel"],
+        .fire-search-layout .select-list li select[name="status"] {
+            width: 80px;
+        }
+
+        .fire-search-layout .select-list li select[name="companyId"] {
+            width: 130px;
+        }
+
+        .fire-search-layout .select-list li input[name="buildingName"] {
+            width: 110px;
+        }
+
+        .fire-search-layout .select-list li select[name="buildingType"] {
+            width: 100px;
+        }
+
+        .fire-search-layout .select-list li .btn {
+            vertical-align: middle;
+            margin-right: 4px;
+        }
     </style>
 </head>
 
@@ -46,37 +106,43 @@
                 <a href="javascript:void(0)" onclick="clearCompanyFilter()"><i class="fa fa-times"></i> 清除筛选</a>
             </div>
 
-            <div class="col-sm-12 search-collapse">
+            <div class="col-sm-12 search-collapse fire-search-layout">
                 <form id="building-form">
                     <div class="select-list">
                         <ul>
                             <li>
-                                所属客户：<select name="companyId" id="companyId">
+                                <label>所属客户：</label>
+                                <select name="companyId" id="companyId">
                                     <option value="">所有公司</option>
                                 </select>
                             </li>
                             <li>
-                                建筑编码：<input type="text" name="buildingCode" />
+                                <label>建筑编码：</label>
+                                <input type="text" name="buildingCode" />
                             </li>
                             <li>
-                                建筑名称：<input type="text" name="buildingName" />
+                                <label>建筑名称：</label>
+                                <input type="text" name="buildingName" />
                             </li>
                             <li>
-                                建筑类别：<select name="buildingType" th:with="type=${@dict.getType('fire_building_type')}">
+                                <label>建筑类别：</label>
+                                <select name="buildingType" th:with="type=${@dict.getType('fire_building_type')}">
                                     <option value="">所有</option>
                                     <option th:each="dict : ${type}" th:text="${dict.dictLabel}"
                                         th:value="${dict.dictValue}"></option>
                                 </select>
                             </li>
                             <li>
-                                消防等级：<select name="fireLevel" th:with="type=${@dict.getType('fire_level')}">
+                                <label>消防等级：</label>
+                                <select name="fireLevel" th:with="type=${@dict.getType('fire_level')}">
                                     <option value="">所有</option>
                                     <option th:each="dict : ${type}" th:text="${dict.dictLabel}"
                                         th:value="${dict.dictValue}"></option>
                                 </select>
                             </li>
                             <li>
-                                状态：<select name="status" th:with="type=${@dict.getType('sys_normal_disable')}">
+                                <label>状态：</label>
+                                <select name="status" th:with="type=${@dict.getType('sys_normal_disable')}">
                                     <option value="">所有</option>
                                     <option th:each="dict : ${type}" th:text="${dict.dictLabel}"
                                         th:value="${dict.dictValue}"></option>

@@ -1041,6 +1041,16 @@ public class FireMiniAppController extends BaseController {
     public AjaxResult addInspection(@RequestBody FireInspection inspection) {
         try {
             fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), inspection.getCompanyId());
+            if (inspection.getTaskId() != null) {
+                FireMaintenanceTask linkedTask = taskService
+                        .selectFireMaintenanceTaskBaseByTaskId(inspection.getTaskId());
+                if (linkedTask == null || linkedTask.getCompanyId() == null
+                        || !linkedTask.getCompanyId().equals(inspection.getCompanyId())) {
+                    return AjaxResult.error("关联维保任务与所选单位不一致");
+                }
+                fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
+                inspection.setInspectionType("0");
+            }
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         }
@@ -1258,6 +1268,19 @@ public class FireMiniAppController extends BaseController {
         }
         if (!hasCompanyAccess(repair.getCompanyId(), userId)) {
             return AjaxResult.error("您无权在该单位发起报修");
+        }
+
+        if (repair.getTaskId() != null) {
+            FireMaintenanceTask linkedTask = taskService.selectFireMaintenanceTaskBaseByTaskId(repair.getTaskId());
+            if (linkedTask == null || linkedTask.getCompanyId() == null
+                    || !linkedTask.getCompanyId().equals(repair.getCompanyId())) {
+                return AjaxResult.error("关联维保任务与报修单位不一致");
+            }
+            try {
+                fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
+            } catch (ServiceException e) {
+                return AjaxResult.error(e.getMessage());
+            }
         }
 
         String validateMessage = fillRepairLookupInfo(repair);

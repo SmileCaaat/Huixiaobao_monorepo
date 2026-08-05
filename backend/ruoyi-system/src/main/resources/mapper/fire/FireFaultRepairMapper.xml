@@ -8,6 +8,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="repairId"           column="repair_id"           />
         <result property="repairNo"           column="repair_no"           />
         <result property="companyId"          column="company_id"          />
+        <result property="taskId"             column="task_id"             />
         <result property="companyName"        column="company_name"        />
         <result property="systemTypeId"       column="system_type_id"      />
         <result property="systemTypeName"     column="system_type_name"    />
@@ -45,7 +46,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     </resultMap>
 
     <sql id="selectFireFaultRepairVo">
-        SELECT f.repair_id, f.repair_no, f.company_id, f.company_name, f.system_type_id, f.system_type_name,
+        SELECT f.repair_id, f.repair_no, f.company_id, f.task_id, f.company_name, f.system_type_id, f.system_type_name,
                f.equipment_id, f.equipment_name, f.found_time, f.is_reported, f.urgency_level,
                f.fault_description, f.fault_images, f.reporter_name, f.reporter_phone, f.reporter_id,
                f.customer_address, f.repair_status, f.repair_user_id, f.repair_person, f.repair_phone,
@@ -67,6 +68,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             </if>
             <if test="companyId != null">
                 AND f.company_id = #{companyId}
+            </if>
+            <if test="taskId != null">
+                AND f.task_id = #{taskId}
             </if>
             <if test="companyName != null and companyName != ''">
                 AND f.company_name LIKE CONCAT('%', #{companyName}, '%')
@@ -157,6 +161,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="repairNo != null and repairNo != ''">repair_no,</if>
             <if test="companyId != null">company_id,</if>
+            <if test="taskId != null">task_id,</if>
             <if test="companyName != null and companyName != ''">company_name,</if>
             <if test="systemTypeId != null">system_type_id,</if>
             <if test="systemTypeName != null and systemTypeName != ''">system_type_name,</if>
@@ -190,6 +195,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <trim prefix="values (" suffix=")" suffixOverrides=",">
             <if test="repairNo != null and repairNo != ''">#{repairNo},</if>
             <if test="companyId != null">#{companyId},</if>
+            <if test="taskId != null">#{taskId},</if>
             <if test="companyName != null and companyName != ''">#{companyName},</if>
             <if test="systemTypeId != null">#{systemTypeId},</if>
             <if test="systemTypeName != null and systemTypeName != ''">#{systemTypeName},</if>
@@ -226,6 +232,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         UPDATE fire_fault_repair
         <trim prefix="SET" suffixOverrides=",">
             <if test="companyId != null">company_id = #{companyId},</if>
+            <if test="taskId != null">task_id = #{taskId},</if>
             <if test="companyName != null">company_name = #{companyName},</if>
             <if test="systemTypeId != null">system_type_id = #{systemTypeId},</if>
             <if test="systemTypeName != null">system_type_name = #{systemTypeName},</if>

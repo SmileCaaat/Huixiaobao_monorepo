@@ -73,4 +73,8 @@ public interface IFireInspectionService {
      * @return 巡检登记集合
      */
     public List<FireInspection> selectRecentInspectionTests(Long companyId);
+
+    /** 查询维保报告应纳入的设备实测记录。 */
+    public List<FireInspection> selectReportInspectionRecords(
+            Long taskId, Long companyId, java.util.Date startTime, java.util.Date endTime);
 }

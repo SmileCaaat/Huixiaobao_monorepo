@@ -9,6 +9,7 @@
 <body class="white-bg">
     <div class="wrapper wrapper-content animated fadeInRight ibox-content">
         <form class="form-horizontal m" id="form-repair-add">
+            <input th:if="${linkedRepair and prefillTaskId != null}" type="hidden" name="taskId" th:value="${prefillTaskId}">
             <h4 class="form-header h4">报修信息</h4>
             <div class="alert alert-info" th:if="${linkedRepair}">
                 <i class="fa fa-link"></i> 本报修由维保故障项关联创建，单位、系统、设备、地址和上报状态已自动锁定。

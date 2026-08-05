@@ -170,6 +170,7 @@
         var description = repairItemName + '：' + (notes || '检查发现故障');
         var query = $.param({
             linked: true,
+            taskId: taskId,
             companyId: repairCompanyId,
             companyName: repairCompanyName,
             systemTypeName: repairSystemTypeName,

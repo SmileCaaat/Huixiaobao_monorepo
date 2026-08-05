@@ -25,11 +25,13 @@ import com.ruoyi.common.utils.ShiroUtils;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.fire.domain.FireFaultRepair;
+import com.ruoyi.fire.domain.FireMaintenanceTask;
 import com.ruoyi.fire.service.IFireCompanyService;
 import com.ruoyi.fire.service.IFireEquipmentService;
 import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireFaultRepairService;
 import com.ruoyi.fire.service.IFireSystemTypeService;
+import com.ruoyi.fire.service.IFireMaintenanceTaskService;
 
 /**
  * 故障报修管理。
@@ -53,6 +55,9 @@ public class FireFaultRepairController extends BaseController {
 
     @Autowired
     private IFireEquipmentService equipmentService;
+
+    @Autowired
+    private IFireMaintenanceTaskService maintenanceTaskService;
 
     @RequiresPermissions("fire:repair:view")
     @GetMapping()
@@ -94,6 +99,7 @@ public class FireFaultRepairController extends BaseController {
 
     @GetMapping("/add")
     public String add(@RequestParam(value = "linked", required = false, defaultValue = "false") boolean linked,
+            @RequestParam(value = "taskId", required = false) Long taskId,
             @RequestParam(value = "companyId", required = false) Long companyId,
             @RequestParam(value = "systemTypeName", required = false) String systemTypeName,
             @RequestParam(value = "equipmentName", required = false) String equipmentName,
@@ -104,6 +110,14 @@ public class FireFaultRepairController extends BaseController {
         List<com.ruoyi.fire.domain.FireSystemType> systemTypes = systemTypeService.selectFireSystemTypeAll();
         com.ruoyi.fire.domain.FireCompany linkedCompany = linked && companyId != null
                 ? companyService.selectFireCompanyById(companyId) : null;
+        if (linked && taskId != null) {
+            FireMaintenanceTask linkedTask = maintenanceTaskService.selectFireMaintenanceTaskBaseByTaskId(taskId);
+            if (linkedTask == null || linkedTask.getCompanyId() == null
+                    || !linkedTask.getCompanyId().equals(companyId)) {
+                throw new ServiceException("关联维保任务与报修单位不一致");
+            }
+            fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
+        }
         Long resolvedSystemTypeId = null;
         if (linked && StringUtils.isNotEmpty(systemTypeName)) {
             String normalizedRequested = normalizeSystemName(systemTypeName);
@@ -125,6 +139,7 @@ public class FireFaultRepairController extends BaseController {
         mmap.put("urgencyLevels", UrgencyLevel.values());
         mmap.put("equipmentNames", com.ruoyi.fire.enums.FireEquipmentCategory.allLabels());
         mmap.put("linkedRepair", linked);
+        mmap.put("prefillTaskId", linked ? taskId : null);
         mmap.put("prefillCompanyId", companyId);
         mmap.put("prefillCompanyName", linkedCompany != null ? linkedCompany.getCompanyName() : "");
         mmap.put("prefillSystemTypeId", resolvedSystemTypeId);
@@ -149,6 +164,15 @@ public class FireFaultRepairController extends BaseController {
     @ResponseBody
     public AjaxResult addSave(FireFaultRepair fireFaultRepair) {
         try {
+            if (fireFaultRepair.getTaskId() != null) {
+                FireMaintenanceTask linkedTask = maintenanceTaskService
+                        .selectFireMaintenanceTaskBaseByTaskId(fireFaultRepair.getTaskId());
+                if (linkedTask == null || linkedTask.getCompanyId() == null
+                        || !linkedTask.getCompanyId().equals(fireFaultRepair.getCompanyId())) {
+                    return error("关联维保任务与报修单位不一致");
+                }
+                fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
+            }
             fireFaultRepair.setCreateBy(ShiroUtils.getLoginName());
             return toAjax(fireFaultRepairService.insertFireFaultRepair(fireFaultRepair));
         } catch (ServiceException e) {

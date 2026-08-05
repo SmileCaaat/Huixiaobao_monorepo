@@ -5,6 +5,7 @@ const auth = require("../../services/auth.js");
 Page({
   data: {
     companyId: null,
+    taskId: null,
     companyName: "",
     linked: false,
     systemTypeName: "",
@@ -29,6 +30,7 @@ Page({
       const decode = (value) => value ? decodeURIComponent(value) : "";
       this.setData({
         linked: true,
+        taskId: options.taskId || null,
         companyId: options.companyId || null,
         companyName: decode(options.companyName),
         systemTypeName: decode(options.systemTypeName),
@@ -149,6 +151,7 @@ Page({
     try {
       const faultImages = this.data.images.map((i) => i.serverUrl).filter(Boolean).join(",");
       await api.addRepair({
+        taskId: this.data.taskId,
         companyId: this.data.companyId,
         companyName: this.data.companyName,
         systemTypeName: this.data.systemTypeName,

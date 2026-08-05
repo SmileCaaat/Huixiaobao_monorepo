@@ -7,6 +7,7 @@
 <body class="white-bg">
     <div class="wrapper wrapper-content animated fadeInRight ibox-content">
         <form class="form-horizontal m" id="form-inspection-add">
+            <input th:if="${linkedInspection}" type="hidden" name="taskId" th:value="${linkedTaskId}" />
             <div class="form-group">
                 <label class="col-sm-3 control-label is-required">单位名称：</label>
                 <div class="col-sm-8">
@@ -132,6 +133,7 @@
     <script th:inline="javascript">
         var prefix = ctx + "fire/inspection";
         var linkedInspection = [[${linkedInspection}]];
+        var linkedTaskId = /*[[${linkedInspection ? linkedTaskId : null}]]*/ null;
         var linkedCompanyId = /*[[${linkedInspection ? linkedCompany.companyId : null}]]*/ null;
         var linkedCategoryKey = /*[[${linkedInspection ? linkedTemplateCategory.categoryKey : ''}]]*/ '';
         var linkedCategoryName = /*[[${linkedInspection ? linkedTemplateCategory.categoryName : ''}]]*/ '';
@@ -267,6 +269,7 @@
                 yes: function (index) { layer.close(index); },
                 btn2: function () {
                     var url = ctx + 'fire/repair/add?linked=true&companyId=' + encodeURIComponent(linkedCompanyId)
+                        + '&taskId=' + encodeURIComponent(linkedTaskId || '')
                         + '&systemTypeName=' + encodeURIComponent(linkedCategoryName)
                         + '&equipmentName=' + encodeURIComponent(linkedEquipmentName)
                         + '&customerAddress=' + encodeURIComponent(linkedCustomerAddress || '')

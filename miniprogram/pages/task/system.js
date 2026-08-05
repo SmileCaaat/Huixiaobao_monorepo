@@ -139,6 +139,7 @@ Page({
         const task = this.data.taskInfo || {};
         const params = {
           linked: "1",
+          taskId: this.data.taskId,
           companyId: task.companyId || "",
           companyName: task.companyName || "",
           categoryKey: this.data.categoryKey,

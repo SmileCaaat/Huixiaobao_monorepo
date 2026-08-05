@@ -107,6 +107,20 @@ public class FireInspectionServiceImpl implements IFireInspectionService {
         return list;
     }
 
+    @Override
+    public List<FireInspection> selectReportInspectionRecords(
+            Long taskId, Long companyId, java.util.Date startTime, java.util.Date endTime) {
+        if (taskId == null || companyId == null || startTime == null || endTime == null) {
+            return java.util.Collections.emptyList();
+        }
+        List<FireInspection> list = fireInspectionMapper.selectReportInspectionRecords(
+                taskId, companyId, startTime, endTime);
+        for (FireInspection inspection : list) {
+            fillImages(inspection);
+        }
+        return list;
+    }
+
     /**
      * 校验并回填公司/建筑/模板类目名称与维保标准快照，不信任前端提交的名称，
      * 也不再关联 fire_system_type.typeId。

@@ -20,6 +20,9 @@ public class FireFaultRepair extends BaseEntity {
 
     private Long companyId;
 
+    /** 来源维保任务ID；仅任务链触发的故障报修写入。 */
+    private Long taskId;
+
     @Excel(name = "单位名称")
     private String companyName;
 
@@ -121,6 +124,14 @@ public class FireFaultRepair extends BaseEntity {
 
     public void setCompanyId(Long companyId) {
         this.companyId = companyId;
+    }
+
+    public Long getTaskId() {
+        return taskId;
+    }
+
+    public void setTaskId(Long taskId) {
+        this.taskId = taskId;
     }
 
     public String getCompanyName() {
@@ -361,6 +372,7 @@ public class FireFaultRepair extends BaseEntity {
                 .append("repairId", getRepairId())
                 .append("repairNo", getRepairNo())
                 .append("companyId", getCompanyId())
+                .append("taskId", getTaskId())
                 .append("companyName", getCompanyName())
                 .append("systemTypeId", getSystemTypeId())
                 .append("systemTypeName", getSystemTypeName())

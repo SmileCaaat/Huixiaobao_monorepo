@@ -51,6 +51,7 @@ Page({
     linked: false,
     customerAddress: "",
     form: {
+      taskId: null,
       companyId: null,
       companyName: "",
       inspectionType: "1",
@@ -121,6 +122,7 @@ Page({
     this.setData({
       linked: true,
       customerAddress: decode(options.customerAddress),
+      "form.taskId": options.taskId || null,
       "form.companyId": companyId,
       "form.companyName": decode(options.companyName),
       "form.inspectionType": "0",
@@ -220,6 +222,7 @@ Page({
     const form = this.data.form;
     const params = {
       linked: "1",
+      taskId: form.taskId || "",
       companyId: form.companyId || "",
       companyName: form.companyName || "",
       systemTypeName: form.systemName || "",
@@ -498,6 +501,7 @@ Page({
     this.setData({ saving: true });
     try {
       const payload = {
+        taskId: form.taskId || null,
         companyId: form.companyId,
         inspectionType: form.inspectionType,
         buildingId: form.buildingId,
