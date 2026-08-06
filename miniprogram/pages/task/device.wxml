@@ -1,19 +1,61 @@
 <view class="page">
-  <view class="section-title" wx:if="{{equipmentName}}">{{equipmentName}}</view>
-  <view wx:if="{{checkItems.length === 0 && !loading}}" class="empty">暂无检查项</view>
-  <view class="card check-card" wx:for="{{checkItems}}" wx:key="recordId" bindtap="openCheckDetail" data-id="{{item.recordId}}">
-    <view class="card-hd">
-      <text class="title">{{item.displayName}}</text>
-      <text class="badge {{item.checkResult === '2' ? 'badge-bad' : (item.checkResult === '1' ? 'badge-ok' : 'badge-muted')}}">{{item.resultText}}</text>
+  <view class="section-hd">
+    <view class="section-left">
+      <text class="section-icon">▦</text>
+      <text class="section-title">{{equipmentName || '检查项'}}</text>
     </view>
-    <view class="btn-row">
-      <view class="btn-mini ok" data-id="{{item.recordId}}" data-result="1" catchtap="setResult">正常</view>
-      <view class="btn-mini bad" data-id="{{item.recordId}}" data-result="2" catchtap="setResult">故障</view>
-    </view>
-    <view class="detail-entry">
-      <text>其他说明及附件</text>
-      <text class="detail-arrow">›</text>
+    <view class="all-normal {{marking ? 'disabled' : ''}}" bindtap="onMarkAllNormal">
+      <text class="all-normal-icon">✓</text>
+      <text>全部正常</text>
     </view>
   </view>
+
+  <view wx:if="{{checkItems.length === 0 && !loading}}" class="empty">暂无检查项</view>
+
+  <view class="list-wrap" wx:if="{{checkItems.length}}">
+    <view class="check-row" wx:for="{{checkItems}}" wx:key="recordId">
+      <view class="check-top">
+        <text class="check-name">{{item.displayName}}</text>
+        <text class="check-status {{item.isPending ? 'pending' : ''}}">{{item.statusText}}</text>
+      </view>
+      <view class="check-bottom">
+        <view class="choice-row">
+          <view
+            class="choice {{item.checkResult === '1' ? 'active ok' : ''}}"
+            data-id="{{item.recordId}}"
+            data-result="1"
+            catchtap="setResult"
+          >
+            <view class="box">{{item.checkResult === '1' ? '✓' : ''}}</view>
+            <text>正常</text>
+          </view>
+          <view
+            class="choice {{item.checkResult === '2' ? 'active bad' : ''}}"
+            data-id="{{item.recordId}}"
+            data-result="2"
+            catchtap="setResult"
+          >
+            <view class="box">{{item.checkResult === '2' ? '✓' : ''}}</view>
+            <text>故障</text>
+          </view>
+          <view
+            class="choice {{item.checkResult === '3' ? 'active none' : ''}}"
+            data-id="{{item.recordId}}"
+            data-result="3"
+            catchtap="setResult"
+          >
+            <view class="box">{{item.checkResult === '3' ? '✓' : ''}}</view>
+            <text>无此设备</text>
+          </view>
+        </view>
+        <view class="detail-entry" data-id="{{item.recordId}}" catchtap="openCheckDetail">›</view>
+      </view>
+    </view>
+  </view>
+
   <view class="footer-tip" wx:if="{{loading}}">加载中...</view>
+
+  <view class="bottom-bar">
+    <view class="save-btn {{saving ? 'disabled' : ''}}" bindtap="onSave">{{saving ? '保存中...' : '保存'}}</view>
+  </view>
 </view>

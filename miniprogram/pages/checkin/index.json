@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "维保签到",
+  "navigationBarBackgroundColor": "#E53935",
+  "navigationBarTextStyle": "white",
   "usingComponents": {}
 }

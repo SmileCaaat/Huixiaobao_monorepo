@@ -18,6 +18,6 @@
 
   <view class="empty" wx:if="{{!loading && !list.length}}">暂无签到记录</view>
   <view class="footer-tip" wx:if="{{loading}}">加载中...</view>
-  <view class="footer-tip" wx:elif="{{!hasMore && list.length}}">没有更多了</view>
-  <view class="footer-tip" wx:elif="{{hasMore && list.length}}">上拉加载更多</view>
+  <view class="footer-tip" wx:if="{{!loading && !hasMore && list.length}}">没有更多了</view>
+  <view class="footer-tip" wx:if="{{!loading && hasMore && list.length}}">上拉加载更多</view>
 </view>

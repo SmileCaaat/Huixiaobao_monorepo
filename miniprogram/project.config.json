@@ -13,11 +13,11 @@
       "outputPath": ""
     },
     "useCompilerPlugins": false,
-    "minifyWXML": true,
+    "minifyWXML": false,
     "compileWorklet": false,
     "uploadWithSourceMap": true,
     "packNpmManually": false,
-    "minifyWXSS": true,
+    "minifyWXSS": false,
     "localPlugins": false,
     "disableUseStrict": false,
     "condition": false,

@@ -180,10 +180,6 @@
             vertical-align: middle;
         }
 
-        .fire-search-layout .select-list li input[name="periodYear"] {
-            width: 100px;
-        }
-
         .fire-search-layout .select-list li .btn {
             vertical-align: middle;
         }
@@ -239,10 +235,6 @@
                                 </select>
                             </li>
                             <li>
-                                <label>年份：</label>
-                                <input type="text" name="periodYear" placeholder="如2025" />
-                            </li>
-                            <li>
                                 <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
                                         class="fa fa-search"></i>&nbsp;搜索</a>
                                 <a class="btn btn-warning btn-rounded btn-sm" onclick="resetTaskSearch()"><i
@@ -284,8 +276,8 @@
     <script th:inline="javascript">
         var editFlag = [[${@permission.hasPermi('fire:task:edit') }]];
         var removeFlag = [[${@permission.hasPermi('fire:task:remove') }]];
-        // 项目负责人保留顶部批量删除，隐藏操作列行内删除
-        var rowRemoveFlag = [[${@permission.isRole('project_manager')}]] ? 'hidden' : removeFlag;
+        // 行内删除与编辑并列，有 fire:task:remove 即显示（含项目负责人）
+        var rowRemoveFlag = removeFlag;
         var briefingFlag = [[${@permission.hasPermi('fire:task:briefing') }]];
         var completeAllFlag = [[${@permission.hasPermi('fire:task:completeAll') }]];
         var detailFlag = [[${@permission.hasPermi('fire:task:detail') }]];
@@ -382,7 +374,6 @@
             applyDashboardFilter('mine');
             $('input[name=taskName]').val('');
             $('select[name=periodType]').val('');
-            $('input[name=periodYear]').val('');
             if (!filterCompanyId) {
                 $('#companyId').val('');
             }
@@ -469,10 +460,6 @@
                     formatter: function (value, row, index) {
                         return $.table.selectDictLabel(periodTypeDatas, value);
                     }
-                },
-                {
-                    field: 'periodYear',
-                    title: '年份'
                 },
                 {
                     field: 'periodNum',

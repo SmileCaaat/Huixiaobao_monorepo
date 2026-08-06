@@ -217,6 +217,13 @@ public class FireCheckInServiceImpl implements IFireCheckInService {
 
     private void validateAndBindTask(FireCheckIn checkIn, Long membershipUserId, boolean requireMembership) {
         if (checkIn.getTaskId() == null) {
+            // 小程序签到允许不关联任务；后台录入仍要求选择任务
+            if (requireMembership) {
+                if (checkIn.getCompanyId() == null) {
+                    throw new ServiceException("请选择客户");
+                }
+                return;
+            }
             throw new ServiceException("请选择维保任务");
         }
         FireMaintenanceTask task = taskService.selectFireMaintenanceTaskByTaskId(checkIn.getTaskId());

@@ -1,4 +1,6 @@
 {
-  "navigationBarTitleText": "消防维护",
+  "navigationBarTitleText": "系统设备",
+  "navigationBarBackgroundColor": "#E53935",
+  "navigationBarTextStyle": "white",
   "usingComponents": {}
 }

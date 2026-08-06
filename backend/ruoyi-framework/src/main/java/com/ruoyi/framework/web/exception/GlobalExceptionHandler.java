@@ -65,22 +65,32 @@ public class GlobalExceptionHandler
      * 拦截未知的运行时异常
      */
     @ExceptionHandler(RuntimeException.class)
-    public AjaxResult handleRuntimeException(RuntimeException e, HttpServletRequest request)
+    public Object handleRuntimeException(RuntimeException e, HttpServletRequest request)
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生未知异常.", requestURI, e);
-        return AjaxResult.error(ClientSafeMessage.forApi(e.getMessage(), e));
+        String msg = ClientSafeMessage.forApi(e.getMessage(), e);
+        if (ServletUtils.isAjaxRequest(request))
+        {
+            return AjaxResult.error(msg);
+        }
+        return new ModelAndView("error/service", "errorMessage", msg);
     }
 
     /**
      * 系统异常
      */
     @ExceptionHandler(Exception.class)
-    public AjaxResult handleException(Exception e, HttpServletRequest request)
+    public Object handleException(Exception e, HttpServletRequest request)
     {
         String requestURI = request.getRequestURI();
         log.error("请求地址'{}',发生系统异常.", requestURI, e);
-        return AjaxResult.error(ClientSafeMessage.forApi(e.getMessage(), e));
+        String msg = ClientSafeMessage.forApi(e.getMessage(), e);
+        if (ServletUtils.isAjaxRequest(request))
+        {
+            return AjaxResult.error(msg);
+        }
+        return new ModelAndView("error/service", "errorMessage", msg);
     }
 
     /**

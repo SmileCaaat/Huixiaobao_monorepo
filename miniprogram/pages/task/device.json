@@ -1,4 +1,6 @@
 {
-  "navigationBarTitleText": "\u68c0\u67e5\u9879",
+  "navigationBarTitleText": "系统设备",
+  "navigationBarBackgroundColor": "#E53935",
+  "navigationBarTextStyle": "white",
   "usingComponents": {}
 }

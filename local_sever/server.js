@@ -48,7 +48,7 @@ function buildDbEnv() {
   const dbName = process.env.DB_NAME || "dev_manager";
   const dbUser = process.env.DB_USER || "root";
   const dbPass = process.env.DB_PASS || "replace-me";
-  return {
+  const env = {
     DB_URL:
       process.env.DB_URL ||
       `jdbc:mysql://${dbHost}:${dbPort}/${dbName}?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2B8`,
@@ -57,6 +57,11 @@ function buildDbEnv() {
     DRUID_USER: process.env.DRUID_USER || "admin",
     DRUID_PASS: process.env.DRUID_PASS || "replace-me"
   };
+  // Mini-program check-in reverse geocode (ruoyi.map.amapWebKey)
+  if (process.env.AMAP_WEB_KEY) {
+    env.AMAP_WEB_KEY = process.env.AMAP_WEB_KEY;
+  }
+  return env;
 }
 
 const DEMO_DEVICE_ROWS = [

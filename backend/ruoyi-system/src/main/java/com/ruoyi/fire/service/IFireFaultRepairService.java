@@ -107,4 +107,29 @@ public interface IFireFaultRepairService {
      * @return 结果
      */
     int recallDispatch(Long repairId, String recallBy);
+
+    /**
+     * 当前处理人转派给同部门同事
+     */
+    int transferRepair(Long repairId, Long targetUserId);
+
+    /**
+     * 可转派的同部门人员（姓名+电话）
+     */
+    List<SysUser> selectTransferUsers(Long repairId);
+
+    /**
+     * 工单日志
+     */
+    List<com.ruoyi.fire.domain.FireFaultRepairLog> selectRepairLogs(Long repairId);
+
+    /**
+     * 上报人对历史待处理单自动接单（不写入开始时间）
+     */
+    int claimByReporterIfNeeded(Long repairId);
+
+    /**
+     * 保存维修进度（说明/图片/维修时间），不完成工单
+     */
+    int saveRepairProgress(FireFaultRepair fireFaultRepair);
 }

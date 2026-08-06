@@ -1,5 +1,37 @@
 const { api } = require("../../api/index.js");
 
+function formatDatePart(value) {
+  if (!value) return "";
+  const text = String(value).replace("T", " ");
+  return text.length >= 10 ? text.slice(0, 10) : text;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const text = String(value).replace("T", " ");
+  return text.length >= 19 ? text.slice(0, 19) : text;
+}
+
+function formatPlanTime(start, end) {
+  const s = formatDatePart(start);
+  const e = formatDatePart(end);
+  if (s && e) return s + " 至 " + e;
+  if (s) return s;
+  if (e) return e;
+  return "-";
+}
+
+function mapReportRow(item) {
+  const row = item || {};
+  return Object.assign({}, row, {
+    taskTitle: row.taskName || row.reportName || "-",
+    planTimeText: formatPlanTime(row.planStartTime, row.planEndTime),
+    managerText: row.managerName || "-",
+    operatorText: row.operatorNames || "-",
+    createTimeText: formatDateTime(row.createTime)
+  });
+}
+
 Page({
   data: {
     keyword: "",
@@ -40,13 +72,13 @@ Page({
         pageSize: this.data.pageSize,
         reportName: this.data.keyword
       });
-      const rows = res.rows || res.data || [];
+      const rows = (res.rows || res.data || []).map(mapReportRow);
       this.setData({
         list: this.data.pageNum === 1 ? rows : this.data.list.concat(rows),
         noMore: rows.length < this.data.pageSize
       });
     } catch (e) {
-      wx.showToast({ title: "\u52a0\u8f7d\u5931\u8d25", icon: "none" });
+      wx.showToast({ title: "加载失败", icon: "none" });
     } finally {
       this.setData({ loading: false });
     }

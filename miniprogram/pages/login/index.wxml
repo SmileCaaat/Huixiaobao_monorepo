@@ -2,6 +2,6 @@
   <image class="logo" src="/static/logo.png" mode="aspectFit" />
   <view class="title">智慧消防设备管家</view>
   <view class="sub">登录后开始现场作业</view>
-  <view class="btn-primary" bindtap="goPassword">账号密码登录</view>
+  <view class="btn-primary login-btn" bindtap="goPassword">账号密码登录</view>
   <view class="link" bindtap="goRegister">注册账号</view>
 </view>

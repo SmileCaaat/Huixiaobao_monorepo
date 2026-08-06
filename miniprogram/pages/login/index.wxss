@@ -25,8 +25,13 @@
   margin: 16rpx 0 80rpx;
 }
 
-.btn-primary {
+.login-btn {
   margin-top: 24rpx;
+  background: #e53935;
+  color: #fff;
+  border-radius: 12rpx;
+  text-align: center;
+  padding: 22rpx 0;
 }
 
 .link {

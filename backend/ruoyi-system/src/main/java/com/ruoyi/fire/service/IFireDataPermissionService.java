@@ -63,7 +63,7 @@ public interface IFireDataPermissionService {
     /**
      * 清洗客户端越权参数后注入列表范围，并按白名单工作台分类过滤。
      *
-     * @param workbenchCategory assignedPending|processing|completed|reported，管理视图可忽略
+     * @param workbenchCategory assignedPending|completed|reported（processing 已下线，兼容并入 assignedPending），管理视图可忽略
      */
     void prepareRepairListQuery(FireFaultRepair query, SysUser user, String workbenchCategory);
 
@@ -74,6 +74,14 @@ public interface IFireDataPermissionService {
     void assertCanAccessCompany(Long userId, Long companyId);
 
     void assertCanAccessCompany(SysUser user, Long companyId);
+
+    /**
+     * Customer context: company membership, or stakeholder of a maintenance task
+     * whose companyId matches.
+     */
+    boolean canAccessCompanyContext(SysUser user, Long companyId, FireMaintenanceTask linkedTask);
+
+    void assertCanAccessCompanyContext(SysUser user, Long companyId, FireMaintenanceTask linkedTask);
 
     void assertCanAccessTask(Long userId, FireMaintenanceTask task);
 

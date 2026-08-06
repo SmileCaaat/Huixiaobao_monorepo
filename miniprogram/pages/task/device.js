@@ -1,10 +1,10 @@
 const { api } = require("../../api/index.js");
 
 const RESULT_MAP = {
-  "0": "\u5f85\u68c0\u67e5",
-  "1": "\u6b63\u5e38",
-  "2": "\u6545\u969c",
-  "3": "\u65e0\u6b64\u8bbe\u5907"
+  "0": "执行中",
+  "1": "正常",
+  "2": "故障",
+  "3": "无此设备"
 };
 
 function pickCheckItems(data) {
@@ -14,6 +14,16 @@ function pickCheckItems(data) {
   return [];
 }
 
+function mapItem(item) {
+  const code = String(item.checkResult != null ? item.checkResult : "0");
+  return Object.assign({}, item, {
+    displayName: item.checkItemName || item.itemName || item.name || "-",
+    checkResult: code,
+    statusText: RESULT_MAP[code] || RESULT_MAP["0"],
+    isPending: code === "0"
+  });
+}
+
 Page({
   data: {
     taskId: null,
@@ -21,7 +31,9 @@ Page({
     equipmentKey: "",
     equipmentName: "",
     checkItems: [],
-    loading: false
+    loading: false,
+    marking: false,
+    saving: false
   },
 
   onLoad(options) {
@@ -29,11 +41,10 @@ Page({
     const categoryKey = options.categoryKey ? decodeURIComponent(options.categoryKey) : "";
     const equipmentKey = options.equipmentKey ? decodeURIComponent(options.equipmentKey) : "";
     if (!taskId || !categoryKey || !equipmentKey) {
-      wx.showToast({ title: "\u53c2\u6570\u7f3a\u5931", icon: "none" });
+      wx.showToast({ title: "参数缺失", icon: "none" });
       return;
     }
     this.setData({ taskId, categoryKey, equipmentKey });
-    wx.setNavigationBarTitle({ title: "\u68c0\u67e5\u9879" });
   },
 
   onShow() {
@@ -51,19 +62,12 @@ Page({
         this.data.equipmentKey
       );
       const data = res.data || {};
-      const checkItems = pickCheckItems(data).map((item) => {
-        const code = String(item.checkResult != null ? item.checkResult : "0");
-        return Object.assign({}, item, {
-          displayName: item.checkItemName || item.itemName || item.name || "-",
-          resultText: RESULT_MAP[code] || RESULT_MAP["0"]
-        });
-      });
       this.setData({
         equipmentName: data.equipmentName || "",
-        checkItems
+        checkItems: pickCheckItems(data).map(mapItem)
       });
     } catch (e) {
-      wx.showToast({ title: "\u52a0\u8f7d\u5931\u8d25", icon: "none" });
+      wx.showToast({ title: "加载失败", icon: "none" });
     } finally {
       this.setData({ loading: false });
     }
@@ -71,8 +75,8 @@ Page({
 
   async setResult(e) {
     const recordId = e.currentTarget.dataset.id;
-    const checkResult = e.currentTarget.dataset.result;
-    if (!recordId) return;
+    const checkResult = String(e.currentTarget.dataset.result || "");
+    if (!recordId || !checkResult) return;
     try {
       await api.updateCheckResult({
         taskId: this.data.taskId,
@@ -82,11 +86,52 @@ Page({
       if (checkResult === "2") {
         this.promptFaultDesc(recordId);
       } else {
-        wx.showToast({ title: "\u5df2\u66f4\u65b0", icon: "success" });
+        wx.showToast({ title: "已更新", icon: "success" });
         this.loadEquipment();
       }
     } catch (err) {
       // toast handled by request
+    }
+  },
+
+  onMarkAllNormal() {
+    if (this.data.marking) return;
+    const pending = this.data.checkItems.filter((item) => String(item.checkResult) === "0");
+    if (!pending.length) {
+      wx.showToast({ title: "没有可设置的项", icon: "none" });
+      return;
+    }
+    wx.showModal({
+      title: "是否全部正常？",
+      content: "将未检查项设为正常（已保存项不改动）",
+      confirmText: "确定",
+      cancelText: "取消",
+      confirmColor: "#E53935",
+      success: (res) => {
+        if (res.confirm) this.doMarkAllNormal(pending);
+      }
+    });
+  },
+
+  async doMarkAllNormal(pending) {
+    if (this.data.marking) return;
+    this.setData({ marking: true });
+    wx.showLoading({ title: "处理中" });
+    try {
+      for (const item of pending) {
+        await api.updateCheckResult({
+          taskId: this.data.taskId,
+          recordId: item.recordId,
+          checkResult: "1"
+        });
+      }
+      wx.showToast({ title: "已全部正常", icon: "success" });
+      this.loadEquipment();
+    } catch (e) {
+      // toast handled by request
+    } finally {
+      wx.hideLoading();
+      this.setData({ marking: false });
     }
   },
 
@@ -108,9 +153,9 @@ Page({
 
   promptFaultDesc(recordId) {
     wx.showModal({
-      title: "\u6545\u969c\u63cf\u8ff0",
+      title: "故障描述",
       editable: true,
-      placeholderText: "\u8bf7\u8f93\u5165\u6545\u969c\u63cf\u8ff0",
+      placeholderText: "请输入故障描述",
       success: async (res) => {
         if (!res.confirm) {
           this.loadEquipment();
@@ -118,7 +163,7 @@ Page({
         }
         const faultDescription = (res.content || "").trim();
         if (!faultDescription) {
-          wx.showToast({ title: "\u8bf7\u586b\u5199\u6545\u969c\u63cf\u8ff0", icon: "none" });
+          wx.showToast({ title: "请填写故障描述", icon: "none" });
           return;
         }
         try {
@@ -128,12 +173,22 @@ Page({
             checkResult: "2",
             faultDescription
           });
-          wx.showToast({ title: "\u5df2\u4fdd\u5b58", icon: "success" });
+          wx.showToast({ title: "已保存", icon: "success" });
           this.loadEquipment();
         } catch (err) {
           // toast handled by request
         }
       }
     });
+  },
+
+  onSave() {
+    if (this.data.saving) return;
+    this.setData({ saving: true });
+    wx.showToast({ title: "已保存", icon: "success" });
+    setTimeout(() => {
+      this.setData({ saving: false });
+      wx.navigateBack();
+    }, 500);
   }
 });

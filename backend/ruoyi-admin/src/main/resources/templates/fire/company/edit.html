@@ -107,13 +107,7 @@
             font-weight: 600;
             color: #1c84c6;
         }
-
-        #buildingContainer {
-            width: 100%;
-            display: block;
-        }
-
-        .building-item-table {
+.building-item-table {
             table-layout: fixed;
             width: 100% !important;
         }
@@ -151,6 +145,11 @@
         .region-group .form-control {
             flex: 1;
             min-width: 0;
+        }
+
+        .region-group select.form-control {
+            height: 34px;
+            padding-right: 24px;
         }
 
         .copy-group .form-control,
@@ -364,10 +363,16 @@
                         <tr>
                             <th class="label-cell">所属区域:</th>
                             <td class="full-cell" colspan="3">
-                                <div class="region-group">
-                                    <input th:field="*{province}" class="form-control" type="text" maxlength="50" placeholder="省">
-                                    <input th:field="*{city}" class="form-control" type="text" maxlength="50" placeholder="市">
-                                    <input th:field="*{district}" class="form-control" type="text" maxlength="50" placeholder="区县">
+                                <div id="regionSelector" class="region-group">
+                                    <select name="province" class="province form-control" data-first-title="请选择省" th:attr="data-value=${company.province}">
+                                        <option value="">请选择省</option>
+                                    </select>
+                                    <select name="city" class="city form-control" data-first-title="请选择市" th:attr="data-value=${company.city}">
+                                        <option value="">请选择市</option>
+                                    </select>
+                                    <select name="district" class="district form-control" data-first-title="请选择区县" th:attr="data-value=${company.district}">
+                                        <option value="">请选择区县</option>
+                                    </select>
                                 </div>
                                 <span class="required-mark">*</span>
                             </td>
@@ -413,16 +418,47 @@
                                 <span class="multi-hint">多个手机号用英文逗号分隔</span>
                             </td>
                         </tr>
-                        <tr class="group-row">
-                            <td colspan="4">建筑信息 <span style="font-weight:normal;font-size:12px;color:#999;">（可添加多个建筑，信息将同步全量更新入建筑管理）</span></td>
+                                                <tr>
+                            <th class="label-cell">建筑类别:</th>
+                            <td class="value-cell">
+                                <select name="buildingType" class="form-control">
+                                    <option value="">—请选择—</option>
+                                    <option th:each="dict : ${@dict.getType('fire_building_type')}"
+                                            th:value="${dict.dictValue}"
+                                            th:text="${dict.dictLabel}"
+                                            th:selected="${company.buildingType == dict.dictValue}"></option>
+                                </select>
+                                <span class="required-mark">*</span>
+                            </td>
+                            <th class="label-cell">自动消防设施:</th>
+                            <td class="value-cell">
+                                <label class="inline-radio"><input type="radio" name="autoFireSystem" value="1" th:checked="${company.autoFireSystem != '0'}">有</label>
+                                <label class="inline-radio"><input type="radio" name="autoFireSystem" value="0" th:checked="${company.autoFireSystem == '0'}">无</label>
+                                <span class="required-mark">*</span>
+                            </td>
                         </tr>
                         <tr>
-                            <td colspan="4" style="padding:10px;">
-                                <div id="buildingContainer" style="width: 100%;">
-                                </div>
-                                <button type="button" class="btn btn-default btn-sm building-add-btn" onclick="addBuildingRow()" style="margin:6px 0;">
-                                    <i class="fa fa-plus"></i> 添加建筑
-                                </button>
+                            <th class="label-cell">总占地面积(m²):</th>
+                            <td class="value-cell">
+                                <input th:field="*{totalLandArea}" class="form-control" type="number" step="0.01" min="0" placeholder="请输入总占地面积">
+                                <span class="required-mark">*</span>
+                            </td>
+                            <th class="label-cell">总建筑面积(m²):</th>
+                            <td class="value-cell">
+                                <input th:field="*{totalBuildingArea}" class="form-control" type="number" step="0.01" min="0" placeholder="请输入总建筑面积">
+                                <span class="required-mark">*</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th class="label-cell">建筑层数:</th>
+                            <td class="value-cell">
+                                <input th:field="*{buildingFloorCount}" class="form-control" type="number" min="0" step="1" placeholder="请输入建筑层数">
+                                <span class="required-mark">*</span>
+                            </td>
+                            <th class="label-cell">建筑高度(m):</th>
+                            <td class="value-cell">
+                                <input th:field="*{buildingHeight}" class="form-control" type="number" step="0.01" min="0" placeholder="请输入建筑高度">
+                                <span class="required-mark">*</span>
                             </td>
                         </tr>
                         <tr class="group-row">
@@ -572,11 +608,19 @@
     </div>
 
     <th:block th:include="include :: footer" />
+    <th:block th:include="include :: jquery-cxselect-js" />
     <script th:inline="javascript">
         var prefix = ctx + "fire/company";
 
         $(function () {
             fillMaintenanceContent();
+            $.cxSelect($("#regionSelector"), {
+                url: ctx + "ajax/libs/cxselect/china-region-data.json",
+                selects: ["province", "city", "district"],
+                jsonName: "n",
+                jsonValue: "n",
+                jsonSub: "s"
+            });
         });
 
         $("#form-company-edit").validate({
@@ -691,129 +735,7 @@
             });
         }
 
-        var buildingRowIndex = 0;
-        var buildingTypeOptions = (function() {
-            var list = [[${@dict.getType('fire_building_type')}]];
-            var html = '<option value="">--请选择--</option>';
-            if (list && list.length) {
-                list.forEach(function(d) {
-                    html += '<option value="' + d.dictValue + '">' + d.dictLabel + '</option>';
-                });
-            }
-            return html;
-        })();
-
-        var fireLevelOptions = (function() {
-            var list = [[${@dict.getType('fire_level')}]];
-            var html = '<option value="">--请选择--</option>';
-            if (list && list.length) {
-                list.forEach(function(d) {
-                    html += '<option value="' + d.dictValue + '">' + d.dictLabel + '</option>';
-                });
-            }
-            return html;
-        })();
-
-        function addBuildingRow(data) {
-            var idx = buildingRowIndex++;
-            var n = 'buildingList[' + idx + '].';
-            data = data || {};
-            
-            function val(v) { return v != null ? v : ''; }
-            
-            var bTypeOpts = buildingTypeOptions;
-            if (data.buildingType) {
-                bTypeOpts = bTypeOpts.replace('value="' + data.buildingType + '"', 'value="' + data.buildingType + '" selected');
-            }
-            var fLevelOpts = fireLevelOptions;
-            if (data.fireLevel) {
-                fLevelOpts = fLevelOpts.replace('value="' + data.fireLevel + '"', 'value="' + data.fireLevel + '" selected');
-            }
-            // 自动消防设施特殊处理
-            var auto1 = data.autoFireSystem == '1' ? 'selected' : '';
-            var auto0 = data.autoFireSystem == '0' ? 'selected' : '';
-            if(!auto1 && !auto0) auto1 = 'selected'; // 默认
-            
-            var html = '<table class="table table-bordered entry-table building-item-table" id="brow_' + idx + '" style="width:100%; margin-bottom:15px; border:2px solid #aec2cf;">' +
-                '<tbody>' +
-                (data.buildingId ? '<input type="hidden" name="' + n + 'buildingId" value="' + val(data.buildingId) + '">' : '') +
-                '<tr>' +
-                    '<th class="label-cell" style="width:10%;">建筑名称:</th>' +
-                    '<td class="value-cell" style="width:23%;"><input type="text" name="' + n + 'buildingName" value="' + val(data.buildingName) + '" class="form-control" placeholder="建筑名称"></td>' +
-                    '<th class="label-cell" style="width:10%;">建筑地址:</th>' +
-                    '<td class="value-cell" style="width:23%;"><input type="text" name="' + n + 'address" value="' + val(data.address) + '" class="form-control" placeholder="建筑地址"></td>' +
-                    '<th class="label-cell" style="width:10%;">建筑类别:</th>' +
-                    '<td class="value-cell" style="width:20%;"><select name="' + n + 'buildingType" class="form-control">' + bTypeOpts + '</select></td>' +
-                    '<td rowspan="4" style="width:4%;text-align:center;vertical-align:middle;background:#fef5f5;">' +
-                        '<button type="button" class="del-btn" onclick="removeBuildingRow(' + idx + ')" title="删除建筑" style="color:#d9534f;border:none;background:transparent;font-size:18px;"><i class="fa fa-trash"></i></button>' +
-                    '</td>' +
-                '</tr>' +
-                '<tr>' +
-                    '<th class="label-cell">自动消防设施:</th>' +
-                    '<td class="value-cell"><select name="' + n + 'autoFireSystem" class="form-control"><option value="1" '+auto1+'>有</option><option value="0" '+auto0+'>无</option></select></td>' +
-                    '<th class="label-cell">占地面积(㎡):</th>' +
-                    '<td class="value-cell"><input type="number" name="' + n + 'landArea" value="' + val(data.landArea) + '" class="form-control" step="0.01" min="0" placeholder="面积"></td>' +
-                    '<th class="label-cell">建筑面积(㎡):</th>' +
-                    '<td class="value-cell"><input type="number" name="' + n + 'area" value="' + val(data.area) + '" class="form-control" step="0.01" min="0" placeholder="面积"></td>' +
-                '</tr>' +
-                '<tr>' +
-                    '<th class="label-cell">楼层数(层):</th>' +
-                    '<td class="value-cell">' + 
-                        '<div style="display:flex;gap:4px;">' +
-                            '<input type="number" name="' + n + 'floorCount" value="' + val(data.floorCount) + '" class="form-control" min="0" placeholder="总层数">' +
-                            '<input type="number" name="' + n + 'buildingHeight" value="' + val(data.buildingHeight) + '" class="form-control" step="0.01" min="0" placeholder="高度(m)">' +
-                        '</div>' +
-                    '</td>' +
-                    '<th class="label-cell">出入口/楼梯:</th>' +
-                    '<td class="value-cell">' +
-                        '<div style="display:flex;gap:4px;">' +
-                            '<input type="number" name="' + n + 'emergencyExits" value="' + val(data.emergencyExits) + '" class="form-control" min="0" placeholder="出口">' +
-                            '<input type="number" name="' + n + 'evacuationStairs" value="' + val(data.evacuationStairs) + '" class="form-control" min="0" placeholder="楼梯">' +
-                        '</div>' +
-                    '</td>' +
-                    '<th class="label-cell">其它设施:</th>' +
-                    '<td class="value-cell">' +
-                        '<div style="display:flex;gap:4px;">' +
-                            '<input type="number" name="' + n + 'fireElevators" value="' + val(data.fireElevators) + '" class="form-control" min="0" placeholder="消防电梯">' +
-                            '<input type="text" name="' + n + 'refugeFloor" value="' + val(data.refugeFloor) + '" class="form-control" placeholder="避难层">' +
-                        '</div>' +
-                    '</td>' +
-                '</tr>' +
-                '<tr>' +
-                    '<th class="label-cell">地上地下层:</th>' +
-                    '<td class="value-cell">' +
-                        '<div style="display:flex;gap:4px;">' +
-                            '<input type="number" name="' + n + 'aboveGroundFloors" value="' + val(data.aboveGroundFloors) + '" class="form-control" min="0" placeholder="地上">' +
-                            '<input type="number" name="' + n + 'undergroundFloors" value="' + val(data.undergroundFloors) + '" class="form-control" min="0" placeholder="地下">' +
-                        '</div>' +
-                    '</td>' +
-                    '<th class="label-cell">消防等级:</th>' +
-                    '<td class="value-cell"><select name="' + n + 'fireLevel" class="form-control">' + fLevelOpts + '</select></td>' +
-                    '<th class="label-cell">建筑联系人:</th>' +
-                    '<td class="value-cell">' +
-                        '<div style="display:flex;gap:4px;">' +
-                            '<input type="text" name="' + n + 'contactPerson" value="' + val(data.contactPerson) + '" class="form-control" placeholder="姓名">' +
-                            '<input type="text" name="' + n + 'contactPhone" value="' + val(data.contactPhone) + '" class="form-control" placeholder="电话">' +
-                        '</div>' +
-                    '</td>' +
-                '</tr>' +
-                '</tbody>' +
-                '</table>';
-            
-            $('#buildingContainer').append(html);
-        }
-
-        function removeBuildingRow(idx) {
-            $('#brow_' + idx).remove();
-        }
-        
-        // 渲染已有的建筑列表
-        var existList = [[${buildingList}]];
-        if (existList && existList.length > 0) {
-            for(var i=0; i<existList.length; i++) {
-                addBuildingRow(existList[i]);
-            }
-        }
+        // buildingList UI removed from company form
 
         function submitHandler() {
             syncMaintenanceContent();

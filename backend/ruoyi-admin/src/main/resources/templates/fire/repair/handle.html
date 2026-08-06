@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="zh" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:include="include :: header('故障维修')" />
+    <th:block th:include="include :: bootstrap-fileinput-css" />
+    <th:block th:include="include :: datetimepicker-css" />
+    <style>
+        .repair-tabs { margin-bottom: 15px; border-bottom: 1px solid #e7eaec; }
+        .repair-tabs a { display: inline-block; padding: 10px 18px; color: #676a6c; text-decoration: none; }
+        .repair-tabs a.active { color: #2f80ed; border-bottom: 2px solid #2f80ed; font-weight: 600; }
+        .status-chip { margin-left: 8px; color: #2f80ed; }
+        .fault-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; margin: 4px 8px 0 0; border: 1px solid #eee; cursor: pointer; }
+        .log-progress { display: flex; align-items: center; justify-content: space-around; padding: 16px 8px; margin-bottom: 12px; }
+        .log-progress .step { text-align: center; color: #999; }
+        .log-progress .step.active { color: #1ab394; }
+        .log-progress .step i { display: block; font-size: 22px; margin-bottom: 6px; }
+        .log-progress .arrow { color: #ccc; }
+        .log-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+        .log-item .time { color: #999; font-size: 12px; margin-top: 4px; }
+        .transfer-list { max-height: 360px; overflow-y: auto; }
+        .transfer-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+        .transfer-item:hover { background: #f9f9f9; }
+        .transfer-item .phone { color: #1c84c6; }
+        .handle-actions { margin-top: 20px; text-align: center; }
+        .handle-actions .btn { min-width: 120px; margin: 0 8px; }
+        .btn-pause { background: #eb5757; border-color: #eb5757; color: #fff; }
+        .btn-pause:hover { background: #d64545; border-color: #d64545; color: #fff; }
+        .btn-finish { background: #27ae60; border-color: #27ae60; color: #fff; }
+        .btn-finish:hover { background: #219150; border-color: #219150; color: #fff; }
+        .form-static-line { line-height: 30px; }
+    </style>
+</head>
+<body class="white-bg">
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row" style="margin-bottom: 10px;">
+        <div class="col-sm-12">
+            <button type="button" class="btn btn-default btn-sm" onclick="returnToRepairList()"><i class="fa fa-reply"></i> 返回</button>
+        </div>
+    </div>
+
+    <div class="repair-tabs">
+        <a href="javascript:void(0)" class="active" data-tab="info" onclick="switchTab('info', this)">工单信息</a>
+        <a href="javascript:void(0)" data-tab="logs" onclick="switchTab('logs', this)">工单日志</a>
+    </div>
+
+    <div id="tab-info">
+        <div class="ibox">
+            <div class="ibox-title">
+                <h5>工单信息
+                    <span class="status-chip">
+                        <i class="fa fa-clock-o"></i>
+                        <span th:text="${repair.repairStatus == '2'} ? '已完成' : (${repair.repairStatus == '1'} ? '处理中' : '待处理')">处理中</span>
+                    </span>
+                </h5>
+            </div>
+            <div class="ibox-content">
+                <div class="form-horizontal">
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">故障设备：</label>
+                        <div class="col-sm-4 form-static-line" th:text="${repair.equipmentName}">-</div>
+                        <label class="col-sm-2 control-label">所属项目：</label>
+                        <div class="col-sm-4 form-static-line" th:text="${repair.companyName}">-</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">故障描述：</label>
+                        <div class="col-sm-10 form-static-line" th:text="${repair.faultDescription}">-</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">客户地址：</label>
+                        <div class="col-sm-4 form-static-line" th:text="${repair.customerAddress}">-</div>
+                        <label class="col-sm-2 control-label">发现时间：</label>
+                        <div class="col-sm-4 form-static-line" th:text="${repair.foundTime != null} ? ${#dates.format(repair.foundTime, 'yyyy-MM-dd')} : '-'">-</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">报修人员：</label>
+                        <div class="col-sm-10 form-static-line">
+                            <span th:text="${repair.reporterName}">-</span>
+                            <span th:if="${repair.reporterPhone != null}" th:text="' ' + ${repair.reporterPhone}"></span>
+                        </div>
+                    </div>
+                    <div class="form-group" th:if="${repair.faultImages != null and repair.faultImages != ''}">
+                        <label class="col-sm-2 control-label"></label>
+                        <div class="col-sm-10" id="faultImageBox"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="ibox">
+            <div class="ibox-title">
+                <h5>维修信息</h5>
+                <a class="pull-right btn btn-xs btn-link" th:if="${canTransfer}" href="javascript:void(0)" onclick="openTransfer()">
+                    <i class="fa fa-share"></i> 转派
+                </a>
+            </div>
+            <div class="ibox-content">
+                <form class="form-horizontal m" id="form-repair-handle">
+                    <input type="hidden" name="repairId" th:value="${repair.repairId}">
+                    <input type="hidden" name="repairImages" id="repairImages" th:value="${repair.repairImages}">
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">维修人员：</label>
+                        <div class="col-sm-9 form-static-line">
+                            <span th:text="${repair.repairPerson}">-</span>
+                            <span th:if="${repair.repairPhone != null}" th:text="' ' + ${repair.repairPhone}"></span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">维修时间：</label>
+                        <div class="col-sm-4">
+                            <input type="text" id="startTime" name="startTime" class="form-control time-input"
+                                   th:value="${repair.startTime != null} ? ${#dates.format(repair.startTime, 'yyyy-MM-dd')} : ''"
+                                   th:readonly="${!canProcess}" placeholder="请选择">
+                        </div>
+                        <label class="col-sm-2 control-label">完成时间：</label>
+                        <div class="col-sm-4">
+                            <input type="text" id="completeTime" name="completeTime" class="form-control time-input"
+                                   th:value="${repair.completeTime != null} ? ${#dates.format(repair.completeTime, 'yyyy-MM-dd')} : ''"
+                                   th:readonly="${!canProcess or repair.repairStatus == '2'}" placeholder="请选择">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">维修说明：</label>
+                        <div class="col-sm-9">
+                            <textarea name="repairDescription" id="repairDescription" class="form-control" rows="5" maxlength="500"
+                                      th:readonly="${!canProcess or repair.repairStatus == '2'}"
+                                      th:text="${repair.repairDescription}" placeholder="请输入维修说明"></textarea>
+                            <span class="help-block text-right"><span id="descCount">0</span>/500</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="col-sm-2 control-label">维修图片：</label>
+                        <div class="col-sm-9">
+                            <div th:if="${canProcess and repair.repairStatus != '2'}" class="file-loading">
+                                <input id="repairImageUpload" name="file" type="file" multiple>
+                            </div>
+                            <div id="repairImagePreview" style="margin-top:8px;"></div>
+                        </div>
+                    </div>
+
+                    <div class="handle-actions" th:if="${canProcess and repair.repairStatus != '2'}">
+                        <button type="button" class="btn btn-primary" onclick="doSave()">保存维修信息</button>
+                        <button type="button" class="btn btn-pause" onclick="doPause()">暂停维修</button>
+                        <button type="button" class="btn btn-finish" onclick="doComplete()">完成维修</button>
+                    </div>
+                    <div class="text-muted" th:if="${!canProcess}" style="margin-top:12px;">当前不是处理人，仅可查看</div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="tab-logs" style="display:none;">
+        <div class="ibox">
+            <div class="ibox-content">
+                <div class="log-progress">
+                    <div class="step" th:classappend="${repair.acceptTime != null or repair.dispatchTime != null} ? 'active' : ''">
+                        <i class="fa fa-clipboard"></i><span>已接受</span>
+                    </div>
+                    <span class="arrow"><i class="fa fa-chevron-right"></i></span>
+                    <div class="step" th:classappend="${repair.startTime != null} ? 'active' : ''">
+                        <i class="fa fa-clock-o"></i><span>维修中</span>
+                    </div>
+                    <span class="arrow"><i class="fa fa-chevron-right"></i></span>
+                    <div class="step" th:classappend="${repair.repairStatus == '2'} ? 'active' : ''">
+                        <i class="fa fa-check-circle"></i><span>已完成</span>
+                    </div>
+                </div>
+                <div th:if="${#lists.isEmpty(logs)}" class="text-muted" style="padding:12px;">暂无工单日志</div>
+                <div class="log-item" th:each="log : ${logs}">
+                    <div th:text="${log.content}">-</div>
+                    <div class="time" th:if="${log.createTime != null}" th:text="${#dates.format(log.createTime, 'yyyy-MM-dd HH:mm:ss')}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="transferModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title">故障转派</h4>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="transferKeyword" class="form-control" placeholder="请输入关键字" oninput="filterTransferUsers()">
+                <div class="transfer-list" id="transferList" style="margin-top:10px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<th:block th:include="include :: footer" />
+<th:block th:include="include :: bootstrap-fileinput-js" />
+<th:block th:include="include :: datetimepicker-js" />
+<script th:inline="javascript">
+    var prefix = ctx + "fire/repair";
+    var repairId = [[${repair.repairId}]];
+    var canProcess = [[${canProcess}]];
+    var faultImages = /*[[${repair.faultImages}]]*/ '';
+    var repairImagesInit = /*[[${repair.repairImages}]]*/ '';
+    var transferUsers = [];
+
+    function returnToRepairList() {
+        if (typeof goBackPage === 'function') {
+            goBackPage(ctx + 'fire/repair');
+            return;
+        }
+        if (typeof closeItem === 'function' && window.frameElement) {
+            closeItem();
+            return;
+        }
+        if (window.parent && window.parent.$ && typeof window.parent.$.modal.openTab === 'function') {
+            window.parent.$.modal.openTab('故障报修', ctx + 'fire/repair');
+            return;
+        }
+        location.href = ctx + 'fire/repair';
+    }
+
+    function switchTab(name, el) {
+        $('.repair-tabs a').removeClass('active');
+        $(el).addClass('active');
+        $('#tab-info').toggle(name === 'info');
+        $('#tab-logs').toggle(name === 'logs');
+    }
+
+    function updateDescCount() {
+        var v = $('#repairDescription').val() || '';
+        $('#descCount').text(v.length);
+    }
+
+    function renderImageList(container, csv) {
+        var box = $(container);
+        box.empty();
+        if (!csv) return;
+        String(csv).split(',').filter(Boolean).forEach(function (url) {
+            var full = url.indexOf('http') === 0 ? url : (ctx + url.replace(/^\/+/, ''));
+            box.append('<img class="fault-thumb" src="' + full + '" onclick="window.open(this.src)">');
+        });
+    }
+
+    function collectForm() {
+        return {
+            repairId: repairId,
+            startTime: $('#startTime').val(),
+            completeTime: $('#completeTime').val(),
+            repairDescription: $('#repairDescription').val(),
+            repairImages: $('#repairImages').val()
+        };
+    }
+
+    function doSave() {
+        $.post(prefix + "/saveProgress", collectForm(), function (res) {
+            if (res.code == web_status.SUCCESS) {
+                $.modal.msgSuccess(res.msg || "保存成功");
+            } else {
+                $.modal.alertError(res.msg);
+            }
+        });
+    }
+
+    function doPause() {
+        $.post(prefix + "/pause", collectForm(), function (res) {
+            if (res.code == web_status.SUCCESS) {
+                $.modal.msgSuccess(res.msg || "已暂停，维修信息已保存");
+            } else {
+                $.modal.alertError(res.msg);
+            }
+        });
+    }
+
+    function doComplete() {
+        var desc = ($('#repairDescription').val() || '').trim();
+        if (!desc) {
+            $.modal.msgError("请填写维修说明");
+            return;
+        }
+        $.modal.confirm("确认完成该维修工单？", function () {
+            $.ajax({
+                url: prefix + "/complete",
+                type: "post",
+                dataType: "json",
+                data: collectForm(),
+                success: function (res) {
+                    if (res.code == web_status.SUCCESS) {
+                        $.modal.msgSuccess(res.msg || "完成成功");
+                        setTimeout(function () { returnToRepairList(); }, 800);
+                    } else {
+                        $.modal.alertError(res.msg || "提交失败");
+                    }
+                },
+                error: function () {
+                    $.modal.alertError("提交失败，请稍后重试");
+                }
+            });
+        });
+    }
+
+    function openTransfer() {
+        $.get(prefix + "/transferUsers/" + repairId, function (res) {
+            if (res.code != web_status.SUCCESS) {
+                $.modal.alertError(res.msg || "加载转派名单失败");
+                return;
+            }
+            transferUsers = res.data || [];
+            renderTransferUsers(transferUsers);
+            $('#transferModal').modal('show');
+        });
+    }
+
+    function filterTransferUsers() {
+        var kw = ($('#transferKeyword').val() || '').trim();
+        if (!kw) {
+            renderTransferUsers(transferUsers);
+            return;
+        }
+        renderTransferUsers(transferUsers.filter(function (u) {
+            return (u.userName || '').indexOf(kw) >= 0 || (u.phonenumber || '').indexOf(kw) >= 0;
+        }));
+    }
+
+    function renderTransferUsers(list) {
+        var html = '';
+        if (!list.length) {
+            html = '<div class="text-muted" style="padding:12px;">暂无同部门可转派人员</div>';
+        } else {
+            for (var i = 0; i < list.length; i++) {
+                var u = list[i];
+                html += '<div class="transfer-item" onclick="confirmTransfer(' + u.userId + ', \'' + (u.userName || '').replace(/'/g, '') + '\')">'
+                    + '<span>' + (u.userName || '-') + '</span>'
+                    + '<span class="phone"><i class="fa fa-phone"></i> ' + (u.phonenumber || '-') + '</span></div>';
+            }
+        }
+        $('#transferList').html(html);
+    }
+
+    function confirmTransfer(userId, name) {
+        $.modal.confirm("确认转派给 " + name + " 吗？", function () {
+            $.post(prefix + "/transfer", { repairId: repairId, targetUserId: userId }, function (res) {
+                if (res.code == web_status.SUCCESS) {
+                    $.modal.msgSuccess("转派成功");
+                    $('#transferModal').modal('hide');
+                    setTimeout(function () { returnToRepairList(); }, 800);
+                } else {
+                    $.modal.alertError(res.msg);
+                }
+            });
+        });
+    }
+
+    $(function () {
+        updateDescCount();
+        $('#repairDescription').on('input', updateDescCount);
+        renderImageList('#faultImageBox', faultImages);
+        renderImageList('#repairImagePreview', repairImagesInit);
+
+        if (canProcess) {
+            $('.time-input').datetimepicker({
+                format: "yyyy-mm-dd",
+                autoclose: true,
+                todayBtn: true,
+                minView: 2,
+                startView: 2
+            });
+        }
+
+        if ($("#repairImageUpload").length) {
+            $("#repairImageUpload").fileinput({
+                uploadUrl: ctx + "common/upload",
+                uploadAsync: true,
+                showUpload: false,
+                showRemove: true,
+                maxFileCount: 5,
+                allowedFileExtensions: ["jpg", "jpeg", "png", "gif"],
+                language: "zh",
+                msgFilesTooMany: "选择上传的文件数量({n}) 超过允许的最大数值{m}！"
+            }).on("fileuploaded", function (event, data) {
+                var response = data.response || {};
+                if (response.code != 0 && response.code != web_status.SUCCESS) {
+                    $.modal.msgError(response.msg || "上传失败");
+                    return;
+                }
+                var url = response.url || response.fileName;
+                if (!url) return;
+                var cur = $("#repairImages").val();
+                var next = cur ? (cur + "," + url) : url;
+                $("#repairImages").val(next);
+                renderImageList('#repairImagePreview', next);
+            });
+        }
+    });
+</script>
+</body>
+</html>

@@ -152,3 +152,5 @@ GET http://127.0.0.1:3080/local/health
 | 小程序请求失败 | 确认 `BASE_URL`、开发者工具未校验域名、后端已监听 83 |
 
 相关文档：[06-开发与部署.md](06-开发与部署.md)、[03-小程序架构与现状.md](03-小程序架构与现状.md)、[04-前后端API契约.md](04-前后端API契约.md)、[10-本地与线上差异说明.md](10-本地与线上差异说明.md)、[11-本地更改与预览规则.md](11-本地更改与预览规则.md)。
+
+- 签到逆地理：在 config.env 配置 AMAP_WEB_KEY（高德 Web 服务 Key），server.js 的 uildDbEnv() 会透传给后端 uoyi.map.amapWebKey。

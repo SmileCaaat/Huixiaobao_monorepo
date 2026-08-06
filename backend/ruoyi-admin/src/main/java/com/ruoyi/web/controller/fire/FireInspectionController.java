@@ -2,6 +2,7 @@ package com.ruoyi.web.controller.fire;
 
 import java.util.Date;
 import java.util.List;
+import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -113,7 +114,7 @@ public class FireInspectionController extends BaseController {
             fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), task);
             companyId = task.getCompanyId();
             FireCompany company = companyService.selectFireCompanyById(companyId);
-            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), companyId);
+            fireDataPermissionService.assertCanAccessCompanyContext(ShiroUtils.getSysUser(), companyId, task);
             FireInspectionTestCategoryGroup category =
                     maintenanceTaskService.buildInspectionTestSystem(taskId, categoryKey);
             FireInspectionTestEquipmentGroup equipment = category.getEquipments().stream()
@@ -147,15 +148,19 @@ public class FireInspectionController extends BaseController {
         return prefix + "/add_new";
     }
 
-    @RequiresPermissions("fire:inspection:add")
+    /**
+     * 新增巡检测试。
+     * 关联维保任务时：任务干系人即可保存（不强制 fire:inspection:add）。
+     * 独立新增：仍要求 fire:inspection:add。
+     */
     @Log(title = "巡检测试", businessType = BusinessType.INSERT)
     @PostMapping("/add")
     @ResponseBody
     public AjaxResult addSave(@Validated FireInspection inspection) {
         try {
-            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), inspection.getCompanyId());
+            FireMaintenanceTask linkedTask = null;
             if (inspection.getTaskId() != null) {
-                FireMaintenanceTask linkedTask = maintenanceTaskService
+                linkedTask = maintenanceTaskService
                         .selectFireMaintenanceTaskBaseByTaskId(inspection.getTaskId());
                 if (linkedTask == null || linkedTask.getCompanyId() == null
                         || !linkedTask.getCompanyId().equals(inspection.getCompanyId())) {
@@ -163,7 +168,11 @@ public class FireInspectionController extends BaseController {
                 }
                 fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
                 inspection.setInspectionType("0");
+            } else if (!SecurityUtils.getSubject().isPermitted("fire:inspection:add")) {
+                return AjaxResult.error("您没有创建数据的权限，请联系管理员添加权限 [fire:inspection:add]");
             }
+            fireDataPermissionService.assertCanAccessCompanyContext(
+                    ShiroUtils.getSysUser(), inspection.getCompanyId(), linkedTask);
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         }
@@ -199,7 +208,14 @@ public class FireInspectionController extends BaseController {
         FireInspection existing = inspectionService.selectFireInspectionById(inspection.getInspectionId());
         try {
             fireDataPermissionService.assertCanAccessInspection(ShiroUtils.getSysUser(), existing);
-            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), inspection.getCompanyId());
+            FireMaintenanceTask linkedTask = null;
+            Long taskId = inspection.getTaskId() != null ? inspection.getTaskId()
+                    : (existing != null ? existing.getTaskId() : null);
+            if (taskId != null) {
+                linkedTask = maintenanceTaskService.selectFireMaintenanceTaskBaseByTaskId(taskId);
+            }
+            fireDataPermissionService.assertCanAccessCompanyContext(
+                    ShiroUtils.getSysUser(), inspection.getCompanyId(), linkedTask);
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         }
@@ -237,9 +253,15 @@ public class FireInspectionController extends BaseController {
 
     @GetMapping("/buildings/{companyId}")
     @ResponseBody
-    public AjaxResult getBuildingsByCompanyId(@PathVariable("companyId") Long companyId) {
+    public AjaxResult getBuildingsByCompanyId(@PathVariable("companyId") Long companyId,
+            @RequestParam(value = "taskId", required = false) Long taskId) {
         try {
-            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), companyId);
+            FireMaintenanceTask linkedTask = null;
+            if (taskId != null) {
+                linkedTask = maintenanceTaskService.selectFireMaintenanceTaskBaseByTaskId(taskId);
+            }
+            fireDataPermissionService.assertCanAccessCompanyContext(
+                    ShiroUtils.getSysUser(), companyId, linkedTask);
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         }

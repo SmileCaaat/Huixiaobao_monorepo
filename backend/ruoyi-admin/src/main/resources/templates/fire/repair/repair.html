@@ -154,7 +154,6 @@
                     <span class="repair-workbench-label">工单分类：</span>
                     <div class="repair-workbench-buttons">
                         <a href="javascript:void(0)" class="btn btn-sm btn-primary active" data-category="assignedPending" onclick="switchWorkbench('assignedPending', this)">待我处理</a>
-                        <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="processing" onclick="switchWorkbench('processing', this)">处理中</a>
                         <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="completed" onclick="switchWorkbench('completed', this)">已完成</a>
                         <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="reported" onclick="switchWorkbench('reported', this)">我上报的</a>
                     </div>
@@ -267,7 +266,8 @@
                     align: 'center',
                     formatter: function(value, row) {
                         var actions = [];
-                        actions.push('<a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="$.operate.detail(' + row.repairId + ')"><i class="fa fa-eye"></i>查看</a> ');
+                        // 查看/维修统一进入处理页（工单信息 + 维修信息/转派/拍照/完成）
+                        actions.push('<a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="handleRepair(' + row.repairId + ')"><i class="fa fa-eye"></i>查看</a> ');
 
                         if (!workbenchMode) {
                             if (row.repairStatus == '0') {
@@ -282,11 +282,8 @@
                             }
                         }
 
-                        if (canStartRepair(row)) {
-                            actions.push('<a class="btn btn-info btn-xs ' + startFlag + '" href="javascript:void(0)" onclick="startRepair(' + row.repairId + ')"><i class="fa fa-play"></i>开始处理</a> ');
-                        }
-                        if (canCompleteRepair(row)) {
-                            actions.push('<a class="btn btn-success btn-xs ' + completeFlag + '" href="javascript:void(0)" onclick="completeRepair(' + row.repairId + ')"><i class="fa fa-check-circle"></i>填写处理结果</a>');
+                        if (canHandleRepair(row)) {
+                            actions.push('<a class="btn btn-primary btn-xs" href="javascript:void(0)" onclick="handleRepair(' + row.repairId + ')"><i class="fa fa-wrench"></i>维修处理</a> ');
                         }
 
                         return actions.join('');
@@ -330,6 +327,16 @@
             return String(a) === String(b);
         }
 
+        function canHandleRepair(row) {
+            if (sameUser(row.repairUserId, currentUserId) && row.repairStatus == '1') {
+                return true;
+            }
+            // 历史待处理：上报人可进入维修接单
+            return sameUser(row.reporterId, currentUserId)
+                && row.repairStatus == '0'
+                && (row.repairUserId == null || row.repairUserId === '');
+        }
+
         function canStartRepair(row) {
             return sameUser(row.repairUserId, currentUserId)
                 && row.repairStatus == '1'
@@ -369,8 +376,12 @@
         }
 
         $.operate.detail = function(repairId) {
-            var url = prefix + '/detail/' + repairId;
-            $.modal.openTab("报修详情", url);
+            handleRepair(repairId);
+        }
+
+        function handleRepair(repairId) {
+            var url = prefix + '/handle/' + repairId;
+            $.modal.openTab("故障维修", url);
         }
 
         function dispatchRepair(repairId) {
@@ -392,11 +403,7 @@
                         startingRepairId = null;
                         if (result.code == web_status.SUCCESS) {
                             $.modal.msgSuccess(result.msg || '已开始处理');
-                            if (workbenchMode) {
-                                switchWorkbench('processing', $('.repair-workbench-tabs [data-category="processing"]')[0]);
-                            } else {
-                                $.table.refresh();
-                            }
+                            $.table.refresh();
                         } else {
                             $.modal.alertError(result.msg || '开始处理失败');
                         }

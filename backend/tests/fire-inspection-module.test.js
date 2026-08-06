@@ -70,7 +70,7 @@ assert.ok(serviceImpl.includes('setSystemTypeId(null)'), 'clear systemTypeId');
 assert.ok(listPage.includes('name="keyword"'), 'list keyword');
 assert.ok(listPage.includes('inspectionMonth'), 'list month');
 assert.ok(listPage.includes('maintenanceStandard'), 'list standard');
-assert.ok(listPage.includes('modalName: "\u5de1\u68c0\u6d4b\u8bd5"') || listPage.includes('\u5de1\u68c0\u6d4b\u8bd5'), 'list title');
+assert.ok(listPage.includes('modalName: "\u5de1\u67e5\u6d4b\u8bd5"') || listPage.includes('\u5de1\u67e5\u6d4b\u8bd5') || listPage.includes('modalName: "\u5de1\u68c0\u6d4b\u8bd5"') || listPage.includes('\u5de1\u68c0\u6d4b\u8bd5'), 'list title');
 assert.ok(addPage.includes('categoryKey'), 'add categoryKey');
 assert.ok(addPage.includes('equipmentKey'), 'add equipmentKey');
 assert.ok(addPage.includes('linkedTemplateCategory'), 'linked add maps template category');

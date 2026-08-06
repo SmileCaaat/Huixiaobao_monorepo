@@ -1,10 +1,20 @@
 const { api } = require("../../api/index.js");
 const { uploadFile } = require("../../services/upload.js");
 
-const ADDR_LOCATING = "\u6b63\u5728\u83b7\u53d6\u4f4d\u7f6e...";
-const ADDR_FAIL_LOCATE = "\u83b7\u53d6\u4f4d\u7f6e\u5931\u8d25\uff0c\u8bf7\u70b9\u51fb\u5237\u65b0\u91cd\u8bd5";
-const ADDR_FAIL_GEO = "\u81ea\u52a8\u5730\u5740\u89e3\u6790\u4e0d\u53ef\u7528\uff0c\u8bf7\u9009\u62e9\u4f4d\u7f6e";
-const ADDR_RESOLVING = "\u6b63\u5728\u89e3\u6790\u5730\u5740...";
+const ADDR_LOCATING = "正在获取位置...";
+const ADDR_RESOLVING = "正在解析地址...";
+const ADDR_CURRENT = "当前位置";
+const ADDR_FAIL_LOCATE = "获取位置失败";
+const TEXT_REFRESH = "刷新";
+const TEXT_LOCATING = "定位中...";
+const TEXT_SIGN_IN = "签到";
+const TEXT_SIGN_OUT = "签退";
+const TEXT_CONFIRM_IN = "签到确认";
+const TEXT_CONFIRM_OUT = "签退确认";
+const TEXT_PICK_TASK = "请选择关联任务";
+const TEXT_NORMAL = "正常打卡";
+const TEXT_DO_IN = "立即签到";
+const TEXT_DO_OUT = "立即签退";
 
 Page({
   data: {
@@ -12,90 +22,148 @@ Page({
     companyName: "",
     latitude: null,
     longitude: null,
-    addressText: ADDR_LOCATING,
+    mapLatitude: 23.129112,
+    mapLongitude: 113.264385,
+    placeTitle: ADDR_LOCATING,
+    coordText: "-",
+    markers: [],
+    addressText: "",
     addressMode: "auto",
-    addressFailed: false,
+    addressReady: false,
     locating: false,
+    refreshClass: "refresh-btn",
+    refreshText: TEXT_REFRESH,
     checkInType: "0",
+    confirmTitle: TEXT_CONFIRM_IN,
+    submitText: TEXT_DO_IN,
+    submitClass: "confirm-btn",
+    showConfirm: false,
     taskList: [],
     taskIndex: -1,
+    taskPickerValue: 0,
+    taskPickerText: TEXT_PICK_TASK,
     selectedTaskId: null,
     selectedTaskName: "",
     images: [],
-    remark: "\u6b63\u5e38\u6253\u5361",
-    submitting: false
+    canAddImage: true,
+    remark: TEXT_NORMAL,
+    submitting: false,
+    historyList: [],
+    historyLoading: false
   },
 
   onLoad(options) {
-    if (options && options.taskId) {
-      this.setData({ selectedTaskId: options.taskId });
-    }
+    if (options && options.taskId) this.setData({ selectedTaskId: options.taskId });
   },
 
   onShow() {
-    if (this._pageInitialized) return;
+    if (this._pageInitialized) {
+      this.loadHistory();
+      return;
+    }
     this._pageInitialized = true;
     this.initPage();
+  },
+
+  noop() {},
+
+  syncUiState(patch) {
+    const p = Object.assign({}, patch || {});
+    const next = Object.assign({}, this.data, p);
+    const locating = p.locating != null ? !!p.locating : !!next.locating;
+    const checkInType = (p.checkInType != null ? p.checkInType : next.checkInType) === '1' ? '1' : '0';
+    const selectedTaskName = p.selectedTaskName != null ? p.selectedTaskName : (next.selectedTaskName || '');
+    const taskIndex = p.taskIndex != null ? p.taskIndex : (next.taskIndex == null ? -1 : next.taskIndex);
+    const images = p.images != null ? p.images : (next.images || []);
+    const submitting = p.submitting != null ? !!p.submitting : !!next.submitting;
+    const lat = p.latitude !== undefined ? p.latitude : next.latitude;
+    const lng = p.longitude !== undefined ? p.longitude : next.longitude;
+    p.locating = locating;
+    p.checkInType = checkInType;
+    p.refreshClass = locating ? "refresh-btn disabled" : "refresh-btn";
+    p.refreshText = locating ? TEXT_LOCATING : TEXT_REFRESH;
+    p.confirmTitle = checkInType === '1' ? TEXT_CONFIRM_OUT : TEXT_CONFIRM_IN;
+    p.submitText = checkInType === '1' ? TEXT_DO_OUT : TEXT_DO_IN;
+    p.submitClass = submitting ? "confirm-btn disabled" : "confirm-btn";
+    p.taskPickerValue = taskIndex >= 0 ? taskIndex : 0;
+    p.taskPickerText = selectedTaskName || TEXT_PICK_TASK;
+    p.canAddImage = images.length < 3;
+    if (lat != null) p.mapLatitude = lat;
+    if (lng != null) p.mapLongitude = lng;
+    this.setData(p);
   },
 
   async initPage() {
     await this.loadCompany();
     this.getLocation();
-    if (this.data.companyId) {
-      await this.fetchTasks();
-    }
-    if (this.data.selectedTaskId && this.data.taskList.length) {
-      this.syncTaskSelection(this.data.selectedTaskId);
-    }
+    if (this.data.companyId) await this.fetchTasks();
+    if (this.data.selectedTaskId && this.data.taskList.length) this.syncTaskSelection(this.data.selectedTaskId);
+    this.loadHistory();
   },
 
   async loadCompany() {
     try {
-      const res = await api.getCurrentCompany();
+      const res = await api.getCurrentCompany({}, { loading: false, showError: false });
       if (res && res.data) {
-        this.setData({
-          companyId: res.data.companyId,
-          companyName: res.data.companyName || "\u5f53\u524d\u516c\u53f8"
-        });
+        this.syncUiState({ companyId: res.data.companyId, companyName: res.data.companyName || '' });
         return;
       }
     } catch (e) {}
-    this.setData({
-      companyId: null,
-      companyName: "\u672a\u9009\u62e9\u516c\u53f8"
-    });
+    this.syncUiState({ companyId: null, companyName: '' });
+  },
+
+  buildMarkers(lat, lng) {
+    if (lat == null || lng == null) return [];
+    return [{ id: 1, latitude: lat, longitude: lng, width: 28, height: 28 }];
+  },
+
+  formatCoord(lat, lng) {
+    if (lat == null || lng == null) return "-";
+    return Number(lat).toFixed(6) + ", " + Number(lng).toFixed(6);
+  },
+
+  shortPlaceName(address) {
+    const value = String(address || "").trim();
+    if (!value) return ADDR_CURRENT;
+    return value.length > 24 ? value.slice(0, 24) : value;
   },
 
   getLocation() {
     if (this.data.locating) return;
-    this.setData({
+    this.syncUiState({
       locating: true,
       addressMode: "auto",
-      addressFailed: false,
-      addressText: ADDR_LOCATING
+      addressReady: false,
+      placeTitle: ADDR_LOCATING,
+      coordText: "-"
     });
     wx.getLocation({
       type: "gcj02",
+      isHighAccuracy: true,
       success: (res) => {
-        const lat = res.latitude;
-        const lng = res.longitude;
-        this.setData({
-          latitude: Number(lat.toFixed(6)),
-          longitude: Number(lng.toFixed(6)),
-          addressText: ADDR_RESOLVING,
-          addressFailed: false
+        const lat = Number(Number(res.latitude).toFixed(6));
+        const lng = Number(Number(res.longitude).toFixed(6));
+        this.syncUiState({
+          latitude: lat,
+          longitude: lng,
+          coordText: this.formatCoord(lat, lng),
+          markers: this.buildMarkers(lat, lng),
+          placeTitle: ADDR_RESOLVING,
+          locating: true
         });
         this.resolveAddress(lng, lat);
       },
       fail: () => {
-        this.setData({
+        this.syncUiState({
           locating: false,
-          addressFailed: true,
-          addressText: ADDR_FAIL_LOCATE,
+          addressReady: false,
+          placeTitle: ADDR_FAIL_LOCATE,
+          coordText: "-",
           latitude: null,
-          longitude: null
+          longitude: null,
+          markers: []
         });
-        wx.showToast({ title: "\u83b7\u53d6\u4f4d\u7f6e\u5931\u8d25", icon: "none" });
+        wx.showToast({ title: ADDR_FAIL_LOCATE, icon: "none" });
       }
     });
   },
@@ -104,97 +172,85 @@ Page({
     try {
       const res = await api.reverseGeocode({ longitude: longitude, latitude: latitude }, { loading: false, showError: false });
       const address = res && res.data && res.data.address;
-      if (!address || this.isCoordText(address)) {
-        this.handleAddressResolveFailure();
+      if (!address || this.isCoordText(address) || !this.isChineseAddress(address)) {
+        this.applySoftGeoFallback();
         return;
       }
-      this.setData({
+      const lat = res.data.latitude != null ? res.data.latitude : latitude;
+      const lng = res.data.longitude != null ? res.data.longitude : longitude;
+      this.syncUiState({
         locating: false,
         addressMode: "auto",
-        addressFailed: false,
+        addressReady: true,
         addressText: address,
-        latitude: res.data.latitude != null ? res.data.latitude : this.data.latitude,
-        longitude: res.data.longitude != null ? res.data.longitude : this.data.longitude
+        placeTitle: this.shortPlaceName(address),
+        latitude: lat,
+        longitude: lng,
+        coordText: this.formatCoord(lat, lng),
+        markers: this.buildMarkers(lat, lng)
       });
     } catch (e) {
-      this.handleAddressResolveFailure();
+      this.applySoftGeoFallback();
     }
   },
 
-  handleAddressResolveFailure() {
-    this.setData({
+  applySoftGeoFallback() {
+    this.syncUiState({
       locating: false,
       addressMode: "auto",
-      addressFailed: true,
-      addressText: ADDR_FAIL_GEO
-    });
-    if (this._mapSelectionPrompted) return;
-    this._mapSelectionPrompted = true;
-    wx.showModal({
-      title: "\u9009\u62e9\u7b7e\u5230\u4f4d\u7f6e",
-      content: "\u81ea\u52a8\u5730\u5740\u89e3\u6790\u6682\u4e0d\u53ef\u7528\uff0c\u8bf7\u5728\u5730\u56fe\u4e2d\u9009\u62e9\u5f53\u524d\u7b7e\u5230\u4f4d\u7f6e\u3002",
-      confirmText: "\u9009\u62e9\u4f4d\u7f6e",
-      success: (result) => {
-        if (result.confirm) this.chooseMapLocation();
-      }
+      addressReady: false,
+      addressText: "",
+      placeTitle: ADDR_CURRENT
     });
   },
 
-  onLocationAction() {
+  onRefreshTap() {
     if (this.data.locating) return;
-    if (this.data.addressFailed) {
-      this.chooseMapLocation();
-      return;
-    }
     this.getLocation();
   },
 
+  onAddressTap() { this.chooseMapLocation(); },
+
   chooseMapLocation() {
     if (this.data.locating) return;
-    this.setData({ locating: true });
+    this.syncUiState({ locating: true });
     wx.chooseLocation({
+      latitude: this.data.latitude || undefined,
+      longitude: this.data.longitude || undefined,
       success: (result) => {
         const baseAddress = String(result.address || "").trim();
         const placeName = String(result.name || "").trim();
-        const address = baseAddress && placeName && baseAddress.indexOf(placeName) < 0
-          ? baseAddress + placeName
-          : (baseAddress || placeName);
+        const address = baseAddress && placeName && baseAddress.indexOf(placeName) < 0 ? baseAddress + placeName : (baseAddress || placeName);
+        const lat = Number(Number(result.latitude).toFixed(6));
+        const lng = Number(Number(result.longitude).toFixed(6));
         if (!this.isChineseAddress(address)) {
-          this.setData({
-            locating: false,
-            addressMode: "auto",
-            addressFailed: true,
-            addressText: ADDR_FAIL_GEO
-          });
-          wx.showToast({ title: "\u672a\u83b7\u53d6\u5230\u4e2d\u6587\u5730\u5740", icon: "none" });
+          this.syncUiState({ locating: false });
+          wx.showToast({ title: "请先选择签到位置", icon: "none" });
           return;
         }
-        this.setData({
-          latitude: Number(Number(result.latitude).toFixed(6)),
-          longitude: Number(Number(result.longitude).toFixed(6)),
+        this.syncUiState({
+          latitude: lat,
+          longitude: lng,
+          coordText: this.formatCoord(lat, lng),
+          markers: this.buildMarkers(lat, lng),
           addressText: address,
+          placeTitle: placeName || this.shortPlaceName(address),
           addressMode: "map",
-          addressFailed: false,
+          addressReady: true,
           locating: false
         });
       },
       fail: (error) => {
-        this.setData({ locating: false });
-        const message = String(error && error.errMsg || "");
-        if (message.indexOf("cancel") < 0) {
-          wx.showToast({ title: "\u9009\u62e9\u4f4d\u7f6e\u5931\u8d25", icon: "none" });
-        }
+        this.syncUiState({ locating: false });
+        const message = String((error && error.errMsg) || "");
+        if (message.indexOf("cancel") < 0) wx.showToast({ title: "选择位置失败", icon: "none" });
       }
     });
   },
 
   isChineseAddress(text) {
     const value = String(text || "").trim();
-    return value.length >= 2
-      && value.length <= 255
-      && /[\u4e00-\u9fff]/.test(value)
-      && !this.isCoordText(value)
-      && value.indexOf("\u89e3\u6790\u5931\u8d25") < 0;
+    return value.length >= 2 && value.length <= 255 && /[\u4e00-\u9fff]/.test(value) && !this.isCoordText(value);
   },
 
   isCoordText(text) {
@@ -204,14 +260,12 @@ Page({
   async fetchTasks() {
     if (!this.data.companyId) return;
     try {
-      const res = await api.listTasksByCompany({ companyId: this.data.companyId });
+      const res = await api.listTasksByCompany({ companyId: this.data.companyId }, { loading: false, showError: false });
       const taskList = (res && (res.rows || res.data)) || [];
-      this.setData({ taskList: taskList });
-      if (this.data.selectedTaskId) {
-        this.syncTaskSelection(this.data.selectedTaskId);
-      }
+      this.syncUiState({ taskList: taskList });
+      if (this.data.selectedTaskId) this.syncTaskSelection(this.data.selectedTaskId);
     } catch (e) {
-      this.setData({ taskList: [] });
+      this.syncUiState({ taskList: [] });
     }
   },
 
@@ -219,20 +273,9 @@ Page({
     const idx = this.data.taskList.findIndex((t) => String(t.taskId) === String(taskId));
     if (idx >= 0) {
       const task = this.data.taskList[idx];
-      this.setData({
-        taskIndex: idx,
-        selectedTaskId: task.taskId,
-        selectedTaskName: task.taskName || ""
-      });
+      this.syncUiState({ taskIndex: idx, selectedTaskId: task.taskId, selectedTaskName: task.taskName || '' });
     } else {
-      this.setData({ taskIndex: -1, selectedTaskId: null, selectedTaskName: "" });
-    }
-  },
-
-  onTypeTap(e) {
-    const type = e.currentTarget.dataset.type;
-    if (type === "0" || type === "1") {
-      this.setData({ checkInType: type });
+      this.syncUiState({ taskIndex: -1, selectedTaskId: null, selectedTaskName: '' });
     }
   },
 
@@ -240,41 +283,56 @@ Page({
     const idx = Number(e.detail.value);
     const task = this.data.taskList[idx];
     if (!task) return;
-    this.setData({
-      taskIndex: idx,
-      selectedTaskId: task.taskId,
-      selectedTaskName: task.taskName || ""
+    this.syncUiState({ taskIndex: idx, selectedTaskId: task.taskId, selectedTaskName: task.taskName || '' });
+  },
+
+  openConfirm(e) {
+    const type = e.currentTarget.dataset.type;
+    if (!this.data.companyId) { wx.showToast({ title: "请先选择公司", icon: "none" }); return; }
+    if (this.data.latitude == null || this.data.longitude == null) { wx.showToast({ title: "请先获取定位", icon: "none" }); return; }
+    if (!this.data.addressReady) {
+      wx.showModal({
+        title: "选择位置",
+        content: "自动地址解析不可用，请在地图中选择当前位置",
+        confirmText: "选择位置",
+        success: (r) => { if (r.confirm) this.chooseMapLocation(); }
+      });
+      return;
+    }
+    this.syncUiState({
+      checkInType: type === '1' ? '1' : '0',
+      showConfirm: true,
+      images: [],
+      remark: TEXT_NORMAL,
+      submitting: false
     });
   },
 
+  closeConfirm() { this.syncUiState({ showConfirm: false }); },
+
   chooseImage() {
-    const remain = 2 - this.data.images.length;
+    const remain = 3 - this.data.images.length;
     if (remain <= 0) return;
     wx.chooseImage({
       count: remain,
       sizeType: ["compressed"],
       sourceType: ["album", "camera"],
-      success: (res) => {
-        (res.tempFilePaths || []).forEach((p) => this.uploadImg(p));
-      }
+      success: (res) => { (res.tempFilePaths || []).forEach((p) => this.uploadImg(p)); }
     });
   },
 
   async uploadImg(tempPath) {
     const images = this.data.images.concat([{ tempPath: tempPath, serverUrl: "", uploading: true }]);
     const index = images.length - 1;
-    this.setData({ images: images });
+    this.syncUiState({ images: images });
     try {
       const body = await uploadFile(tempPath);
       const url = body.fileName || body.url || (body.data && (body.data.fileName || body.data.url));
-      if (!url) {
-        this.removeImageByIndex(index);
-        return;
-      }
-      this.setData({
-        ["images[" + index + "].serverUrl"]: url,
-        ["images[" + index + "].uploading"]: false
-      });
+      if (!url) { this.removeImageByIndex(index); return; }
+      const next = this.data.images.slice();
+      if (!next[index]) return;
+      next[index] = Object.assign({}, next[index], { serverUrl: url, uploading: false });
+      this.syncUiState({ images: next });
     } catch (e) {
       this.removeImageByIndex(index);
     }
@@ -283,12 +341,10 @@ Page({
   removeImageByIndex(index) {
     const images = this.data.images.slice();
     images.splice(index, 1);
-    this.setData({ images: images });
+    this.syncUiState({ images: images });
   },
 
-  removeImage(e) {
-    this.removeImageByIndex(e.currentTarget.dataset.index);
-  },
+  removeImage(e) { this.removeImageByIndex(e.currentTarget.dataset.index); },
 
   previewImage(e) {
     const idx = e.currentTarget.dataset.index;
@@ -296,75 +352,78 @@ Page({
     wx.previewImage({ urls: urls, current: urls[idx] });
   },
 
-  onRemarkInput(e) {
-    this.setData({ remark: e.detail.value || "" });
+  onRemarkInput(e) { this.setData({ remark: e.detail.value || '' }); },
+
+  formatTime(timeStr) {
+    if (!timeStr) return "";
+    const s = String(timeStr);
+    return s.length >= 19 ? s.substring(0, 19).replace("T", " ") : s;
   },
 
-  goHistory() {
-    wx.navigateTo({ url: "/pages/checkin/history" });
+  async loadHistory() {
+    if (!this.data.companyId) { this.setData({ historyList: [] }); return; }
+    this.setData({ historyLoading: true });
+    try {
+      const res = await api.getCheckInList({ companyId: this.data.companyId, pageNum: 1, pageSize: 20 }, { loading: false, showError: false });
+      const rows = ((res && (res.rows || res.data)) || []).map((item) => {
+        const isOut = String(item.checkInType) === '1';
+        const lat = item.latitude;
+        const lng = item.longitude;
+        return Object.assign({}, item, {
+          displayTime: this.formatTime(item.checkInTime || item.createTime),
+          coordText: lat != null && lng != null ? this.formatCoord(lat, lng) : (item.address || '-'),
+          typeLabel: isOut ? TEXT_SIGN_OUT : TEXT_SIGN_IN,
+          typeClass: isOut ? "is-out" : "is-in",
+          dotClass: isOut ? "is-out" : "is-in"
+        });
+      });
+      this.setData({ historyList: rows });
+    } catch (e) {
+      this.setData({ historyList: [] });
+    } finally {
+      this.setData({ historyLoading: false });
+    }
   },
 
   async handleSubmit() {
     if (this.data.submitting) return;
-    if (!this.data.companyId) {
-      wx.showToast({ title: "\u8bf7\u5148\u9009\u62e9\u516c\u53f8", icon: "none" });
-      return;
-    }
-    if (!this.data.selectedTaskId) {
-      wx.showToast({ title: "\u8bf7\u9009\u62e9\u7ef4\u4fdd\u4efb\u52a1", icon: "none" });
-      return;
-    }
-    if (this.data.latitude == null || this.data.longitude == null) {
-      wx.showToast({ title: "\u8bf7\u5148\u83b7\u53d6\u5b9a\u4f4d", icon: "none" });
-      return;
-    }
-    if (this.data.addressFailed || !this.data.addressText || this.isCoordText(this.data.addressText)) {
-      wx.showToast({ title: "\u8bf7\u5148\u89e3\u6790\u4e2d\u6587\u5730\u5740", icon: "none" });
-      return;
-    }
-    if (!this.data.images.length) {
-      wx.showToast({ title: "\u8bf7\u81f3\u5c11\u4e0a\u4f20\u4e00\u5f20\u7167\u7247", icon: "none" });
-      return;
-    }
-    if (this.data.images.some((img) => img.uploading || !img.serverUrl)) {
-      wx.showToast({ title: "\u56fe\u7247\u4e0a\u4f20\u4e2d\uff0c\u8bf7\u7a0d\u5019", icon: "none" });
-      return;
-    }
+    if (!this.data.companyId) { wx.showToast({ title: "请先选择公司", icon: "none" }); return; }
+    if (this.data.latitude == null || this.data.longitude == null) { wx.showToast({ title: "请先获取定位", icon: "none" }); return; }
+    if (!this.data.addressReady || !this.isChineseAddress(this.data.addressText)) { wx.showToast({ title: "请先选择签到位置", icon: "none" }); return; }
+    if (!this.data.images.length) { wx.showToast({ title: "请上传现场照片", icon: "none" }); return; }
+    if (this.data.images.some((img) => img.uploading || !img.serverUrl)) { wx.showToast({ title: "图片上传中", icon: "none" }); return; }
 
-    const typeLabel = this.data.checkInType === "0" ? "\u7b7e\u5230" : "\u7b7e\u9000";
+    const typeLabel = this.data.checkInType === '0' ? TEXT_SIGN_IN : TEXT_SIGN_OUT;
     const payload = {
       companyId: this.data.companyId,
       companyName: this.data.companyName,
-      taskId: this.data.selectedTaskId,
+      taskId: this.data.selectedTaskId || null,
       checkInType: this.data.checkInType,
       address: this.data.addressText,
       locatedAddress: this.data.addressText,
-      addressMode: this.data.addressMode,
+      addressMode: this.data.addressMode === "map" ? "map" : "auto",
       latitude: this.data.latitude,
       longitude: this.data.longitude,
       remark: this.data.remark,
       images: this.data.images.map((img, index) => ({
         imageUrl: img.serverUrl,
-        imageName: typeLabel + "\u56fe\u7247" + (index + 1),
+        imageName: typeLabel + "图片" + (index + 1),
         sortOrder: index + 1
       }))
     };
 
-    this.setData({ submitting: true });
-    wx.showLoading({ title: "\u63d0\u4ea4\u4e2d...", mask: true });
+    this.syncUiState({ submitting: true });
+    wx.showLoading({ title: "提交中...", mask: true });
     try {
       await api.addCheckIn(payload);
-      wx.showToast({ title: typeLabel + "\u6210\u529f", icon: "success" });
-      this.setData({
-        images: [],
-        remark: "\u6b63\u5e38\u6253\u5361",
-        checkInType: "0"
-      });
+      wx.showToast({ title: typeLabel + "成功", icon: "success" });
+      this.syncUiState({ showConfirm: false, images: [], remark: TEXT_NORMAL, submitting: false });
+      this.loadHistory();
     } catch (e) {
-      wx.showToast({ title: (e && e.msg) || "\u64cd\u4f5c\u5931\u8d25", icon: "none" });
+      wx.showToast({ title: (e && e.msg) || "操作失败", icon: "none" });
+      this.syncUiState({ submitting: false });
     } finally {
       wx.hideLoading();
-      this.setData({ submitting: false });
     }
   }
 });

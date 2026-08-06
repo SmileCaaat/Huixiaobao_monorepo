@@ -35,6 +35,8 @@ public class CorsConfig {
 
         // 暴露响应头
         config.addExposedHeader("Authorization");
+        config.addExposedHeader("X-Report-File-Type");
+        config.addExposedHeader("Content-Disposition");
         config.addExposedHeader("Content-Disposition");
 
         // 预检请求缓存时间（秒）

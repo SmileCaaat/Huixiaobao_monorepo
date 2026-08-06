@@ -59,28 +59,9 @@ Page({
 
   async onTapCard(e) {
     const companyId = e.currentTarget.dataset.id;
-    const item = this.data.filteredList.find((c) => String(c.companyId) === String(companyId));
-    if (!item) return;
-    try {
-      const res = await api.getCompanyDetail(item.companyId);
-      this.showDetailModal((res && res.data) || item);
-    } catch (err) {
-      this.showDetailModal(item);
-    }
-  },
-
-  showDetailModal(item) {
-    const none = "\u65e0";
-    const content = [
-      "\u540d\u79f0: " + (item.companyName || none),
-      "\u8054\u7cfb\u4eba: " + (item.contactPerson || none),
-      "\u5730\u5740: " + (item.address || none),
-      "\u7535\u8bdd: " + (item.contactPhone || none)
-    ].join("\n");
-    wx.showModal({
-      title: "\u5ba2\u6237\u8be6\u60c5",
-      content: content,
-      showCancel: false
+    if (!companyId) return;
+    wx.navigateTo({
+      url: "/pages/customer/detail?companyId=" + companyId
     });
   }
 });

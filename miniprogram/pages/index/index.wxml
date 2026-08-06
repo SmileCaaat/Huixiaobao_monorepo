@@ -55,7 +55,7 @@
   <tab-bar currentTab="{{0}}" />
   <company-drawer
     visible="{{showCompanyDrawer}}"
-    currentCompanyId="{{selectedCompany.companyId}}"
+    currentCompanyId="{{selectedCompany && selectedCompany.companyId}}"
     bind:close="onDrawerClose"
     bind:select="onCompanySelect"
   />

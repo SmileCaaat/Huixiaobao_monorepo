@@ -32,7 +32,7 @@
 
 ## 3. Base URL
 
-开发默认见 `miniprogram/config/env.js`（当前 `http://localhost:83`）。  
+开发默认见 `miniprogram/config/env.js`（当前 `http://127.0.0.1:83`）。  
 生产合法域名需与微信公众平台一致。
 
 ## 4. 管理端
@@ -47,3 +47,9 @@ Thymeleaf 页面与 `/fire/**` JSON 见手册 §12；小程序不得调用管理
 - 响应 `data` 至少含 `longitude`/`latitude`/`address`。
 - 密钥仅后端 `AMAP_WEB_KEY`。
 - 提交签到时后端以服务端解析地址为准，不完全信任客户端 `address` 文本。
+
+## 6. 小程序报告预览
+
+- `GET /api/fire/report/preview/{id}`：有同名 PDF 优先 PDF，否则下发 DOCX（不再因 Word 直接 400）。
+- 响应头 `X-Report-File-Type: pdf|docx`；小程序 `openDocument` 需传 `fileType`。
+- 列表 `POST /api/fire/report/list` 额外返回任务侧 `planStartTime`/`planEndTime`/`managerName`/`operatorNames`（LEFT JOIN `fire_maintenance_task`）。

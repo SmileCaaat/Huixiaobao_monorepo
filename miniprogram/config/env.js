@@ -2,8 +2,8 @@ const ENV = "dev";
 
 const CONFIG = {
   dev: {
-    // WeChat DevTools is more reliable with localhost than 127.0.0.1 on some setups
-    BASE_URL: "http://localhost:83",
+    // Prefer IPv4 loopback: WeChat DevTools on Windows may hang resolving "localhost" via IPv6.
+    BASE_URL: "http://127.0.0.1:83",
     ENV_NAME: "dev"
   },
   prod: {

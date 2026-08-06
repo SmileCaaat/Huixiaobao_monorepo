@@ -18,6 +18,7 @@ import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import org.apache.shiro.SecurityUtils;
 import com.ruoyi.fire.domain.FireCheckIn;
+import com.ruoyi.fire.domain.FireCompany;
 import com.ruoyi.fire.domain.FireFaultRepair;
 import com.ruoyi.fire.domain.FireInspection;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
@@ -260,10 +261,7 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
         if (!RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())) {
             return false;
         }
-        if (repair.getCompanyId() != null && !canAccessCompany(user.getUserId(), repair.getCompanyId())
-                && !user.isAdmin()) {
-            return false;
-        }
+        // 已派发处理人可处理；不因单位成员关系二次拦截（任务干系人/转派场景）
         return true;
     }
 
@@ -286,10 +284,6 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
         }
         if (!RepairStatus.IN_PROGRESS.getCode().equals(repair.getRepairStatus())) {
             throw new ServiceException("工单状态已变化，无法处理");
-        }
-        if (repair.getCompanyId() != null && !user.isAdmin()
-                && !canAccessCompany(user.getUserId(), repair.getCompanyId())) {
-            throw new ServiceException("您与工单所属单位关系无效，不能处理");
         }
     }
 
@@ -344,7 +338,11 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
     }
 
     private String normalizeWorkbenchCategory(String category) {
-        if ("processing".equals(category) || "completed".equals(category) || "reported".equals(category)
+        // processing 分类已下线，并入待我处理
+        if ("processing".equals(category)) {
+            return "assignedPending";
+        }
+        if ("completed".equals(category) || "reported".equals(category)
                 || "assignedPending".equals(category)) {
             return category;
         }
@@ -395,6 +393,62 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
         if (!canAccessCompany(user, companyId)) {
             throw new ServiceException("\u65e0\u6743\u8bbf\u95ee\u8be5\u5ba2\u6237\u6570\u636e");
         }
+    }
+
+    @Override
+    public boolean canAccessCompanyContext(SysUser user, Long companyId, FireMaintenanceTask linkedTask) {
+        if (canAccessCompany(user, companyId)) {
+            return true;
+        }
+        if (user == null || companyId == null || linkedTask == null) {
+            return false;
+        }
+        if (linkedTask.getCompanyId() == null || !companyId.equals(linkedTask.getCompanyId())) {
+            return false;
+        }
+        return canAccessTask(user, linkedTask);
+    }
+
+    @Override
+    public void assertCanAccessCompanyContext(SysUser user, Long companyId, FireMaintenanceTask linkedTask) {
+        if (user == null) {
+            throw new ServiceException("\u672a\u767b\u5f55");
+        }
+        if (!canAccessCompanyContext(user, companyId, linkedTask)) {
+            throw new ServiceException("\u65e0\u6743\u8bbf\u95ee\u8be5\u5ba2\u6237\u6570\u636e");
+        }
+    }
+
+    /** Whether user is manager/executor/operator on any task of the company. */
+    private boolean canAccessCompanyViaTaskStakeholder(Long userId, Long companyId) {
+        if (userId == null || companyId == null || taskMapper == null) {
+            return false;
+        }
+        List<FireCompany> companies = taskMapper.selectCompanyListByTaskUserId(userId);
+        if (companies == null || companies.isEmpty()) {
+            return false;
+        }
+        for (FireCompany company : companies) {
+            if (company != null && companyId.equals(company.getCompanyId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<Long> listTaskStakeholderCompanyIds(Long userId) {
+        if (userId == null || taskMapper == null) {
+            return Collections.emptyList();
+        }
+        List<FireCompany> companies = taskMapper.selectCompanyListByTaskUserId(userId);
+        if (companies == null || companies.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return companies.stream()
+                .filter(c -> c != null && c.getCompanyId() != null)
+                .map(FireCompany::getCompanyId)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -706,18 +760,24 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
         }
         Long requestedCompanyId = query.getCompanyId();
         if (requestedCompanyId != null) {
-            if (!canAccessCompany(user.getUserId(), requestedCompanyId)) {
+            if (!canAccessCompany(user.getUserId(), requestedCompanyId)
+                    && !canAccessCompanyViaTaskStakeholder(user.getUserId(), requestedCompanyId)) {
                 query.getParams().put("scopeMode", "none");
                 query.setCompanyId(null);
             }
             return;
         }
-        List<Long> companyIds = listAccessibleCompanyIds(user.getUserId());
-        if (companyIds == null || companyIds.isEmpty()) {
+        Set<Long> companyIdSet = new LinkedHashSet<>();
+        List<Long> memberCompanyIds = listAccessibleCompanyIds(user.getUserId());
+        if (memberCompanyIds != null) {
+            companyIdSet.addAll(memberCompanyIds);
+        }
+        companyIdSet.addAll(listTaskStakeholderCompanyIds(user.getUserId()));
+        if (companyIdSet.isEmpty()) {
             query.getParams().put("scopeMode", "none");
             return;
         }
-        query.getParams().put("companyIds", companyIds);
+        query.getParams().put("companyIds", new ArrayList<>(companyIdSet));
     }
 
     @Override
@@ -725,7 +785,19 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
         if (inspection == null || userId == null) {
             return false;
         }
-        return canAccessCompany(userId, inspection.getCompanyId());
+        if (canAccessCompany(userId, inspection.getCompanyId())) {
+            return true;
+        }
+        if (userId.equals(inspection.getInspectorId())) {
+            return true;
+        }
+        if (inspection.getTaskId() != null) {
+            FireMaintenanceTask task = taskMapper != null
+                    ? taskMapper.selectFireMaintenanceTaskByTaskId(inspection.getTaskId())
+                    : null;
+            return canAccessTask(userId, task);
+        }
+        return canAccessCompanyViaTaskStakeholder(userId, inspection.getCompanyId());
     }
 
     @Override

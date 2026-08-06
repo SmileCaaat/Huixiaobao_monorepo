@@ -1,0 +1,47 @@
+<view class="page">
+  <view class="info-card" wx:if="{{!loading}}">
+    <view class="company-name">{{detail.companyName}}</view>
+
+    <view class="info-row">
+      <text class="label">重点单位</text>
+      <text class="value">{{detail.isKeyUnitText}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">联系人</text>
+      <text class="value">{{detail.contactPerson}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">联系电话</text>
+      <text
+        class="value {{detail.contactPhone ? 'phone' : ''}}"
+        bindtap="onCallPhone"
+      >{{detail.contactPhone || '-'}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">单位地址</text>
+      <text class="value">{{detail.address}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">建筑类别</text>
+      <text class="value">{{detail.buildingType}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">总占地面积</text>
+      <text class="value">{{detail.totalLandAreaText}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">总建筑面积</text>
+      <text class="value">{{detail.totalBuildingAreaText}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">建筑层数</text>
+      <text class="value">{{detail.buildingFloorCountText}}</text>
+    </view>
+    <view class="info-row">
+      <text class="label">建筑高度</text>
+      <text class="value">{{detail.buildingHeightText}}</text>
+    </view>
+  </view>
+
+  <view class="loading" wx:if="{{loading}}">加载中...</view>
+</view>

@@ -120,12 +120,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="params.workbenchCategory != null and params.workbenchCategory == 'assignedPending'">
                 AND f.repair_user_id = #{params.scopeUserId}
                 AND f.repair_status = '1'
-                AND f.start_time IS NULL
             </if>
+            <!-- processing ���������ߣ����ݾ������� assignedPending -->
             <if test="params.workbenchCategory != null and params.workbenchCategory == 'processing'">
                 AND f.repair_user_id = #{params.scopeUserId}
                 AND f.repair_status = '1'
-                AND f.start_time IS NOT NULL
             </if>
             <if test="params.workbenchCategory != null and params.workbenchCategory == 'completed'">
                 AND f.repair_user_id = #{params.scopeUserId}
@@ -317,7 +316,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         UPDATE fire_fault_repair
         SET repair_description = #{repairDescription},
             repair_images = #{repairImages},
-            complete_time = NOW(),
+            complete_time = <choose>
+                <when test="completeTime != null">#{completeTime}</when>
+                <otherwise>NOW()</otherwise>
+            </choose>,
             repair_status = '2',
             update_by = #{updateBy},
             update_time = NOW()

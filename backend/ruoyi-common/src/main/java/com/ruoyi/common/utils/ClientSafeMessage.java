@@ -11,7 +11,7 @@ public final class ClientSafeMessage
 
     /** Schema/code mismatch — actionable, still no raw SQL leak. */
     private static final String SCHEMA_HINT =
-            "\u6570\u636e\u5e93\u7ed3\u6784\u672a\u5347\u7ea7\uff0c\u8bf7\u6267\u884c\u5458\u5de5\u6ce8\u518c\u8fc1\u79fb SQL \u540e\u91cd\u8bd5\u3002";
+            "\u6570\u636e\u5e93\u7ed3\u6784\u672a\u5347\u7ea7\uff0c\u8bf7\u6267\u884c\u5bf9\u5e94\u5347\u7ea7 SQL\uff08\u5982\u5de5\u5355\u65e5\u5fd7\u3001\u5458\u5de5\u6ce8\u518c\u7b49\uff09\u540e\u91cd\u8bd5\u3002";
 
     private static final String DEFAULT_LOGIN_FAIL = "\u7528\u6237\u6216\u5bc6\u7801\u9519\u8bef";
 

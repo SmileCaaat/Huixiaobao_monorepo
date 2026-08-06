@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.fire.mapper.FireFaultRepairLogMapper">
+
+    <resultMap id="FireFaultRepairLogResult" type="com.ruoyi.fire.domain.FireFaultRepairLog">
+        <id     property="logId"          column="log_id" />
+        <result property="repairId"       column="repair_id" />
+        <result property="actionType"     column="action_type" />
+        <result property="actionContent"  column="action_content" />
+        <result property="operatorId"     column="operator_id" />
+        <result property="operatorName"   column="operator_name" />
+        <result property="createTime"     column="create_time" />
+    </resultMap>
+
+    <insert id="insertFireFaultRepairLog" parameterType="com.ruoyi.fire.domain.FireFaultRepairLog" useGeneratedKeys="true" keyProperty="logId">
+        insert into fire_fault_repair_log (
+            repair_id, action_type, action_content, operator_id, operator_name, create_time
+        ) values (
+            #{repairId}, #{actionType}, #{actionContent}, #{operatorId}, #{operatorName},
+            <choose>
+                <when test="createTime != null">#{createTime}</when>
+                <otherwise>sysdate()</otherwise>
+            </choose>
+        )
+    </insert>
+
+    <select id="selectLogsByRepairId" parameterType="Long" resultMap="FireFaultRepairLogResult">
+        select log_id, repair_id, action_type, action_content, operator_id, operator_name, create_time
+        from fire_fault_repair_log
+        where repair_id = #{repairId}
+        order by create_time asc, log_id asc
+    </select>
+</mapper>

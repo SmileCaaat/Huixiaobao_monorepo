@@ -6,6 +6,7 @@ import java.net.URLEncoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
+import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.enums.UrgencyLevel;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.ShiroUtils;
@@ -1040,9 +1042,9 @@ public class FireMiniAppController extends BaseController {
     @PostMapping("/inspection/add")
     public AjaxResult addInspection(@RequestBody FireInspection inspection) {
         try {
-            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), inspection.getCompanyId());
+            FireMaintenanceTask linkedTask = null;
             if (inspection.getTaskId() != null) {
-                FireMaintenanceTask linkedTask = taskService
+                linkedTask = taskService
                         .selectFireMaintenanceTaskBaseByTaskId(inspection.getTaskId());
                 if (linkedTask == null || linkedTask.getCompanyId() == null
                         || !linkedTask.getCompanyId().equals(inspection.getCompanyId())) {
@@ -1051,6 +1053,8 @@ public class FireMiniAppController extends BaseController {
                 fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
                 inspection.setInspectionType("0");
             }
+            fireDataPermissionService.assertCanAccessCompanyContext(
+                    ShiroUtils.getSysUser(), inspection.getCompanyId(), linkedTask);
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         }
@@ -1079,7 +1083,14 @@ public class FireMiniAppController extends BaseController {
         FireInspection existing = inspectionService.selectFireInspectionById(inspection.getInspectionId());
         try {
             fireDataPermissionService.assertCanAccessInspection(ShiroUtils.getSysUser(), existing);
-            fireDataPermissionService.assertCanAccessCompany(ShiroUtils.getSysUser(), inspection.getCompanyId());
+            FireMaintenanceTask linkedTask = null;
+            Long taskId = inspection.getTaskId() != null ? inspection.getTaskId()
+                    : (existing != null ? existing.getTaskId() : null);
+            if (taskId != null) {
+                linkedTask = taskService.selectFireMaintenanceTaskBaseByTaskId(taskId);
+            }
+            fireDataPermissionService.assertCanAccessCompanyContext(
+                    ShiroUtils.getSysUser(), inspection.getCompanyId(), linkedTask);
         } catch (ServiceException e) {
             return AjaxResult.error(e.getMessage());
         }
@@ -1266,12 +1277,10 @@ public class FireMiniAppController extends BaseController {
         if (repair.getCompanyId() == null) {
             return AjaxResult.error("请选择报修单位");
         }
-        if (!hasCompanyAccess(repair.getCompanyId(), userId)) {
-            return AjaxResult.error("您无权在该单位发起报修");
-        }
 
+        FireMaintenanceTask linkedTask = null;
         if (repair.getTaskId() != null) {
-            FireMaintenanceTask linkedTask = taskService.selectFireMaintenanceTaskBaseByTaskId(repair.getTaskId());
+            linkedTask = taskService.selectFireMaintenanceTaskBaseByTaskId(repair.getTaskId());
             if (linkedTask == null || linkedTask.getCompanyId() == null
                     || !linkedTask.getCompanyId().equals(repair.getCompanyId())) {
                 return AjaxResult.error("关联维保任务与报修单位不一致");
@@ -1281,6 +1290,13 @@ public class FireMiniAppController extends BaseController {
             } catch (ServiceException e) {
                 return AjaxResult.error(e.getMessage());
             }
+        }
+
+        try {
+            fireDataPermissionService.assertCanAccessCompanyContext(
+                    ShiroUtils.getSysUser(), repair.getCompanyId(), linkedTask);
+        } catch (ServiceException e) {
+            return AjaxResult.error("您无权在该单位发起报修");
         }
 
         String validateMessage = fillRepairLookupInfo(repair);
@@ -1477,6 +1493,68 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
+     * 工单日志
+     */
+    @GetMapping("/repair/logs/{repairId}")
+    public AjaxResult repairLogs(@PathVariable("repairId") Long repairId) {
+        FireFaultRepair repair = faultRepairService.selectFireFaultRepairById(repairId);
+        if (repair == null) {
+            return AjaxResult.error("报修记录不存在");
+        }
+        if (!canViewRepair(repair, ShiroUtils.getUserId())) {
+            return AjaxResult.error("您无权查看该报修记录");
+        }
+        return AjaxResult.success(faultRepairService.selectRepairLogs(repairId));
+    }
+
+    /**
+     * 同部门可转派人员
+     */
+    @GetMapping("/repair/transferUsers/{repairId}")
+    public AjaxResult repairTransferUsers(@PathVariable("repairId") Long repairId) {
+        try {
+            FireFaultRepair repair = faultRepairService.selectFireFaultRepairById(repairId);
+            if (repair == null) {
+                return AjaxResult.error("报修记录不存在");
+            }
+            if (!canViewRepair(repair, ShiroUtils.getUserId())) {
+                return AjaxResult.error("您无权查看该报修记录");
+            }
+            List<SysUser> users = faultRepairService.selectTransferUsers(repairId);
+            List<Map<String, Object>> list = new ArrayList<>();
+            if (users != null) {
+                for (SysUser u : users) {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("userId", u.getUserId());
+                    item.put("userName", u.getUserName());
+                    item.put("phonenumber", u.getPhonenumber());
+                    list.add(item);
+                }
+            }
+            return AjaxResult.success(list);
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
+     * 转派给同部门同事
+     */
+    @PostMapping("/repair/transfer")
+    public AjaxResult transferRepair(@RequestBody Map<String, Object> params) {
+        Long repairId = getLongValue(params, "repairId");
+        Long targetUserId = getLongValue(params, "targetUserId");
+        if (repairId == null || targetUserId == null) {
+            return AjaxResult.error("参数不完整");
+        }
+        try {
+            return toAjax(faultRepairService.transferRepair(repairId, targetUserId));
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
      * 获取报修统计信息。
      * 默认统计当前单位下与我相关的报修，并额外返回我发起/我被派发的总数。
      */
@@ -1607,8 +1685,10 @@ public class FireMiniAppController extends BaseController {
     }
 
     private boolean canEditRepair(FireFaultRepair repair, Long userId) {
-        return "0".equals(repair.getRepairStatus())
-                && (isSysAdmin() || isRepairReporter(repair, userId) || isCompanyRepairAdmin(repair.getCompanyId(), userId));
+        if (repair == null || "2".equals(repair.getRepairStatus()) || repair.getStartTime() != null) {
+            return false;
+        }
+        return isSysAdmin() || isRepairReporter(repair, userId) || isCompanyRepairAdmin(repair.getCompanyId(), userId);
     }
 
     private boolean isSysAdmin() {
@@ -1751,27 +1831,35 @@ public class FireMiniAppController extends BaseController {
         try {
             FireReportRecord record = fireReportRecordService.selectFireReportRecordById(reportId);
             if (record == null || StringUtils.isEmpty(record.getFilePath())) {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"code\":404,\"msg\":\"报告不存在或尚未生成成功\"}");
+                writeReportJsonError(response, HttpServletResponse.SC_NOT_FOUND, "报告不存在或尚未生成成功");
                 return;
             }
 
             Path filePath = fireReportRecordService.resolveReportFile(record);
             if (filePath == null || !Files.exists(filePath)) {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"code\":404,\"msg\":\"报告文件不存在或已被删除\"}");
+                writeReportJsonError(response, HttpServletResponse.SC_NOT_FOUND, "报告文件不存在或已被删除");
                 return;
             }
 
-            String fileName = record.getReportName() != null ? record.getReportName() : filePath.getFileName().toString();
-            String lower = filePath.getFileName().toString().toLowerCase();
-            if (!attachment && !lower.endsWith(".pdf")) {
-                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"code\":500,\"msg\":\"历史报告为 Word 格式，请重新生成 PDF\"}");
+            // 小程序 wx.openDocument 支持 pdf/docx；有同名 PDF 时优先 PDF，否则直接下发 Word
+            Path siblingPdf = siblingWithExtension(filePath, ".pdf");
+            if (siblingPdf != null && Files.isRegularFile(siblingPdf) && Files.size(siblingPdf) > 0) {
+                filePath = siblingPdf;
+            }
+
+            String storedName = filePath.getFileName().toString();
+            String lower = storedName.toLowerCase();
+            if (!lower.endsWith(".pdf") && !lower.endsWith(".docx")) {
+                writeReportJsonError(response, HttpServletResponse.SC_BAD_REQUEST, "不支持的报告文件格式");
                 return;
+            }
+
+            String fileName = record.getReportName() != null ? record.getReportName() : storedName;
+            String fileNameLower = fileName.toLowerCase();
+            if (lower.endsWith(".pdf") && !fileNameLower.endsWith(".pdf")) {
+                fileName = stripFileExtension(fileName) + ".pdf";
+            } else if (lower.endsWith(".docx") && !fileNameLower.endsWith(".docx")) {
+                fileName = stripFileExtension(fileName) + ".docx";
             }
 
             String encodedFileName = URLEncoder.encode(fileName, "UTF-8").replaceAll("\\+", "%20");
@@ -1781,6 +1869,7 @@ public class FireMiniAppController extends BaseController {
                     : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
             response.setContentType(contentType);
+            response.setHeader("X-Report-File-Type", lower.endsWith(".pdf") ? "pdf" : "docx");
             response.setHeader(
                     "Content-Disposition",
                     dispositionType + "; filename=\"" + encodedFileName + "\"; filename*=UTF-8''" + encodedFileName);
@@ -1796,8 +1885,39 @@ public class FireMiniAppController extends BaseController {
                 os.flush();
             }
         } catch (Exception e) {
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            try {
+                writeReportJsonError(response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "报告读取失败，请稍后重试");
+            } catch (Exception ignored) {
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            }
         }
+    }
+
+    private Path siblingWithExtension(Path file, String extension) {
+        if (file == null || file.getFileName() == null || file.getParent() == null) {
+            return null;
+        }
+        String name = file.getFileName().toString();
+        int dot = name.lastIndexOf('.');
+        String base = dot > 0 ? name.substring(0, dot) : name;
+        return file.getParent().resolve(base + extension);
+    }
+
+    private String stripFileExtension(String fileName) {
+        if (StringUtils.isEmpty(fileName)) {
+            return "report";
+        }
+        int dot = fileName.lastIndexOf('.');
+        return dot > 0 ? fileName.substring(0, dot) : fileName;
+    }
+
+    private void writeReportJsonError(HttpServletResponse response, int status, String msg) throws Exception {
+        response.resetBuffer();
+        response.setStatus(status);
+        response.setContentType("application/json;charset=UTF-8");
+        String safe = msg == null ? "操作失败" : msg.replace("\\", "\\\\").replace("\"", "\\\"");
+        response.getWriter().write("{\"code\":" + status + ",\"msg\":\"" + safe + "\"}");
+        response.getWriter().flush();
     }
 
     private Path getReportFilePath(String fileName) {

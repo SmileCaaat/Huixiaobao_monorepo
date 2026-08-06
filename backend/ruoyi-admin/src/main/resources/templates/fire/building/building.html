@@ -34,13 +34,16 @@
             color: #1890ff;
         }
 
-        /* 本页搜索栏：单行紧凑，编码/等级/状态更短 */
+        /* 本页搜索栏：单行均匀撑满；客户/建筑类别加长 */
         .fire-search-layout .select-list ul {
             display: flex;
             flex-wrap: nowrap;
             align-items: center;
-            gap: 4px 6px;
-            overflow-x: auto;
+            justify-content: space-between;
+            width: 100%;
+            gap: 4px 8px;
+            padding: 0 4px;
+            box-sizing: border-box;
         }
 
         .fire-search-layout .select-list li {
@@ -48,8 +51,13 @@
             display: inline-flex;
             align-items: center;
             white-space: nowrap;
-            margin: 2px 4px 2px 0;
-            flex-shrink: 0;
+            margin: 2px 0;
+            flex: 0 1 auto;
+        }
+
+        .fire-search-layout .select-list li.label-actions {
+            flex: 0 0 auto;
+            margin-left: auto;
         }
 
         .fire-search-layout .select-list li label:not(.radio-box) {
@@ -64,7 +72,7 @@
         .fire-search-layout .select-list li input,
         .fire-search-layout .select-list li select {
             float: none;
-            width: 120px;
+            width: 110px;
             vertical-align: middle;
         }
 
@@ -78,15 +86,15 @@
         }
 
         .fire-search-layout .select-list li select[name="companyId"] {
-            width: 130px;
+            width: 180px;
         }
 
         .fire-search-layout .select-list li input[name="buildingName"] {
-            width: 110px;
+            width: 120px;
         }
 
         .fire-search-layout .select-list li select[name="buildingType"] {
-            width: 100px;
+            width: 160px;
         }
 
         .fire-search-layout .select-list li .btn {
@@ -148,7 +156,7 @@
                                         th:value="${dict.dictValue}"></option>
                                 </select>
                             </li>
-                            <li>
+                            <li class="label-actions">
                                 <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
                                         class="fa fa-search"></i>&nbsp;搜索</a>
                                 <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i

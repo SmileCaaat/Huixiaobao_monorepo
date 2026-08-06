@@ -82,5 +82,6 @@ public interface FireFaultRepairMapper {
             @org.apache.ibatis.annotations.Param("repairUserId") Long repairUserId,
             @org.apache.ibatis.annotations.Param("repairDescription") String repairDescription,
             @org.apache.ibatis.annotations.Param("repairImages") String repairImages,
+            @org.apache.ibatis.annotations.Param("completeTime") java.util.Date completeTime,
             @org.apache.ibatis.annotations.Param("updateBy") String updateBy);
 }

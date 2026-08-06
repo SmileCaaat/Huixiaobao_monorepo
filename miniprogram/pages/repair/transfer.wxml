@@ -1,0 +1,12 @@
+<view class="page">
+  <view class="search">
+    <input class="input" placeholder="请输入关键字" value="{{keyword}}" bindinput="onKeyword" />
+  </view>
+  <view class="list">
+    <view class="empty" wx:if="{{!filtered.length}}">暂无同部门可转派人员</view>
+    <view class="item" wx:for="{{filtered}}" wx:key="userId" bindtap="onSelect" data-id="{{item.userId}}" data-name="{{item.userName}}">
+      <text class="name">{{item.userName}}</text>
+      <text class="phone">{{item.phonenumber || '-'}}</text>
+    </view>
+  </view>
+</view>

@@ -79,6 +79,9 @@ public class FireCompanyServiceImpl implements IFireCompanyService {
                 b.setCreateBy(fireCompany.getCreateBy());
                 buildingService.insertBuilding(b);
             }
+        } else {
+            // 客户基础信息中的建筑摘要字段 → 同步到建筑表，供报告/小程序互通
+            syncSummaryBuildingFromCompany(fireCompany, fireCompany.getCreateBy());
         }
         return rows;
     }
@@ -131,6 +134,9 @@ public class FireCompanyServiceImpl implements IFireCompanyService {
                     }
                 }
             }
+        } else {
+            String operator = fireCompany.getUpdateBy() != null ? fireCompany.getUpdateBy() : fireCompany.getCreateBy();
+            syncSummaryBuildingFromCompany(fireCompany, operator);
         }
         return rows;
     }
@@ -262,6 +268,79 @@ public class FireCompanyServiceImpl implements IFireCompanyService {
         }
         if (StringUtils.isEmpty(fireCompany.getReportMode())) {
             fireCompany.setReportMode("0");
+        }
+    }
+
+    /**
+     * 将客户基础信息中的建筑摘要字段同步到建筑表（报告生成读取 fire_building）。
+     * 已有建筑时更新首条摘要字段；无建筑且摘要有值时自动创建一条主建筑。
+     */
+    private void syncSummaryBuildingFromCompany(FireCompany company, String operator) {
+        if (company == null || company.getCompanyId() == null) {
+            return;
+        }
+        boolean hasSummary = StringUtils.isNotEmpty(company.getBuildingType())
+                || company.getTotalLandArea() != null
+                || company.getTotalBuildingArea() != null
+                || company.getBuildingFloorCount() != null
+                || company.getBuildingHeight() != null;
+        if (!hasSummary) {
+            return;
+        }
+
+        FireBuilding query = new FireBuilding();
+        query.setCompanyId(company.getCompanyId());
+        List<FireBuilding> existing = buildingMapper.selectBuildingList(query);
+        String buildingName = StringUtils.isNotEmpty(company.getProjectName())
+                ? company.getProjectName()
+                : company.getCompanyName();
+        if (StringUtils.isEmpty(buildingName)) {
+            buildingName = "主建筑";
+        }
+
+        if (existing != null && !existing.isEmpty()) {
+            FireBuilding target = existing.get(0);
+            applyCompanySummaryToBuilding(company, target);
+            if (StringUtils.isEmpty(target.getBuildingName())) {
+                target.setBuildingName(buildingName);
+            }
+            if (StringUtils.isEmpty(target.getAddress()) && StringUtils.isNotEmpty(company.getAddress())) {
+                target.setAddress(company.getAddress());
+            }
+            target.setCompanyName(company.getCompanyName());
+            target.setUpdateBy(operator);
+            buildingService.updateBuilding(target);
+            return;
+        }
+
+        FireBuilding created = new FireBuilding();
+        created.setCompanyId(company.getCompanyId());
+        created.setCompanyName(company.getCompanyName());
+        created.setBuildingName(buildingName);
+        created.setAddress(company.getAddress());
+        applyCompanySummaryToBuilding(company, created);
+        created.setCreateBy(operator);
+        buildingService.insertBuilding(created);
+    }
+
+    private void applyCompanySummaryToBuilding(FireCompany company, FireBuilding building) {
+        if (StringUtils.isNotEmpty(company.getBuildingType())) {
+            building.setBuildingType(company.getBuildingType());
+        }
+        if (StringUtils.isNotEmpty(company.getAutoFireSystem())) {
+            building.setAutoFireSystem(company.getAutoFireSystem());
+        }
+        if (company.getTotalLandArea() != null) {
+            building.setLandArea(company.getTotalLandArea());
+        }
+        if (company.getTotalBuildingArea() != null) {
+            building.setArea(company.getTotalBuildingArea());
+        }
+        if (company.getBuildingFloorCount() != null) {
+            building.setFloorCount(company.getBuildingFloorCount());
+        }
+        if (company.getBuildingHeight() != null) {
+            building.setBuildingHeight(company.getBuildingHeight());
         }
     }
 }

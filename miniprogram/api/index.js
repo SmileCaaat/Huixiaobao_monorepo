@@ -16,7 +16,8 @@ const getMyCompanyList = () => request.get("/api/fire/company/myList");
 const switchCompany = (data) => request.post("/api/fire/company/switch", data);
 const getCompanyDetail = (companyId) =>
   request.get(`/api/fire/company/detail/${companyId}`);
-const getCurrentCompany = () => request.get("/api/fire/company/current");
+const getCurrentCompany = (query, options) =>
+  request.get("/api/fire/company/current", query || {}, options || {});
 
 const getBuildingList = (data) => request.post("/api/fire/building/list", data);
 const getBuildingDetail = (id) => request.get(`/api/fire/building/detail/${id}`);
@@ -103,15 +104,16 @@ const getInspectionEquipmentTypes = (categoryKey) =>
     `/api/fire/inspection/equipmentTypes/${encodeURIComponent(categoryKey)}`
   );
 
-const getCheckInList = (data) => request.post("/api/fire/checkIn/list", data);
+const getCheckInList = (data, options) =>
+  request.post("/api/fire/checkIn/list", data, options || {});
 const addCheckIn = (data) => request.post("/api/fire/checkIn/add", data);
 const getCheckInDetail = (id) => request.get(`/api/fire/checkIn/detail/${id}`);
 const reverseGeocode = (params, options) =>
   request.get("/api/fire/checkIn/reverseGeocode", params || {}, options || {});
 const validateLocation = (data) =>
   request.post("/api/fire/checkIn/validateLocation", data);
-const listTasksByCompany = (data) =>
-  request.post("/api/fire/checkIn/listTasksByCompany", data);
+const listTasksByCompany = (data, options) =>
+  request.post("/api/fire/checkIn/listTasksByCompany", data, options || {});
 const getCheckInTaskList = listTasksByCompany;
 
 const getRepairList = (data) => request.post("/api/fire/repair/list", data);
@@ -130,24 +132,68 @@ const startRepair = (repairId) =>
   request.post(`/api/fire/repair/start/${repairId}`);
 const completeRepair = (data) => request.post("/api/fire/repair/complete", data);
 const getRepairStats = () => request.get("/api/fire/repair/statistics");
+const getRepairLogs = (id) => request.get(`/api/fire/repair/logs/${id}`);
+const getRepairTransferUsers = (id) =>
+  request.get(`/api/fire/repair/transferUsers/${id}`);
+const transferRepair = (data) => request.post("/api/fire/repair/transfer", data);
 
 const getReportList = (data) => request.post("/api/fire/report/list", data);
 const getReportDetail = (id) => request.get(`/api/fire/report/detail/${id}`);
 const getReportPreviewUrl = (id) => `/api/fire/report/preview/${id}`;
 const getReportDownloadUrl = (id) => `/api/fire/report/download/${id}`;
 
+function pickHeader(header, name) {
+  if (!header) return "";
+  const lower = name.toLowerCase();
+  const key = Object.keys(header).find((k) => String(k).toLowerCase() === lower);
+  return key ? String(header[key] || "") : "";
+}
+
+function detectReportFileType(header) {
+  const marked = pickHeader(header, "X-Report-File-Type").toLowerCase();
+  if (marked === "pdf" || marked === "docx") return marked;
+  const contentType = pickHeader(header, "Content-Type").toLowerCase();
+  const disposition = pickHeader(header, "Content-Disposition").toLowerCase();
+  if (contentType.indexOf("pdf") >= 0 || disposition.indexOf(".pdf") >= 0) return "pdf";
+  if (
+    contentType.indexOf("wordprocessingml") >= 0 ||
+    contentType.indexOf("msword") >= 0 ||
+    disposition.indexOf(".docx") >= 0 ||
+    disposition.indexOf(".doc") >= 0
+  ) {
+    return "docx";
+  }
+  // 本地报告常见为 Word（PDF 转换失败时仍保留 docx）
+  return "docx";
+}
+
+function openReportDocument(tempFilePath, header) {
+  return new Promise((resolve, reject) => {
+    wx.openDocument({
+      filePath: tempFilePath,
+      fileType: detectReportFileType(header),
+      showMenu: true,
+      success: resolve,
+      fail(err) {
+        wx.showToast({ title: "无法打开文档", icon: "none" });
+        reject(err);
+      }
+    });
+  });
+}
+
 function downloadReportFile(reportId, openAfter) {
   const url = BASE_URL + getReportPreviewUrl(reportId);
   const token = auth.getToken();
   return new Promise((resolve, reject) => {
-    wx.showLoading({ title: "\u52a0\u8f7d\u4e2d...", mask: true });
+    wx.showLoading({ title: "加载中...", mask: true });
     wx.downloadFile({
       url,
       header: token ? { Authorization: "Bearer " + token } : {},
       success(res) {
         wx.hideLoading();
         if (res.statusCode !== 200) {
-          wx.showToast({ title: "\u9884\u89c8\u5931\u8d25", icon: "none" });
+          wx.showToast({ title: "预览失败(" + res.statusCode + ")", icon: "none" });
           reject(res);
           return;
         }
@@ -155,29 +201,21 @@ function downloadReportFile(reportId, openAfter) {
           wx.saveFile({
             tempFilePath: res.tempFilePath,
             success(saveRes) {
-              wx.showToast({ title: "\u4e0b\u8f7d\u6210\u529f", icon: "success" });
+              wx.showToast({ title: "下载成功", icon: "success" });
               resolve(saveRes);
             },
             fail(err) {
-              wx.showToast({ title: "\u4e0b\u8f7d\u5931\u8d25", icon: "none" });
+              wx.showToast({ title: "下载失败", icon: "none" });
               reject(err);
             }
           });
           return;
         }
-        wx.openDocument({
-          filePath: res.tempFilePath,
-          showMenu: true,
-          success: resolve,
-          fail(err) {
-            wx.showToast({ title: "\u65e0\u6cd5\u6253\u5f00\u6587\u6863", icon: "none" });
-            reject(err);
-          }
-        });
+        openReportDocument(res.tempFilePath, res.header).then(resolve).catch(reject);
       },
       fail(err) {
         wx.hideLoading();
-        wx.showToast({ title: "\u4e0b\u8f7d\u5931\u8d25", icon: "none" });
+        wx.showToast({ title: "下载失败", icon: "none" });
         reject(err);
       }
     });
@@ -189,30 +227,22 @@ const downloadReport = (reportId) => {
   const url = BASE_URL + getReportDownloadUrl(reportId);
   const token = auth.getToken();
   return new Promise((resolve, reject) => {
-    wx.showLoading({ title: "\u52a0\u8f7d\u4e2d...", mask: true });
+    wx.showLoading({ title: "加载中...", mask: true });
     wx.downloadFile({
       url,
       header: token ? { Authorization: "Bearer " + token } : {},
       success(res) {
         wx.hideLoading();
         if (res.statusCode !== 200) {
-          wx.showToast({ title: "\u4e0b\u8f7d\u5931\u8d25", icon: "none" });
+          wx.showToast({ title: "下载失败(" + res.statusCode + ")", icon: "none" });
           reject(res);
           return;
         }
-        wx.openDocument({
-          filePath: res.tempFilePath,
-          showMenu: true,
-          success: resolve,
-          fail(err) {
-            wx.showToast({ title: "\u65e0\u6cd5\u6253\u5f00\u6587\u6863", icon: "none" });
-            reject(err);
-          }
-        });
+        openReportDocument(res.tempFilePath, res.header).then(resolve).catch(reject);
       },
       fail(err) {
         wx.hideLoading();
-        wx.showToast({ title: "\u4e0b\u8f7d\u5931\u8d25", icon: "none" });
+        wx.showToast({ title: "下载失败", icon: "none" });
         reject(err);
       }
     });
@@ -295,6 +325,9 @@ const api = {
   startRepair,
   completeRepair,
   getRepairStats,
+  getRepairLogs,
+  getRepairTransferUsers,
+  transferRepair,
   getReportList,
   getReportDetail,
   getReportPreviewUrl,

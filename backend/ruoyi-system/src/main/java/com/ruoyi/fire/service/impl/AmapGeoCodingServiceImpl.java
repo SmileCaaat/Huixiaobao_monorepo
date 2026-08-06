@@ -88,7 +88,16 @@ public class AmapGeoCodingServiceImpl implements IGeoCodingService
             if (!"1".equals(status))
             {
                 String info = root.path("info").asText("unknown");
-                log.warn("amap regeo failed status={} info={}", status, info);
+                String infoCode = root.path("infocode").asText("");
+                log.warn("amap regeo failed status={} info={} infocode={}", status, info, infoCode);
+                if ("10009".equals(infoCode) || "USERKEY_PLAT_NOMATCH".equals(info))
+                {
+                    throw new ServiceException("地址解析密钥类型不匹配，请配置高德Web服务Key");
+                }
+                if ("10001".equals(infoCode) || "INVALID_USER_KEY".equals(info))
+                {
+                    throw new ServiceException("地址解析密钥无效");
+                }
                 throw new ServiceException("地址解析失败");
             }
             String formatted = root.path("regeocode").path("formatted_address").asText("");

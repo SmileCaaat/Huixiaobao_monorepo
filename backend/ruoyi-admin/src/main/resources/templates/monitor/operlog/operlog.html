@@ -3,11 +3,96 @@
 <head>
 	<th:block th:include="include :: header('操作日志列表')" />
 	<th:block th:include="include :: bootstrap-select-css" />
+	<style>
+		/* 操作日志搜索栏：单行均匀撑满；模块/人员/类型/状态收窄 */
+		.operlog-search-layout .select-list ul {
+			display: flex;
+			flex-wrap: nowrap;
+			align-items: center;
+			justify-content: space-between;
+			width: 100%;
+			gap: 4px 6px;
+			padding: 0 4px;
+			box-sizing: border-box;
+		}
+
+		.operlog-search-layout .select-list li {
+			float: none;
+			display: inline-flex;
+			align-items: center;
+			white-space: nowrap;
+			margin: 2px 0;
+			flex: 0 1 auto;
+		}
+
+		.operlog-search-layout .select-list li.label-actions {
+			flex: 0 0 auto;
+		}
+
+		.operlog-search-layout .select-list li > label:not(.radio-box) {
+			float: none;
+			width: auto;
+			margin: 0 4px 0 0;
+			white-space: nowrap;
+			text-align: right;
+			line-height: 30px;
+		}
+
+		.operlog-search-layout .select-list li input,
+		.operlog-search-layout .select-list li select {
+			float: none;
+			width: 110px;
+			vertical-align: middle;
+		}
+
+		.operlog-search-layout .select-list li input[name="operIp"] {
+			width: 110px;
+		}
+
+		.operlog-search-layout .select-list li input[name="title"],
+		.operlog-search-layout .select-list li input[name="operName"] {
+			width: 90px;
+		}
+
+		.operlog-search-layout .select-list li select[name="status"] {
+			width: 80px;
+		}
+
+		.operlog-search-layout .select-list .bootstrap-select:not([class*="col-"]):not([class*="form-control"]):not(.input-group-btn),
+		.operlog-search-layout .select-list .btn-default {
+			width: 100px;
+		}
+
+		.operlog-search-layout .select-list .select-time label,
+		.operlog-search-layout .select-list .select-time span,
+		.operlog-search-layout .select-list .select-time input {
+			float: none;
+		}
+
+		.operlog-search-layout .select-list .select-time input {
+			width: 100px;
+		}
+
+		.operlog-search-layout .select-list .select-time span {
+			display: inline-block;
+			margin: 0 4px;
+			line-height: 30px;
+		}
+
+		.operlog-search-layout .select-list .select-time label {
+			margin-top: 0;
+		}
+
+		.operlog-search-layout .select-list li .btn {
+			vertical-align: middle;
+			margin-right: 4px;
+		}
+	</style>
 </head>
 <body class="gray-bg">
 	<div class="container-div">
 		<div class="row">
-			<div class="col-sm-12 search-collapse system-search-collapse">
+			<div class="col-sm-12 search-collapse system-search-collapse operlog-search-layout">
 				<form id="operlog-form">
 					<div class="select-list">
 						<ul>
@@ -37,7 +122,7 @@
 								<span>-</span>
 								<input type="text" class="time-input" id="endTime" placeholder="结束时间"/>
 							</li>
-							<li>
+							<li class="label-actions">
 								<a class="btn btn-primary btn-rounded btn-sm" onclick="searchPre()"><i class="fa fa-search"></i>&nbsp;搜索</a>
 								<a class="btn btn-warning btn-rounded btn-sm" onclick="resetPre()"><i class="fa fa-refresh"></i>&nbsp;重置</a>
 							</li>

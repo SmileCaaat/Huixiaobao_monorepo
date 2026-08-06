@@ -8,6 +8,21 @@ function pickCategories(data) {
   return [];
 }
 
+function mapCategory(item) {
+  const total = Number(item.totalItems) || 0;
+  const done = Number(item.completedItems) || 0;
+  const pending = Math.max(total - done, 0);
+  const finished = total > 0 && pending === 0;
+  return Object.assign({}, item, {
+    displayName: item.categoryName || item.name || item.itemName || "-",
+    totalItems: total,
+    completedItems: done,
+    pendingItems: pending,
+    statusText: finished ? "已完成" : "未完成",
+    statusClass: finished ? "done" : "todo"
+  });
+}
+
 Page({
   data: {
     taskId: null,
@@ -19,12 +34,14 @@ Page({
   onLoad(options) {
     const taskId = options.taskId || options.id;
     if (!taskId) {
-      wx.showToast({ title: "\u4efb\u52a1\u4e0d\u5b58\u5728", icon: "none" });
+      wx.showToast({ title: "任务不存在", icon: "none" });
       return;
     }
     this.setData({ taskId });
-    wx.setNavigationBarTitle({ title: "\u6d88\u9632\u7ef4\u62a4\uff08\u5de1\u67e5\u6d4b\u8bd5\uff09" });
-    this.loadDetail();
+  },
+
+  onShow() {
+    if (this.data.taskId) this.loadDetail();
   },
 
   async loadDetail() {
@@ -32,21 +49,12 @@ Page({
     try {
       const res = await api.getInspectionTestDetail(this.data.taskId);
       const data = res.data || {};
-      const categories = pickCategories(data).map((item) => {
-        const total = item.totalItems || 0;
-        const done = item.completedItems || 0;
-        const progress = total > 0 ? done + "/" + total : "";
-        return Object.assign({}, item, {
-          displayName: item.categoryName || item.name || item.itemName || "-",
-          progressText: progress
-        });
-      });
       this.setData({
         taskInfo: data.taskInfo || data.task || null,
-        categories
+        categories: pickCategories(data).map(mapCategory)
       });
     } catch (e) {
-      wx.showToast({ title: "\u52a0\u8f7d\u5931\u8d25", icon: "none" });
+      wx.showToast({ title: "加载失败", icon: "none" });
     } finally {
       this.setData({ loading: false });
     }

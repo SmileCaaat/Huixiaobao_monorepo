@@ -1,16 +1,28 @@
 <view class="page">
-  <view class="search-bar">
-    <input class="search-input" placeholder="请输入报告名称" value="{{keyword}}" bindinput="onKeywordInput" confirm-type="search" bindconfirm="handleSearch" />
-    <view class="search-btn" bindtap="handleSearch">查询</view>
+  <view class="search-wrap">
+    <input class="search-input" placeholder="请输入关键字" value="{{keyword}}" bindinput="onKeywordInput" confirm-type="search" bindconfirm="handleSearch" />
   </view>
   <scroll-view class="list" scroll-y bindscrolltolower="loadMore">
     <view wx:if="{{list.length === 0 && !loading}}" class="empty">暂无报告</view>
-    <view class="card" wx:for="{{list}}" wx:key="reportId" bindtap="openReport" data-id="{{item.reportId}}">
-      <view class="card-hd">
-        <text class="title">{{item.reportName || '-'}}</text>
+    <view class="report-card" wx:for="{{list}}" wx:key="reportId" bindtap="openReport" data-id="{{item.reportId}}">
+      <view class="card-title">{{item.taskTitle}}</view>
+      <view class="card-divider"></view>
+      <view class="info-row">
+        <text class="info-label">计划时间</text>
+        <text class="info-value">{{item.planTimeText}}</text>
       </view>
-      <view class="row"><text class="label">任务名称</text><text class="value">{{item.taskName || '-'}}</text></view>
-      <view class="row"><text class="label">创建时间</text><text class="value">{{item.createTime || '-'}}</text></view>
+      <view class="info-row">
+        <text class="info-label">项目负责人</text>
+        <text class="info-value">{{item.managerText}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">维保操作员</text>
+        <text class="info-value">{{item.operatorText}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">生成时间</text>
+        <text class="info-value">{{item.createTimeText}}</text>
+      </view>
     </view>
     <view class="footer-tip" wx:if="{{loading}}">加载中...</view>
     <view class="footer-tip" wx:if="{{noMore && list.length > 0}}">没有更多了</view>

@@ -99,7 +99,11 @@
       </view>
       <picker-view class="picker-view" value="{{pickerIndex}}" bindchange="onPickerChange">
         <picker-view-column>
-          <view wx:for="{{pickerOptions}}" wx:key="value" class="picker-item">{{item.label}}</view>
+          <view
+            wx:for="{{pickerOptions}}"
+            wx:key="value"
+            class="picker-item {{pickerIndex[0] === index ? 'picker-item-active' : ''}}"
+          >{{item.label}}</view>
         </picker-view-column>
       </picker-view>
     </view>

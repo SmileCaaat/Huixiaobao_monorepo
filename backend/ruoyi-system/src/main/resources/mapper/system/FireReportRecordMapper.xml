@@ -11,33 +11,56 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="reportName"    column="report_name"    />
         <result property="filePath"    column="file_path"    />
         <result property="fileSize"    column="file_size"    />
+        <result property="planStartTime"    column="plan_start_time"    />
+        <result property="planEndTime"    column="plan_end_time"    />
+        <result property="managerName"    column="manager_name"    />
+        <result property="operatorNames"    column="operator_names"    />
         <result property="createBy"    column="create_by"    />
         <result property="createTime"    column="create_time"    />
         <result property="remark"    column="remark"    />
     </resultMap>
 
     <sql id="selectFireReportRecordVo">
-        select report_id, task_id, task_name, report_name, file_path, file_size, create_by, create_time, remark from fire_report_record
+        select r.report_id,
+               r.task_id,
+               ifnull(nullif(r.task_name, ''), t.task_name) as task_name,
+               r.report_name,
+               r.file_path,
+               r.file_size,
+               t.plan_start_time,
+               t.plan_end_time,
+               t.manager_name,
+               t.operator_names,
+               r.create_by,
+               r.create_time,
+               r.remark
+        from fire_report_record r
+        left join fire_maintenance_task t on t.task_id = r.task_id
     </sql>
 
     <select id="selectFireReportRecordList" parameterType="FireReportRecord" resultMap="FireReportRecordResult">
         <include refid="selectFireReportRecordVo"/>
         <where>  
-            <if test="taskId != null "> and task_id = #{taskId}</if>
-            <if test="taskName != null  and taskName != ''"> and task_name like concat('%', #{taskName}, '%')</if>
-            <if test="reportName != null  and reportName != ''"> and report_name like concat('%', #{reportName}, '%')</if>
+            <if test="taskId != null "> and r.task_id = #{taskId}</if>
+            <if test="taskName != null  and taskName != ''"> and ifnull(nullif(r.task_name, ''), t.task_name) like concat('%', #{taskName}, '%')</if>
+            <if test="reportName != null  and reportName != ''">
+                and (
+                    r.report_name like concat('%', #{reportName}, '%')
+                    or ifnull(nullif(r.task_name, ''), t.task_name) like concat('%', #{reportName}, '%')
+                )
+            </if>
             <if test="params.scopeUserId != null">
                 and exists (
-                    select 1 from fire_maintenance_task t
-                    where t.task_id = fire_report_record.task_id
+                    select 1 from fire_maintenance_task st
+                    where st.task_id = r.task_id
                       and (
-                        t.manager_id = #{params.scopeUserId}
-                        or t.executor_id = #{params.scopeUserId}
-                        or find_in_set(#{params.scopeUserId}, t.operator_ids)
+                        st.manager_id = #{params.scopeUserId}
+                        or st.executor_id = #{params.scopeUserId}
+                        or find_in_set(#{params.scopeUserId}, st.operator_ids)
                         or exists (
                             select 1 from fire_user_company uc
                             where uc.user_id = #{params.scopeUserId}
-                              and uc.company_id = t.company_id
+                              and uc.company_id = st.company_id
                               and (uc.status is null or uc.status = '0')
                               and uc.role_type in ('1','2','3')
                         )
@@ -45,12 +68,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
                 )
             </if>
         </where>
-        order by create_time desc
+        order by r.create_time desc
     </select>
     
     <select id="selectFireReportRecordById" parameterType="Long" resultMap="FireReportRecordResult">
         <include refid="selectFireReportRecordVo"/>
-        where report_id = #{reportId}
+        where r.report_id = #{reportId}
     </select>
         
     <insert id="insertFireReportRecord" parameterType="FireReportRecord" useGeneratedKeys="true" keyProperty="reportId">

@@ -149,7 +149,7 @@
             if (!companyId) {
                 return;
             }
-            $.get(prefix + "/buildings/" + companyId, function (res) {
+            $.get(prefix + "/buildings/" + companyId + (linkedTaskId ? ("?taskId=" + encodeURIComponent(linkedTaskId)) : ""), function (res) {
                 if (res.code == 0 || res.code == 200) {
                     var list = res.data || [];
                     var html = '<option value="">请选择</option>';

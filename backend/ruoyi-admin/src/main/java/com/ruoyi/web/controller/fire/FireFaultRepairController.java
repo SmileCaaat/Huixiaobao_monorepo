@@ -2,6 +2,7 @@ package com.ruoyi.web.controller.fire;
 
 import java.util.List;
 import java.util.Map;
+import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -158,12 +159,17 @@ public class FireFaultRepairController extends BaseController {
                 .replace("/", "").replace("防排烟", "防烟排烟");
     }
 
-    @RequiresPermissions("fire:repair:add")
+    /**
+     * 新增故障报修。
+     * 关联维保任务时：任务干系人即可提交（不强制 fire:repair:add，员工工作台通常无该按钮权限）。
+     * 独立新增：仍要求 fire:repair:add。
+     */
     @Log(title = "故障报修", businessType = BusinessType.INSERT)
     @PostMapping("/add")
     @ResponseBody
     public AjaxResult addSave(FireFaultRepair fireFaultRepair) {
         try {
+            SysUser user = ShiroUtils.getSysUser();
             if (fireFaultRepair.getTaskId() != null) {
                 FireMaintenanceTask linkedTask = maintenanceTaskService
                         .selectFireMaintenanceTaskBaseByTaskId(fireFaultRepair.getTaskId());
@@ -171,7 +177,17 @@ public class FireFaultRepairController extends BaseController {
                         || !linkedTask.getCompanyId().equals(fireFaultRepair.getCompanyId())) {
                     return error("关联维保任务与报修单位不一致");
                 }
-                fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
+                fireDataPermissionService.assertCanAccessTask(user, linkedTask);
+                fireDataPermissionService.assertCanAccessCompanyContext(
+                        user, fireFaultRepair.getCompanyId(), linkedTask);
+            } else if (!SecurityUtils.getSubject().isPermitted("fire:repair:add")) {
+                return error("您没有创建数据的权限，请联系管理员添加权限 [fire:repair:add]");
+            }
+            if (fireFaultRepair.getReporterId() == null) {
+                fireFaultRepair.setReporterId(ShiroUtils.getUserId());
+            }
+            if (StringUtils.isEmpty(fireFaultRepair.getReporterName()) && user != null) {
+                fireFaultRepair.setReporterName(user.getUserName());
             }
             fireFaultRepair.setCreateBy(ShiroUtils.getLoginName());
             return toAjax(fireFaultRepairService.insertFireFaultRepair(fireFaultRepair));
@@ -313,19 +329,17 @@ public class FireFaultRepairController extends BaseController {
         }
     }
 
-    @RequiresPermissions("fire:repair:complete")
+    /**
+     * 完成页：处理人权限由 service assertCanProcessRepair 校验，不再依赖菜单权限字
+     */
     @GetMapping("/complete/{repairId}")
     public String complete(@PathVariable("repairId") Long repairId, ModelMap mmap) {
         FireFaultRepair repair = fireFaultRepairService.selectFireFaultRepairById(repairId);
         fireDataPermissionService.assertCanProcessRepair(ShiroUtils.getSysUser(), repair);
-        if (repair.getStartTime() == null) {
-            throw new ServiceException("请先开始处理后再填写处理结果");
-        }
         mmap.put("repair", repair);
         return prefix + "/complete";
     }
 
-    @RequiresPermissions("fire:repair:complete")
     @Log(title = "完成报修", businessType = BusinessType.UPDATE)
     @PostMapping("/complete")
     @ResponseBody
@@ -333,6 +347,101 @@ public class FireFaultRepairController extends BaseController {
         try {
             fireFaultRepair.setUpdateBy(ShiroUtils.getLoginName());
             return toAjax(fireFaultRepairService.completeRepair(fireFaultRepair));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
+    }
+
+    /**
+     * 保存维修信息（不完成）
+     */
+    @Log(title = "保存维修信息", businessType = BusinessType.UPDATE)
+    @PostMapping("/saveProgress")
+    @ResponseBody
+    public AjaxResult saveProgress(FireFaultRepair fireFaultRepair) {
+        try {
+            fireFaultRepair.setUpdateBy(ShiroUtils.getLoginName());
+            return toAjax(fireFaultRepairService.saveRepairProgress(fireFaultRepair));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
+    }
+
+    /**
+     * 暂停维修：保存当前进度
+     */
+    @Log(title = "暂停维修", businessType = BusinessType.UPDATE)
+    @PostMapping("/pause")
+    @ResponseBody
+    public AjaxResult pause(FireFaultRepair fireFaultRepair) {
+        try {
+            fireFaultRepair.setUpdateBy(ShiroUtils.getLoginName());
+            int rows = fireFaultRepairService.saveRepairProgress(fireFaultRepair);
+            return rows > 0 ? success("已暂停，维修信息已保存") : error("暂停失败");
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
+    }
+
+    /**
+     * 维修处理页（工单信息 + 开始/完成/转派）
+     */
+    @GetMapping("/handle/{repairId}")
+    public String handle(@PathVariable("repairId") Long repairId, ModelMap mmap) {
+        getRepair(repairId);
+        try {
+            fireFaultRepairService.claimByReporterIfNeeded(repairId);
+        } catch (ServiceException ignored) {
+            // ignore
+        }
+        FireFaultRepair repair = getRepair(repairId);
+        SysUser user = ShiroUtils.getSysUser();
+        boolean canProcess = fireDataPermissionService.canProcessRepair(user, repair);
+        mmap.put("repair", repair);
+        mmap.put("canProcess", canProcess);
+        mmap.put("canStart", canProcess && repair.getStartTime() == null);
+        mmap.put("canComplete", canProcess && repair.getStartTime() != null
+                && !"2".equals(repair.getRepairStatus()));
+        mmap.put("canTransfer", canProcess && !"2".equals(repair.getRepairStatus()));
+        List<?> logs;
+        try {
+            logs = fireFaultRepairService.selectRepairLogs(repairId);
+        } catch (Exception e) {
+            logs = java.util.Collections.emptyList();
+        }
+        mmap.put("logs", logs);
+        return prefix + "/handle";
+    }
+
+    @GetMapping("/logs/{repairId}")
+    @ResponseBody
+    public AjaxResult logs(@PathVariable("repairId") Long repairId) {
+        try {
+            getRepair(repairId);
+            return success(fireFaultRepairService.selectRepairLogs(repairId));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
+    }
+
+    @GetMapping("/transferUsers/{repairId}")
+    @ResponseBody
+    public AjaxResult transferUsers(@PathVariable("repairId") Long repairId) {
+        try {
+            getRepair(repairId);
+            return success(fireFaultRepairService.selectTransferUsers(repairId));
+        } catch (ServiceException e) {
+            return error(e.getMessage());
+        }
+    }
+
+    @Log(title = "转派报修", businessType = BusinessType.UPDATE)
+    @PostMapping("/transfer")
+    @ResponseBody
+    public AjaxResult transfer(Long repairId, Long targetUserId) {
+        try {
+            getRepair(repairId);
+            return toAjax(fireFaultRepairService.transferRepair(repairId, targetUserId));
         } catch (ServiceException e) {
             return error(e.getMessage());
         }

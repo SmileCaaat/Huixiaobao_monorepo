@@ -25,7 +25,19 @@ Page({
 
   onShow() {
     if (!auth.isLoggedIn()) {
-      wx.reLaunch({ url: "/pages/login/index" });
+      const app = getApp();
+      if (app.globalData && app.globalData.authRedirecting) return;
+      const pages = getCurrentPages() || [];
+      const cur = pages.length ? pages[pages.length - 1] : null;
+      const route = (cur && (cur.route || cur.__route__)) || "";
+      if (route.indexOf("pages/login/") === 0) return;
+      if (app.globalData) app.globalData.authRedirecting = true;
+      wx.reLaunch({
+        url: "/pages/login/index",
+        complete() {
+          if (app.globalData) app.globalData.authRedirecting = false;
+        }
+      });
       return;
     }
     this.loadCurrentCompany();
@@ -69,7 +81,7 @@ Page({
 
   async loadCurrentCompany() {
     try {
-      const res = await api.getCurrentCompany();
+      const res = await api.getCurrentCompany({}, { loading: false, showError: false });
       if (res && res.data) {
         this.setData({
           selectedCompany: res.data,
@@ -87,7 +99,7 @@ Page({
 
   async loadHome() {
     try {
-      const res = await api.getHomeStats({}, { showError: true });
+      const res = await api.getHomeStats({}, { loading: false, showError: false });
       const data = (res && res.data) || {};
       const patch = {
         homeError: "",

@@ -1,70 +1,75 @@
-<view class="checkin-page">
-  <view class="checkin-page__company">
-    <text class="checkin-page__company-label">当前公司</text>
-    <text class="checkin-page__company-name">{{companyName}}</text>
+<view class="page">
+  <map class="map" longitude="{{mapLongitude}}" latitude="{{mapLatitude}}" scale="16" show-location="{{true}}" enable-scroll="{{true}}" markers="{{markers}}"></map>
+
+  <view class="sheet">
+    <view class="place" bindtap="onAddressTap">{{placeTitle}}</view>
+    <view class="coord-bar">
+      <view class="coord-left">
+        <text class="coord-text">当前位置: {{coordText}}</text>
+      </view>
+      <view class="{{refreshClass}}" bindtap="onRefreshTap">{{refreshText}}</view>
+    </view>
+
+    <view class="action-row">
+      <view class="action-btn action-in" data-type="0" bindtap="openConfirm">签到</view>
+      <view class="action-btn action-out" data-type="1" bindtap="openConfirm">签退</view>
+    </view>
+
+    <scroll-view class="history" scroll-y="true">
+      <block wx:if="{{historyList.length}}">
+        <view class="hist-item" wx:for="{{historyList}}" wx:key="checkInId">
+          <view class="hist-dot {{item.dotClass}}"></view>
+          <view class="hist-main">
+            <view class="hist-top">
+              <text class="hist-type {{item.typeClass}}">{{item.typeLabel}}</text>
+              <text class="hist-time">{{item.displayTime}}</text>
+            </view>
+            <view class="hist-addr">当前位置: {{item.coordText}}</view>
+          </view>
+        </view>
+      </block>
+      <view class="hist-empty" wx:if="{{!historyList.length && !historyLoading}}">暂无签到记录</view>
+      <view class="hist-empty" wx:if="{{!historyList.length && historyLoading}}">加载中...</view>
+    </scroll-view>
   </view>
 
-  <view class="checkin-page__body">
-    <view class="checkin-page__section">
-      <view class="checkin-page__section-title">定位信息</view>
-      <view class="checkin-page__card">
-        <view class="checkin-page__row">
-          <text class="checkin-page__label">纬度</text>
-          <text class="checkin-page__value">{{latitude != null ? latitude : "-"}}</text>
-        </view>
-        <view class="checkin-page__row">
-          <text class="checkin-page__label">经度</text>
-          <text class="checkin-page__value">{{longitude != null ? longitude : "-"}}</text>
-        </view>
-        <view class="checkin-page__row checkin-page__row--addr">
-          <text class="checkin-page__label">地址</text>
-          <text class="checkin-page__value checkin-page__addr {{addressFailed ? 'is-error' : ''}}">{{addressText}}</text>
-        </view>
-        <view class="checkin-page__refresh {{locating ? 'is-disabled' : ''}}" bindtap="onLocationAction">{{locating ? "定位中..." : (addressFailed ? "选择位置" : "刷新定位")}}</view>
+  <view class="mask" wx:if="{{showConfirm}}" catchtouchmove="noop">
+    <view class="confirm" catchtap="noop">
+      <view class="confirm-hd">
+        <text class="confirm-title">{{confirmTitle}}</text>
+        <text class="confirm-close" bindtap="closeConfirm">X</text>
       </view>
-    </view>
 
-    <view class="checkin-page__section">
-      <view class="checkin-page__section-title">签到类型</view>
-      <view class="checkin-page__type-card">
-        <view class="checkin-page__type-item {{checkInType === '0' ? 'is-active' : ''}}" data-type="0" bindtap="onTypeTap">签到</view>
-        <view class="checkin-page__type-item {{checkInType === '1' ? 'is-active' : ''}}" data-type="1" bindtap="onTypeTap">签退</view>
-      </view>
-    </view>
-
-    <view class="checkin-page__section">
-      <view class="checkin-page__section-title">维保任务</view>
-      <view class="checkin-page__card checkin-page__card--task">
-        <picker mode="selector" range="{{taskList}}" range-key="taskName" value="{{taskIndex >= 0 ? taskIndex : 0}}" bindchange="onTaskChange">
-          <view class="checkin-page__picker">{{selectedTaskName || "请选择任务（必选）"}}</view>
+      <view class="field">
+        <view class="field-label">关联任务(可选)</view>
+        <picker mode="selector" range="{{taskList}}" range-key="taskName" value="{{taskPickerValue}}" bindchange="onTaskChange">
+          <view class="field-picker">{{taskPickerText}}</view>
         </picker>
       </view>
-    </view>
 
-    <view class="checkin-page__section">
-      <view class="checkin-page__section-title">现场照片</view>
-      <view class="checkin-page__photos">
-        <block wx:for="{{images}}" wx:key="index">
-          <view class="checkin-page__thumb-wrap">
-            <image class="checkin-page__thumb" src="{{item.tempPath || item.serverUrl}}" mode="aspectFill" data-index="{{index}}" bindtap="previewImage" />
-            <view class="checkin-page__thumb-del" data-index="{{index}}" catchtap="removeImage">×</view>
-            <view class="checkin-page__thumb-mask" wx:if="{{item.uploading}}">上传中</view>
+      <view class="field">
+        <view class="field-label">现场照片(必传)</view>
+        <view class="photos">
+          <block wx:for="{{images}}" wx:key="index">
+            <view class="thumb-wrap">
+              <image class="thumb" src="{{item.tempPath || item.serverUrl}}" mode="aspectFill" data-index="{{index}}" bindtap="previewImage"></image>
+              <view class="thumb-del" data-index="{{index}}" catchtap="removeImage">X</view>
+              <view class="thumb-mask" wx:if="{{item.uploading}}">图片上传中</view>
+            </view>
+          </block>
+          <view class="thumb-add" wx:if="{{canAddImage}}" bindtap="chooseImage">
+            <text class="plus">+</text>
+            <text class="plus-text">上传图片</text>
           </view>
-        </block>
-        <view class="checkin-page__thumb-add" wx:if="{{images.length < 2}}" bindtap="chooseImage">+</view>
+        </view>
       </view>
-    </view>
 
-    <view class="checkin-page__section">
-      <view class="checkin-page__remark">
-        <text class="checkin-page__remark-label">备注</text>
-        <textarea class="checkin-page__remark-input" value="{{remark}}" bindinput="onRemarkInput" maxlength="200" auto-height="{{false}}" />
+      <view class="field">
+        <view class="field-label">备注</view>
+        <textarea class="remark" value="{{remark}}" bindinput="onRemarkInput" maxlength="200"></textarea>
       </view>
-    </view>
-  </view>
 
-  <view class="checkin-page__actions">
-    <view class="checkin-page__btn checkin-page__btn--ghost" bindtap="goHistory">查看签到历史</view>
-    <view class="checkin-page__btn checkin-page__btn--primary {{submitting ? 'is-disabled' : ''}}" bindtap="handleSubmit">提交打卡</view>
+      <view class="{{submitClass}}" bindtap="handleSubmit">{{submitText}}</view>
+    </view>
   </view>
 </view>

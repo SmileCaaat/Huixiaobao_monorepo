@@ -1,10 +1,10 @@
 {
   "pages": [
+    "pages/index/index",
     "pages/login/index",
     "pages/login/phone",
     "pages/login/password",
     "pages/login/register",
-    "pages/index/index",
     "pages/message/index",
     "pages/scan/index",
     "pages/mine/index",
@@ -31,7 +31,9 @@
     "pages/repair/index",
     "pages/repair/form",
     "pages/repair/detail",
-    "pages/customer/index"
+    "pages/repair/transfer",
+    "pages/customer/index",
+    "pages/customer/detail"
   ],
   "window": {
     "navigationBarTextStyle": "white",

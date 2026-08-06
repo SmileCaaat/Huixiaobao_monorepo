@@ -37,6 +37,18 @@ public class FireReportRecord extends BaseEntity {
     @Excel(name = "文件大小")
     private Long fileSize;
 
+    /** 计划开始时间（来自维保任务，列表展示用） */
+    private java.util.Date planStartTime;
+
+    /** 计划结束时间（来自维保任务，列表展示用） */
+    private java.util.Date planEndTime;
+
+    /** 项目负责人（来自维保任务，列表展示用） */
+    private String managerName;
+
+    /** 维保操作员（来自维保任务，列表展示用） */
+    private String operatorNames;
+
     public void setReportId(Long reportId) {
         this.reportId = reportId;
     }
@@ -85,6 +97,38 @@ public class FireReportRecord extends BaseEntity {
         return fileSize;
     }
 
+    public void setPlanStartTime(java.util.Date planStartTime) {
+        this.planStartTime = planStartTime;
+    }
+
+    public java.util.Date getPlanStartTime() {
+        return planStartTime;
+    }
+
+    public void setPlanEndTime(java.util.Date planEndTime) {
+        this.planEndTime = planEndTime;
+    }
+
+    public java.util.Date getPlanEndTime() {
+        return planEndTime;
+    }
+
+    public void setManagerName(String managerName) {
+        this.managerName = managerName;
+    }
+
+    public String getManagerName() {
+        return managerName;
+    }
+
+    public void setOperatorNames(String operatorNames) {
+        this.operatorNames = operatorNames;
+    }
+
+    public String getOperatorNames() {
+        return operatorNames;
+    }
+
     @Override
     public String toString() {
         return new ToStringBuilder(this, ToStringStyle.MULTI_LINE_STYLE)
@@ -94,6 +138,10 @@ public class FireReportRecord extends BaseEntity {
                 .append("reportName", getReportName())
                 .append("filePath", getFilePath())
                 .append("fileSize", getFileSize())
+                .append("planStartTime", getPlanStartTime())
+                .append("planEndTime", getPlanEndTime())
+                .append("managerName", getManagerName())
+                .append("operatorNames", getOperatorNames())
                 .append("createBy", getCreateBy())
                 .append("createTime", getCreateTime())
                 .append("remark", getRemark())

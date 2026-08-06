@@ -392,12 +392,22 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         data.put("periodTypeName", periodTypeMap);
 
         // ========== 建筑物信息 ==========
-        // 查询公司关联的所有建筑物
+        // 查询公司关联的所有建筑物；若无建筑记录则回退到客户基础信息摘要字段
         java.util.List<com.ruoyi.fire.domain.FireBuilding> buildings = new java.util.ArrayList<>();
         if (task.getCompanyId() != null) {
             com.ruoyi.fire.domain.FireBuilding queryBuilding = new com.ruoyi.fire.domain.FireBuilding();
             queryBuilding.setCompanyId(task.getCompanyId());
-            buildings = fireBuildingService.selectBuildingList(queryBuilding);
+            java.util.List<com.ruoyi.fire.domain.FireBuilding> queried =
+                    fireBuildingService.selectBuildingList(queryBuilding);
+            if (queried != null) {
+                buildings = queried;
+            }
+        }
+        if (buildings.isEmpty() && company != null) {
+            com.ruoyi.fire.domain.FireBuilding summary = buildSummaryBuildingFromCompany(company);
+            if (summary != null) {
+                buildings.add(summary);
+            }
         }
 
         data.put("buildingCount", buildings.size());
@@ -920,6 +930,37 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
             default:
                 return typeCode;
         }
+    }
+
+    /**
+     * 无建筑明细时，用客户基础信息中的建筑摘要字段拼一条虚拟建筑供报告填充。
+     */
+    private com.ruoyi.fire.domain.FireBuilding buildSummaryBuildingFromCompany(
+            com.ruoyi.fire.domain.FireCompany company) {
+        if (company == null) {
+            return null;
+        }
+        boolean hasSummary = StringUtils.isNotEmpty(company.getBuildingType())
+                || company.getTotalLandArea() != null
+                || company.getTotalBuildingArea() != null
+                || company.getBuildingFloorCount() != null
+                || company.getBuildingHeight() != null;
+        if (!hasSummary) {
+            return null;
+        }
+        com.ruoyi.fire.domain.FireBuilding building = new com.ruoyi.fire.domain.FireBuilding();
+        String name = StringUtils.isNotEmpty(company.getProjectName())
+                ? company.getProjectName()
+                : company.getCompanyName();
+        building.setBuildingName(name);
+        building.setAddress(company.getAddress());
+        building.setBuildingType(company.getBuildingType());
+        building.setAutoFireSystem(company.getAutoFireSystem());
+        building.setLandArea(company.getTotalLandArea());
+        building.setArea(company.getTotalBuildingArea());
+        building.setFloorCount(company.getBuildingFloorCount());
+        building.setBuildingHeight(company.getBuildingHeight());
+        return building;
     }
 
     /**

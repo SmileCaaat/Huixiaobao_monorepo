@@ -4,7 +4,7 @@
 <head>
     <th:block th:include="include :: header('巡查测试')" />
     <style>
-        /* 本页搜索栏：单行紧凑布局，查询/重置置前 */
+        /* 本页搜索栏：单行紧凑；系统名称加宽；查询/重置置后 */
         .fire-search-layout .select-list ul {
             display: flex;
             flex-wrap: nowrap;
@@ -23,7 +23,7 @@
         }
 
         .fire-search-layout .select-list li.label-actions {
-            margin-right: 8px;
+            margin-left: 4px;
         }
 
         .fire-search-layout .select-list li label:not(.radio-box) {
@@ -50,6 +50,10 @@
             width: 90px;
         }
 
+        .fire-search-layout .select-list li select[name="categoryKey"] {
+            width: 280px;
+        }
+
         .fire-search-layout .select-list li .btn {
             vertical-align: middle;
             margin-right: 4px;
@@ -64,12 +68,6 @@
                 <form id="formId">
                     <div class="select-list">
                         <ul>
-                            <li class="label-actions">
-                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
-                                        class="fa fa-search"></i>&nbsp;查询</a>
-                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
-                                        class="fa fa-refresh"></i>&nbsp;重置</a>
-                            </li>
                             <li>
                                 <label>关键词：</label>
                                 <input type="text" name="keyword" placeholder="客户/建筑/设备/位置/操作员" />
@@ -97,6 +95,12 @@
                                     <option th:each="type : ${systemTypes}" th:value="${type.categoryKey}"
                                         th:text="${type.categoryName}"></option>
                                 </select>
+                            </li>
+                            <li class="label-actions">
+                                <a class="btn btn-primary btn-rounded btn-sm" onclick="$.table.search()"><i
+                                        class="fa fa-search"></i>&nbsp;查询</a>
+                                <a class="btn btn-warning btn-rounded btn-sm" onclick="$.form.reset()"><i
+                                        class="fa fa-refresh"></i>&nbsp;重置</a>
                             </li>
                         </ul>
                     </div>

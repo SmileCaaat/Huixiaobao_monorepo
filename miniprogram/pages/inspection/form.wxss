@@ -2,7 +2,7 @@
 .form { background: #fff; margin: 20rpx; border-radius: 16rpx; padding: 8rpx 24rpx; }
 .item { display: flex; align-items: center; min-height: 88rpx; border-bottom: 1rpx solid #f0f0f0; gap: 16rpx; }
 .item.column { flex-direction: column; align-items: stretch; padding: 20rpx 0; }
-.label { width: 160rpx; color: #666; font-size: 28rpx; flex-shrink: 0; }
+.label { width: 160rpx; color: #333; font-size: 28rpx; flex-shrink: 0; }
 .label.required::before { content: '*'; color: #e53935; margin-right: 6rpx; }
 .readonly, .value { flex: 1; color: #333; font-size: 28rpx; }
 .placeholder { flex: 1; color: #999; font-size: 28rpx; }
@@ -25,13 +25,13 @@
 
 .mask { position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; z-index: 1000; }
 .picker-panel { width: 100%; background: #fff; border-radius: 24rpx 24rpx 0 0; }
-.picker-hd { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 30rpx; border-bottom: 1rpx solid #eee; font-size: 28rpx; color: #666; }
-.picker-hd .title { color: #333; font-weight: 600; }
-.picker-hd .confirm { color: #e53935; }
 .picker-view { height: 440rpx; }
-.picker-item { height: 80rpx; line-height: 80rpx; text-align: center; font-size: 28rpx; color: #999; }
-.picker-item-active { color: #222; font-weight: 700; font-size: 32rpx; }
+.picker-item { height: 80rpx; line-height: 80rpx; text-align: center; font-size: 30rpx; color: #333; }
+.picker-item-active { color: #111; font-weight: 700; font-size: 34rpx; }
 .date-picker-view { padding: 0 12rpx; }
+.picker-hd { display: flex; justify-content: space-between; align-items: center; padding: 24rpx 30rpx; border-bottom: 1rpx solid #eee; font-size: 28rpx; color: #333; }
+.picker-hd .title { color: #111; font-weight: 600; }
+.picker-hd .confirm { color: #e53935; }
 
 /* 楼层网格弹窗 */
 .floor-sheet {
