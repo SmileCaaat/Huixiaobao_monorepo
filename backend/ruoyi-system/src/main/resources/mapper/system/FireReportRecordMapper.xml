@@ -23,7 +23,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <sql id="selectFireReportRecordVo">
         select r.report_id,
                r.task_id,
-               ifnull(nullif(r.task_name, ''), t.task_name) as task_name,
+               ifnull(nullif(r.task_name, ''), convert(t.task_name using utf8mb4) collate utf8mb4_general_ci) as task_name,
                r.report_name,
                r.file_path,
                r.file_size,
@@ -42,12 +42,19 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <include refid="selectFireReportRecordVo"/>
         <where>  
             <if test="taskId != null "> and r.task_id = #{taskId}</if>
-            <if test="taskName != null  and taskName != ''"> and ifnull(nullif(r.task_name, ''), t.task_name) like concat('%', #{taskName}, '%')</if>
-            <if test="reportName != null  and reportName != ''">
+            <!-- Unify collations: report.* is utf8mb4_general_ci, task.task_name is utf8mb4_0900_ai_ci -->
+            <if test="taskName != null  and taskName != ''">
                 and (
-                    r.report_name like concat('%', #{reportName}, '%')
-                    or ifnull(nullif(r.task_name, ''), t.task_name) like concat('%', #{reportName}, '%')
+                    convert(ifnull(r.task_name, '') using utf8mb4) collate utf8mb4_general_ci like concat('%', #{taskName}, '%') collate utf8mb4_general_ci
+                    or convert(ifnull(t.task_name, '') using utf8mb4) collate utf8mb4_general_ci like concat('%', #{taskName}, '%') collate utf8mb4_general_ci
                 )
+            </if>
+            <!-- Keyword only matches display report title (task name), not file report_name -->
+            <if test="reportName != null  and reportName != ''">
+                and convert(
+                    ifnull(nullif(r.task_name, ''), convert(t.task_name using utf8mb4) collate utf8mb4_general_ci)
+                    using utf8mb4
+                ) collate utf8mb4_general_ci like concat('%', #{reportName}, '%') collate utf8mb4_general_ci
             </if>
             <if test="params.scopeUserId != null">
                 and exists (

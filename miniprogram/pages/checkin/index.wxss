@@ -6,8 +6,10 @@
 .coord-left{flex:1;min-width:0;display:flex;align-items:center;gap:10rpx;}
 .coord-icon{color:#9aa0a6;font-size:18rpx;}
 .coord-text{color:#666;font-size:24rpx;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.refresh-btn{flex-shrink:0;margin-left:12rpx;padding:8rpx 22rpx;border-radius:999rpx;border:1px solid #4a90e2;color:#4a90e2;background:#fff;font-size:24rpx;}
+.coord-actions{flex-shrink:0;margin-left:12rpx;display:flex;align-items:center;gap:12rpx;}
+.refresh-btn{flex-shrink:0;padding:8rpx 22rpx;border-radius:999rpx;border:1px solid #4a90e2;color:#4a90e2;background:#fff;font-size:24rpx;}
 .refresh-btn.disabled{opacity:.55;}
+.history-btn{flex-shrink:0;padding:8rpx 22rpx;border-radius:999rpx;border:1px solid #e53935;color:#e53935;background:#fff;font-size:24rpx;}
 .action-row{display:flex;gap:20rpx;margin-bottom:20rpx;}
 .action-btn{flex:1;height:88rpx;line-height:88rpx;text-align:center;border-radius:16rpx;color:#fff;font-size:32rpx;font-weight:600;}
 .action-in{background:#3b82f6;}

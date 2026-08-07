@@ -1,4 +1,4 @@
-/* 巡检测试：楼层网格 / 三列日期选择器（PC） */
+/* 巡查测试：楼层网格 / 三列日期选择器（PC） */
 .insp-picker-trigger { cursor: pointer; background: #fff; }
 .insp-picker-trigger[readonly] { background: #fff; cursor: pointer; }
 .insp-sheet-mask { display: none; position: fixed; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0, 0, 0, 0.45); z-index: 19891020; align-items: flex-end; justify-content: center; }

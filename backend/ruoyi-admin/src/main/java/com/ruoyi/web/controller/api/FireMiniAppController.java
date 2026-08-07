@@ -993,7 +993,7 @@ public class FireMiniAppController extends BaseController {
     // ==================== 巡检登记相关接口 ====================
 
     /**
-     * 获取巡检测试列表
+     * 获取巡查测试列表
      */
     @PostMapping("/inspection/list")
     public TableDataInfo inspectionList(@RequestBody FireInspection inspection) {
@@ -1008,7 +1008,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 获取当前用户可见的巡检测试列表
+     * 获取当前用户可见的巡查测试列表
      */
     @PostMapping("/inspection/myList")
     public TableDataInfo myInspectionList(@RequestBody FireInspection inspection) {
@@ -1023,7 +1023,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 获取巡检测试详情
+     * 获取巡查测试详情
      */
     @GetMapping("/inspection/detail/{inspectionId}")
     public AjaxResult inspectionDetail(@PathVariable("inspectionId") Long inspectionId) {
@@ -1037,7 +1037,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 新增巡检测试
+     * 新增巡查测试
      */
     @PostMapping("/inspection/add")
     public AjaxResult addInspection(@RequestBody FireInspection inspection) {
@@ -1076,7 +1076,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 修改巡检测试
+     * 修改巡查测试
      */
     @PostMapping("/inspection/edit")
     public AjaxResult editInspection(@RequestBody FireInspection inspection) {
@@ -1099,7 +1099,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 删除巡检测试
+     * 删除巡查测试
      */
     @PostMapping("/inspection/delete/{inspectionId}")
     public AjaxResult deleteInspection(@PathVariable("inspectionId") Long inspectionId) {
@@ -1113,7 +1113,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 巡检测试一级类目（与消防维护模板完全一致）
+     * 巡查测试一级类目（与消防维护模板完全一致）
      */
     @GetMapping("/inspection/templateCategories")
     public AjaxResult inspectionTemplateCategories() {
@@ -1121,7 +1121,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 巡检测试二级设备类目（与消防维护模板完全一致）
+     * 巡查测试二级设备类目（与消防维护模板完全一致）
      */
     @GetMapping("/inspection/templateCategories/{categoryKey:.+}/equipments")
     public AjaxResult inspectionTemplateEquipments(@PathVariable("categoryKey") String categoryKey) {
@@ -1145,7 +1145,7 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
-     * 获取系统类型字典（仍返回消防维护一级类目，供巡检测试使用）
+     * 获取系统类型字典（仍返回消防维护一级类目，供巡查测试使用）
      */
     @GetMapping("/dict/systemTypes")
     public AjaxResult getSystemTypes() {

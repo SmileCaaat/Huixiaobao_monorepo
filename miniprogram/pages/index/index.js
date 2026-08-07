@@ -14,7 +14,7 @@ Page({
       { name: "维保签到", icon: "/static/appIcon/sign_in.png", color: "#e53935", url: "/pages/checkin/index" },
       { name: "维保任务", icon: "/static/appIcon/task.png", color: "#fb8c00", url: "/pages/task/index" },
       { name: "维保客户", icon: "/static/appIcon/customer.png", color: "#3f51b5", url: "/pages/customer/index" },
-      { name: "巡检测试", icon: "/static/appIcon/test.png", color: "#43a047", url: "/pages/inspection/index" },
+      { name: "巡查测试", icon: "/static/appIcon/test.png", color: "#43a047", url: "/pages/inspection/index" },
       { name: "设备信息", icon: "/static/appIcon/equipment.png", color: "#1e88e5", url: "/pages/equipment/index" },
       { name: "报告查询", icon: "/static/appIcon/report.png", color: "#8e24aa", url: "/pages/report/index" },
       { name: "建筑信息", icon: "/static/appIcon/architecture.png", color: "#00897b", url: "/pages/building/index" },

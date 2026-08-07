@@ -14,6 +14,10 @@
 .step-val { min-width: 40rpx; text-align: center; }
 .textarea { width: 100%; min-height: 140rpx; background: #f9f9f9; border-radius: 8rpx; padding: 16rpx; box-sizing: border-box; font-size: 26rpx; }
 .count { text-align: right; color: #999; font-size: 22rpx; }
+.inline-field { align-items: flex-start; gap: 12rpx; padding: 20rpx 0; }
+.inline-field .label { padding-top: 6rpx; line-height: 1.5; }
+.inline-textarea { flex: 1; min-width: 0; width: auto; min-height: 42rpx; padding: 6rpx 0; font-size: 28rpx; line-height: 1.5; color: #333; box-sizing: border-box; }
+.inline-count { flex-shrink: 0; padding-top: 10rpx; color: #999; font-size: 22rpx; line-height: 1.5; }
 .status-row { margin-left: auto; display: flex; align-items: center; gap: 12rpx; font-size: 28rpx; }
 .images { display: flex; flex-wrap: wrap; gap: 16rpx; }
 .img-wrap { position: relative; width: 140rpx; height: 140rpx; }

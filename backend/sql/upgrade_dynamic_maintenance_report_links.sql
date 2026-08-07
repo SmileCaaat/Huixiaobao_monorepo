@@ -1,6 +1,6 @@
 -- 动态维保报告数据链升级
 -- 1. 故障报修记录可精确关联来源维保任务
--- 2. 巡检测试报告按任务、单位和时间范围查询时使用组合索引
+-- 2. 巡查测试报告按任务、单位和时间范围查询时使用组合索引
 
 SET @repair_task_column_exists := (
     SELECT COUNT(*) FROM information_schema.COLUMNS

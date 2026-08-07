@@ -28,6 +28,7 @@
     "pages/task/device",
     "pages/task/check-detail",
     "pages/report/index",
+    "pages/report/preview",
     "pages/repair/index",
     "pages/repair/form",
     "pages/repair/detail",

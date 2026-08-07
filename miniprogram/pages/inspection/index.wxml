@@ -8,21 +8,38 @@
   </view>
 
   <scroll-view class="list" scroll-y bindscrolltolower="loadMore">
-    <view wx:if="{{list.length === 0 && !loading}}" class="empty">暂无巡检测试记录</view>
+    <view wx:if="{{list.length === 0 && !loading}}" class="empty">暂无巡查测试记录</view>
     <view class="card" wx:for="{{list}}" wx:key="inspectionId" bindtap="goDetail" data-id="{{item.inspectionId}}">
       <view class="card-hd">
-        <text class="title">{{item.equipmentName || '-'}}</text>
-        <text class="date">{{item.inspectionTime || item.createTime || ''}}</text>
+        <view class="title-wrap">
+          <text class="title">{{item.equipmentName || '-'}}</text>
+          <text class="type-tag" wx:if="{{item.typeTag}}">({{item.typeTag}})</text>
+        </view>
+        <text class="date">{{item.dateText}}</text>
       </view>
-      <view class="row"><text class="label">客户</text><text class="value">{{item.companyName || '-'}}</text></view>
-      <view class="row"><text class="label">位置</text><text class="value">{{item.location || '-'}}</text></view>
-      <view class="row"><text class="label">楼层</text><text class="value">{{item.floor || '-'}}</text></view>
-      <view class="row">
-        <text class="label">结果</text>
-        <text class="badge {{item.equipmentStatus === '1' ? 'bad' : 'ok'}}">{{item.equipmentStatus === '1' ? '异常' : '正常'}}</text>
-        <text class="count">x{{item.equipmentCount || 1}}</text>
+      <view class="card-body">
+        <view class="main-col">
+          <view class="row">
+            <text class="label">巡查人员</text>
+            <text class="value">{{item.inspectorName || '-'}}</text>
+          </view>
+          <view class="row">
+            <text class="label">具体位置</text>
+            <text class="value">{{item.location || '-'}}</text>
+          </view>
+          <view class="row">
+            <text class="label">所在建筑</text>
+            <text class="value">{{item.buildingName || '-'}}</text>
+          </view>
+        </view>
+        <view class="side-col">
+          <view class="count-row">
+            <text class="count-label">数量</text>
+            <text class="count-value">{{item.equipmentCount || 1}}</text>
+          </view>
+          <view class="badge {{item.statusClass}}">{{item.statusText}}</view>
+        </view>
       </view>
-      <view class="row"><text class="label">操作员</text><text class="value">{{item.inspectorName || '-'}}</text></view>
     </view>
     <view class="footer-tip" wx:if="{{loading}}">加载中...</view>
     <view class="footer-tip" wx:if="{{noMore && list.length > 0}}">没有更多了</view>

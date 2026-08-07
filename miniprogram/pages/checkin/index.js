@@ -209,6 +209,13 @@ Page({
     this.getLocation();
   },
 
+  goHistory() {
+    const companyId = this.data.companyId || "";
+    wx.navigateTo({
+      url: "/pages/checkin/history" + (companyId ? "?companyId=" + companyId : "")
+    });
+  },
+
   onAddressTap() { this.chooseMapLocation(); },
 
   chooseMapLocation() {

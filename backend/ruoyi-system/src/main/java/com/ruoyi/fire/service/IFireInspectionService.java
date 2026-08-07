@@ -67,7 +67,7 @@ public interface IFireInspectionService {
     public List<FireInspection> selectFireInspectionByCompanyId(Long companyId);
 
     /**
-     * 查询公司近一个月的巡检测试记录
+     * 查询公司近一个月的巡查测试记录
      * 
      * @param companyId 公司ID
      * @return 巡检登记集合

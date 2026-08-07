@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="zh" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <th:block th:include="include :: header('新增巡检测试')" />
+    <th:block th:include="include :: header('新增巡查测试')" />
     <link th:href="@{/ruoyi/css/fire-inspection-pickers.css}" rel="stylesheet" charset="utf-8"/>
 </head>
 <body class="white-bg">
@@ -273,7 +273,7 @@
                         + '&systemTypeName=' + encodeURIComponent(linkedCategoryName)
                         + '&equipmentName=' + encodeURIComponent(linkedEquipmentName)
                         + '&customerAddress=' + encodeURIComponent(linkedCustomerAddress || '')
-                        + '&faultDescription=' + encodeURIComponent(linkedEquipmentName + '巡检测试异常');
+                        + '&faultDescription=' + encodeURIComponent(linkedEquipmentName + '巡查测试异常');
                     top.$.modal.open('添加故障报修', url, 900, 700);
                 }
             });

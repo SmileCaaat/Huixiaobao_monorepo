@@ -137,7 +137,8 @@ const getRepairTransferUsers = (id) =>
   request.get(`/api/fire/repair/transferUsers/${id}`);
 const transferRepair = (data) => request.post("/api/fire/repair/transfer", data);
 
-const getReportList = (data) => request.post("/api/fire/report/list", data);
+const getReportList = (data, options) =>
+  request.post("/api/fire/report/list", data, options);
 const getReportDetail = (id) => request.get(`/api/fire/report/detail/${id}`);
 const getReportPreviewUrl = (id) => `/api/fire/report/preview/${id}`;
 const getReportDownloadUrl = (id) => `/api/fire/report/download/${id}`;
@@ -178,6 +179,25 @@ function openReportDocument(tempFilePath, header) {
         wx.showToast({ title: "无法打开文档", icon: "none" });
         reject(err);
       }
+    });
+  });
+}
+
+function fetchReportPreviewFile(reportId) {
+  const url = BASE_URL + getReportPreviewUrl(reportId);
+  const token = auth.getToken();
+  return new Promise((resolve, reject) => {
+    wx.downloadFile({
+      url,
+      header: token ? { Authorization: "Bearer " + token } : {},
+      success(res) {
+        if (res.statusCode !== 200) {
+          reject(res);
+          return;
+        }
+        resolve({ tempFilePath: res.tempFilePath, header: res.header });
+      },
+      fail: reject
     });
   });
 }
@@ -227,18 +247,40 @@ const downloadReport = (reportId) => {
   const url = BASE_URL + getReportDownloadUrl(reportId);
   const token = auth.getToken();
   return new Promise((resolve, reject) => {
-    wx.showLoading({ title: "加载中...", mask: true });
+    wx.showLoading({ title: "下载中...", mask: true });
     wx.downloadFile({
       url,
       header: token ? { Authorization: "Bearer " + token } : {},
       success(res) {
-        wx.hideLoading();
         if (res.statusCode !== 200) {
+          wx.hideLoading();
           wx.showToast({ title: "下载失败(" + res.statusCode + ")", icon: "none" });
           reject(res);
           return;
         }
-        openReportDocument(res.tempFilePath, res.header).then(resolve).catch(reject);
+        const finishOpen = () => {
+          openReportDocument(res.tempFilePath, res.header)
+            .then((opened) => {
+              wx.showToast({ title: "可在右上角菜单保存", icon: "none" });
+              resolve(opened);
+            })
+            .catch(reject);
+        };
+        wx.saveFile({
+          tempFilePath: res.tempFilePath,
+          success(saveRes) {
+            wx.hideLoading();
+            wx.showToast({ title: "下载成功", icon: "success" });
+            // 再打开一次，方便用户转发/另存
+            openReportDocument(saveRes.savedFilePath || res.tempFilePath, res.header)
+              .then(resolve)
+              .catch(() => resolve(saveRes));
+          },
+          fail() {
+            wx.hideLoading();
+            finishOpen();
+          }
+        });
       },
       fail(err) {
         wx.hideLoading();
@@ -332,6 +374,8 @@ const api = {
   getReportDetail,
   getReportPreviewUrl,
   getReportDownloadUrl,
+  fetchReportPreviewFile,
+  openReportDocument,
   previewReport,
   downloadReport,
   getDictSystemTypes,

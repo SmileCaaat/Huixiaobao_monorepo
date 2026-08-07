@@ -118,7 +118,8 @@ function request(options) {
       timeout: opts.timeout || DEFAULT_TIMEOUT_MS,
       header: Object.assign(
         {
-          "Content-Type": opts.contentType || "application/json"
+          "Content-Type": opts.contentType || "application/json",
+          "X-Requested-With": "XMLHttpRequest"
         },
         token ? { Authorization: "Bearer " + token } : {},
         opts.header || {}

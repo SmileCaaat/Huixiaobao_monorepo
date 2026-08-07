@@ -7,7 +7,10 @@
       <view class="coord-left">
         <text class="coord-text">当前位置: {{coordText}}</text>
       </view>
-      <view class="{{refreshClass}}" bindtap="onRefreshTap">{{refreshText}}</view>
+      <view class="coord-actions">
+        <view class="{{refreshClass}}" bindtap="onRefreshTap">{{refreshText}}</view>
+        <view class="history-btn" bindtap="goHistory">签到历史</view>
+      </view>
     </view>
 
     <view class="action-row">

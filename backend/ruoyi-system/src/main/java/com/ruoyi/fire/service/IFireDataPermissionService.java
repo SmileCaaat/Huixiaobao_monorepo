@@ -116,7 +116,7 @@ public interface IFireDataPermissionService {
     /** 为签到列表/导出查询注入可见范围（非管理员） */
     void applyCheckInListScope(FireCheckIn query, SysUser user);
 
-    /** 为巡检测试列表/导出查询注入可见公司范围（非管理员） */
+    /** 为巡查测试列表/导出查询注入可见公司范围（非管理员） */
     void applyInspectionListScope(FireInspection query, SysUser user);
 
     boolean canAccessInspection(Long userId, FireInspection inspection);

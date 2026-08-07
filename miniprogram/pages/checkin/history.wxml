@@ -2,16 +2,41 @@
   <block wx:if="{{list.length}}">
     <view class="card history-card" wx:for="{{list}}" wx:key="checkInId">
       <view class="card-hd">
-        <view class="badge {{item.checkInType === '1' ? 'badge-warn' : 'badge-ok'}}">{{item.checkInType === '1' ? '签退' : '签到'}}</view>
-        <view class="sub">{{item.displayTime || item.checkInTime || item.createTime}}</view>
+        <view class="badge {{item.typeClass}}">{{item.typeLabel}}</view>
+        <view class="sub">{{item.displayTime}}</view>
       </view>
       <view class="row">
-        <view class="label">任务</view>
-        <view class="value">{{item.taskName || '-'}}</view>
+        <view class="label">客户</view>
+        <view class="value">{{item.companyName}}</view>
       </view>
       <view class="row">
         <view class="label">地址</view>
-        <view class="value">{{item.address || item.checkInAddress || '-'}}</view>
+        <view class="value">{{item.addressText}}</view>
+      </view>
+      <view class="row">
+        <view class="label">签到时间</view>
+        <view class="value">{{item.displayTime || '-'}}</view>
+      </view>
+      <view class="photo-block" wx:if="{{item.previewImages.length}}">
+        <view class="photo-label">打卡照片</view>
+        <view class="photo-row">
+          <image
+            class="photo"
+            wx:for="{{item.previewImages}}"
+            wx:for-item="img"
+            wx:for-index="imgIndex"
+            wx:key="imgIndex"
+            src="{{img}}"
+            mode="aspectFill"
+            data-id="{{item.checkInId}}"
+            data-current="{{img}}"
+            bindtap="previewImage"
+          />
+        </view>
+      </view>
+      <view class="row" wx:else>
+        <view class="label">打卡照片</view>
+        <view class="value muted">暂无照片</view>
       </view>
     </view>
   </block>

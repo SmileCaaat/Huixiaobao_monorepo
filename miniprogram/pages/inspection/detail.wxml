@@ -12,7 +12,6 @@
     <view class="row"><text class="label">登记日期</text><text class="value">{{detail.createTime || '-'}}</text></view>
     <view class="row"><text class="label">设备状态</text><text class="badge {{detail.equipmentStatus === '1' ? 'bad' : 'ok'}}">{{detail.equipmentStatus === '1' ? '异常' : '正常'}}</text></view>
     <view class="row"><text class="label">操作员</text><text class="value">{{detail.inspectorName || '-'}}</text></view>
-    <view class="row"><text class="label">维保标准</text><text class="value">{{detail.maintenanceStandard || '-'}}</text></view>
     <view class="row column"><text class="label">详细备注</text><text class="value">{{detail.remark || '无'}}</text></view>
     <view class="row column" wx:if="{{images.length}}">
       <text class="label">现场图片</text>

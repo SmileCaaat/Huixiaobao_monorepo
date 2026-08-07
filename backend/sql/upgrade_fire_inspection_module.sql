@@ -67,7 +67,7 @@ WHERE parent_id = @fire_parent_id
   AND perms <> 'fire:inspection:view'
   AND order_num >= @inspection_order;
 
--- Sidebar C menu label: 巡查测试 (hex E5B7A1E69FA5E6B58BE8AF95). Button F menus keep 巡检测试* prefix.
+-- Sidebar C menu label: 巡查测试 (hex E5B7A1E69FA5E6B58BE8AF95). Button F menus also use 巡查测试* prefix.
 UPDATE sys_menu
 SET menu_name = CONVERT(UNHEX('E5B7A1E69FA5E6B58BE8AF95') USING utf8mb4),
     parent_id = @fire_parent_id,

@@ -229,7 +229,7 @@ Page({
       equipmentName: form.equipmentName || "",
       customerAddress: this.data.customerAddress || "",
       isReported: "1",
-      faultDescription: (form.equipmentName || "设备") + "巡检测试异常"
+      faultDescription: (form.equipmentName || "设备") + "巡查测试异常"
     };
     const query = Object.keys(params).map((key) => key + "=" + encodeURIComponent(params[key])).join("&");
     wx.navigateTo({ url: "/pages/repair/form?" + query });

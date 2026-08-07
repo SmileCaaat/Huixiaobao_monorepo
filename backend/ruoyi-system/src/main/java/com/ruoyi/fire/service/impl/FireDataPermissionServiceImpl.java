@@ -814,23 +814,23 @@ public class FireDataPermissionServiceImpl implements IFireDataPermissionService
     @Override
     public void assertCanAccessInspection(Long userId, FireInspection inspection) {
         if (inspection == null) {
-            throw new ServiceException("巡检测试记录不存在");
+            throw new ServiceException("巡查测试记录不存在");
         }
         if (!canAccessInspection(userId, inspection)) {
-            throw new ServiceException("无权限访问该巡检测试记录");
+            throw new ServiceException("无权限访问该巡查测试记录");
         }
     }
 
     @Override
     public void assertCanAccessInspection(SysUser user, FireInspection inspection) {
         if (inspection == null) {
-            throw new ServiceException("巡检测试记录不存在");
+            throw new ServiceException("巡查测试记录不存在");
         }
         if (user == null) {
             throw new ServiceException("未登录");
         }
         if (!canAccessInspection(user, inspection)) {
-            throw new ServiceException("无权限访问该巡检测试记录");
+            throw new ServiceException("无权限访问该巡查测试记录");
         }
     }
 }

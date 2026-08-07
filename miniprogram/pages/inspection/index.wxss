@@ -5,15 +5,22 @@
 .search-btn { background: #e53935; color: #fff; }
 .list { flex: 1; height: 0; padding: 20rpx; box-sizing: border-box; }
 .card { background: #fff; border-radius: 16rpx; padding: 24rpx; margin-bottom: 20rpx; box-shadow: 0 2rpx 12rpx rgba(0,0,0,.05); }
-.card-hd { display: flex; justify-content: space-between; margin-bottom: 12rpx; }
-.title { font-size: 30rpx; font-weight: 600; color: #333; }
-.date { font-size: 22rpx; color: #999; }
-.row { display: flex; align-items: center; padding: 8rpx 0; }
-.label { width: 120rpx; color: #999; font-size: 24rpx; }
-.value { flex: 1; color: #333; font-size: 24rpx; }
-.count { margin-left: 16rpx; color: #666; font-size: 24rpx; }
-.badge { padding: 4rpx 16rpx; border-radius: 20rpx; font-size: 22rpx; }
-.ok { background: rgba(76,175,80,.12); color: #4caf50; }
-.bad { background: rgba(244,67,54,.12); color: #f44336; }
+.card-hd { display: flex; justify-content: space-between; align-items: flex-start; gap: 16rpx; margin-bottom: 16rpx; padding-bottom: 16rpx; border-bottom: 1px solid #f0f0f0; }
+.title-wrap { flex: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8rpx; min-width: 0; }
+.title { font-size: 30rpx; font-weight: 600; color: #333; line-height: 1.4; }
+.type-tag { font-size: 24rpx; color: #888; line-height: 1.4; flex-shrink: 0; }
+.date { font-size: 22rpx; color: #999; flex-shrink: 0; padding-top: 4rpx; }
+.card-body { display: flex; align-items: stretch; gap: 16rpx; }
+.main-col { flex: 1; min-width: 0; }
+.side-col { width: 140rpx; flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; padding-top: 4rpx; }
+.row { display: flex; align-items: flex-start; padding: 8rpx 0; }
+.label { width: 140rpx; color: #999; font-size: 24rpx; flex-shrink: 0; line-height: 1.5; }
+.value { flex: 1; color: #333; font-size: 24rpx; line-height: 1.5; word-break: break-all; }
+.count-row { display: flex; align-items: baseline; gap: 8rpx; }
+.count-label { font-size: 22rpx; color: #999; }
+.count-value { font-size: 26rpx; color: #333; font-weight: 600; }
+.badge { margin-top: 24rpx; padding: 6rpx 18rpx; border-radius: 24rpx; font-size: 22rpx; }
+.badge.ok { background: rgba(76,175,80,.12); color: #4caf50; }
+.badge.bad { background: rgba(244,67,54,.12); color: #f44336; }
 .empty, .footer-tip { text-align: center; color: #999; padding: 40rpx 0; font-size: 26rpx; }
 .fab { position: fixed; right: 40rpx; bottom: 80rpx; width: 100rpx; height: 100rpx; border-radius: 50%; background: #e53935; color: #fff; font-size: 56rpx; line-height: 100rpx; text-align: center; box-shadow: 0 8rpx 20rpx rgba(229,57,53,.35); }

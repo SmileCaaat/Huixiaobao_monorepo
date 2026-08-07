@@ -68,7 +68,7 @@ public interface FireInspectionMapper {
     public List<FireInspection> selectFireInspectionByCompanyId(Long companyId);
 
     /**
-     * 按公司ID和时间范围查询巡检测试记录
+     * 按公司ID和时间范围查询巡查测试记录
      * 
      * @param companyId 公司ID
      * @param startTime 开始时间

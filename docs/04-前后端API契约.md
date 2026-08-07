@@ -53,3 +53,5 @@ Thymeleaf 页面与 `/fire/**` JSON 见手册 §12；小程序不得调用管理
 - `GET /api/fire/report/preview/{id}`：有同名 PDF 优先 PDF，否则下发 DOCX（不再因 Word 直接 400）。
 - 响应头 `X-Report-File-Type: pdf|docx`；小程序 `openDocument` 需传 `fileType`。
 - 列表 `POST /api/fire/report/list` 额外返回任务侧 `planStartTime`/`planEndTime`/`managerName`/`operatorNames`（LEFT JOIN `fire_maintenance_task`）。
+- 关键字 `reportName`：**只模糊匹配展示标题**（`r.task_name` 优先，否则任务表 `t.task_name`），**不匹配** `r.report_name` 文件名；Mapper 统一 collation 避免 `utf8mb4_general_ci` / `utf8mb4_0900_ai_ci` 冲突。
+- 小程序：`pages/report/index` 搜索栏「搜索」按钮；点击卡片进 `pages/report/preview`（`fetchReportPreviewFile` / `downloadReport`）。

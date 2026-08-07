@@ -47,10 +47,10 @@
       </view>
     </view>
 
-    <view class="item column">
+    <view class="item inline-field">
       <text class="label required">具体位置</text>
-      <textarea class="textarea" maxlength="200" placeholder="必填，最多200字" value="{{form.location}}" bindinput="onLocationInput" />
-      <text class="count">{{form.location.length || 0}}/200</text>
+      <textarea class="inline-textarea" auto-height maxlength="200" placeholder="必填" value="{{form.location}}" bindinput="onLocationInput" show-confirm-bar="{{false}}" />
+      <text class="inline-count">{{form.location.length || 0}}/200</text>
     </view>
 
     <view class="item" bindtap="openDateSheet">
@@ -67,10 +67,10 @@
       </view>
     </view>
 
-    <view class="item column">
+    <view class="item inline-field">
       <text class="label">详细备注</text>
-      <textarea class="textarea" maxlength="300" placeholder="最多300字" value="{{form.remark}}" bindinput="onRemarkInput" />
-      <text class="count">{{form.remark.length || 0}}/300</text>
+      <textarea class="inline-textarea" auto-height maxlength="500" placeholder="请输入" value="{{form.remark}}" bindinput="onRemarkInput" show-confirm-bar="{{false}}" />
+      <text class="inline-count">{{form.remark.length || 0}}/500</text>
     </view>
 
     <view class="item column">

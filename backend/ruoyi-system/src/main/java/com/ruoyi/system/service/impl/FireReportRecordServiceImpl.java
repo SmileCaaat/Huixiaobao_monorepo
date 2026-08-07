@@ -539,7 +539,7 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         data.put("reportNotes", com.deepoove.poi.data.Texts.of(noteContent).create());
 
         // ========== 设备实测记录：任务链记录 + 同单位任务周期内独立测试记录 ==========
-        // 每条巡检测试记录单独生成一个实测区块，现场照片随该条记录输出。
+        // 每条巡查测试记录单独生成一个实测区块，现场照片随该条记录输出。
         // 故障维修仅按 taskId 纳入当前任务链；保养汇总仅取 recordType=2。
         Date[] reportRange = resolveTaskReportRange(task);
         java.util.List<com.ruoyi.fire.domain.FireInspection> reportInspections =
@@ -1691,7 +1691,7 @@ public class FireReportRecordServiceImpl implements IFireReportRecordService {
         return new Date[]{start, end};
     }
 
-    /** 每条巡检测试记录生成一个独立的设备实测区块，并带出该记录自己的现场照片。 */
+    /** 每条巡查测试记录生成一个独立的设备实测区块，并带出该记录自己的现场照片。 */
     private com.deepoove.poi.data.TableRenderData createInspectionActualRecordTable(
             java.util.List<com.ruoyi.fire.domain.FireInspection> inspections) {
         if (inspections == null || inspections.isEmpty()) {

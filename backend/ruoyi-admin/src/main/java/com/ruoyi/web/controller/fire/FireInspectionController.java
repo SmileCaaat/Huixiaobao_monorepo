@@ -40,7 +40,7 @@ import com.ruoyi.fire.service.support.FireInspectionTestKeys;
 import com.ruoyi.common.utils.StringUtils;
 
 /**
- * 巡检测试Controller
+ * 巡查测试Controller
  */
 @Controller
 @RequestMapping("/fire/inspection")
@@ -86,14 +86,14 @@ public class FireInspectionController extends BaseController {
     }
 
     @RequiresPermissions("fire:inspection:export")
-    @Log(title = "巡检测试", businessType = BusinessType.EXPORT)
+    @Log(title = "巡查测试", businessType = BusinessType.EXPORT)
     @PostMapping("/export")
     @ResponseBody
     public AjaxResult export(FireInspection inspection) {
         fireDataPermissionService.applyInspectionListScope(inspection, ShiroUtils.getSysUser());
         List<FireInspection> list = inspectionService.selectFireInspectionList(inspection);
         ExcelUtil<FireInspection> util = new ExcelUtil<FireInspection>(FireInspection.class);
-        return util.exportExcel(list, "巡检测试数据");
+        return util.exportExcel(list, "巡查测试数据");
     }
 
     @GetMapping("/add")
@@ -149,11 +149,11 @@ public class FireInspectionController extends BaseController {
     }
 
     /**
-     * 新增巡检测试。
+     * 新增巡查测试。
      * 关联维保任务时：任务干系人即可保存（不强制 fire:inspection:add）。
      * 独立新增：仍要求 fire:inspection:add。
      */
-    @Log(title = "巡检测试", businessType = BusinessType.INSERT)
+    @Log(title = "巡查测试", businessType = BusinessType.INSERT)
     @PostMapping("/add")
     @ResponseBody
     public AjaxResult addSave(@Validated FireInspection inspection) {
@@ -201,7 +201,7 @@ public class FireInspectionController extends BaseController {
     }
 
     @RequiresPermissions("fire:inspection:edit")
-    @Log(title = "巡检测试", businessType = BusinessType.UPDATE)
+    @Log(title = "巡查测试", businessType = BusinessType.UPDATE)
     @PostMapping("/edit")
     @ResponseBody
     public AjaxResult editSave(@Validated FireInspection inspection) {
@@ -224,7 +224,7 @@ public class FireInspectionController extends BaseController {
     }
 
     @RequiresPermissions("fire:inspection:remove")
-    @Log(title = "巡检测试", businessType = BusinessType.DELETE)
+    @Log(title = "巡查测试", businessType = BusinessType.DELETE)
     @PostMapping("/remove")
     @ResponseBody
     public AjaxResult remove(String ids) {

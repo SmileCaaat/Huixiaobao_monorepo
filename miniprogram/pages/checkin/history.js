@@ -1,4 +1,10 @@
 const { api } = require("../../api/index.js");
+const { BASE_URL } = require("../../services/request.js");
+
+function fullImageUrl(url) {
+  if (!url) return "";
+  return /^https?:\/\//i.test(url) ? url : BASE_URL + (url.charAt(0) === "/" ? url : "/" + url);
+}
 
 Page({
   data: {
@@ -8,6 +14,12 @@ Page({
     pageSize: 10,
     hasMore: true,
     loading: false
+  },
+
+  onLoad(options) {
+    if (options && options.companyId) {
+      this.setData({ companyId: options.companyId });
+    }
   },
 
   onShow() {
@@ -52,11 +64,20 @@ Page({
         pageNum: pageNum,
         pageSize: this.data.pageSize
       });
-      const rows = ((res && (res.rows || res.data)) || []).map((item) =>
-        Object.assign({}, item, {
-          displayTime: this.formatTime(item.checkInTime || item.createTime)
-        })
-      );
+      const rows = ((res && (res.rows || res.data)) || []).map((item) => {
+        const isOut = String(item.checkInType) === "1";
+        const images = (item.images || [])
+          .map((img) => fullImageUrl((img && img.imageUrl) || img))
+          .filter(Boolean);
+        return Object.assign({}, item, {
+          typeLabel: isOut ? "签退" : "签到",
+          typeClass: isOut ? "badge-warn" : "badge-ok",
+          displayTime: this.formatTime(item.checkInTime || item.createTime),
+          companyName: item.companyName || "-",
+          addressText: item.address || item.checkInAddress || "-",
+          previewImages: images
+        });
+      });
       const total = (res && res.total) || 0;
       const list = reset ? rows : this.data.list.concat(rows);
       const hasMore = list.length < total && rows.length >= this.data.pageSize;
@@ -76,5 +97,14 @@ Page({
     if (!timeStr) return "";
     const s = String(timeStr);
     return s.length >= 19 ? s.substring(0, 19).replace("T", " ") : s;
+  },
+
+  previewImage(e) {
+    const checkInId = e.currentTarget.dataset.id;
+    const current = e.currentTarget.dataset.current;
+    const item = (this.data.list || []).find((row) => String(row.checkInId) === String(checkInId));
+    const urls = (item && item.previewImages) || [];
+    if (!urls.length) return;
+    wx.previewImage({ urls: urls, current: current || urls[0] });
   }
 });

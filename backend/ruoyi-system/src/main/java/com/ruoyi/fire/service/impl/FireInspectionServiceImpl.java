@@ -18,7 +18,7 @@ import com.ruoyi.fire.service.IFireInspectionService;
 import com.ruoyi.fire.service.IFireMaintenanceTemplateCategoryService;
 
 /**
- * 巡检测试Service业务层处理
+ * 巡查测试Service业务层处理
  */
 @Service
 public class FireInspectionServiceImpl implements IFireInspectionService {
