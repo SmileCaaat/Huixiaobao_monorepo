@@ -1,24 +1,108 @@
 <view class="page">
-  <view class="field"><text class="label">报修单位</text><text class="picker-val">{{companyName}}</text></view>
-  <view class="field" wx:if="{{linked}}"><text class="label">系统名称</text><text class="picker-val">{{systemTypeName}}</text></view>
-  <view class="field" wx:if="{{linked}}"><text class="label">设备名称</text><text class="picker-val">{{equipmentName}}</text></view>
-  <view class="field" wx:if="{{linked}}"><text class="label">客户地址</text><text class="picker-val">{{customerAddress || '-'}}</text></view>
-  <view class="field" wx:if="{{linked}}"><text class="label">是否上报</text><text class="picker-val">是</text></view>
-  <picker mode="selector" range="{{urgencyOptions}}" range-key="label" value="{{urgencyIndex}}" bindchange="onUrgencyChange">
-    <view class="field"><text class="label">紧急程度</text><text class="picker-val">{{urgencyText}}</text></view>
-  </picker>
-  <view class="field field-area">
-    <text class="label">故障描述</text>
-    <textarea class="input" placeholder="请输入故障描述" value="{{faultDescription}}" bindinput="onDescInput" maxlength="500" />
+  <view class="card form-card">
+    <view class="item">
+      <text class="label">单位名称</text>
+      <text class="value">{{companyName || '-'}}</text>
+    </view>
+
+    <view class="item" bindtap="openSystemPicker">
+      <text class="label">系统名称</text>
+      <view class="picker-row">
+        <text class="{{systemTypeName ? 'value' : 'ph'}}">{{systemTypeName || '请选择'}}</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+
+    <view class="item equip-item">
+      <text class="label">设备名称</text>
+      <view class="equip-row">
+        <input
+          class="input"
+          disabled="{{!categoryKey}}"
+          placeholder="{{categoryKey ? '请输入或选择设备名称' : '请先选择系统名称'}}"
+          placeholder-class="ph"
+          value="{{equipmentName}}"
+          bindinput="onEquipmentInput"
+        />
+        <view class="equip-pick {{categoryKey ? '' : 'disabled'}}" catchtap="openEquipmentPicker">
+          <text class="arrow">›</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="item">
+      <text class="label">发现时间</text>
+      <picker mode="date" value="{{foundTime}}" bindchange="onFoundTimeChange">
+        <view class="picker-row">
+          <text class="{{foundTime ? 'value' : 'ph'}}">{{foundTime || '请选择'}}</text>
+          <view class="right-tools">
+            <text class="clear" wx:if="{{foundTime}}" catchtap="clearFoundTime">×</text>
+            <text class="arrow">›</text>
+          </view>
+        </view>
+      </picker>
+    </view>
+
+    <view class="item">
+      <text class="label">是否上报</text>
+      <view class="switch-row">
+        <text class="switch-text">{{isReported === '1' ? '是' : '否'}}</text>
+        <switch checked="{{isReported === '1'}}" color="#e53935" bindchange="onReportedChange" />
+      </view>
+    </view>
+
+    <view class="item">
+      <text class="label">紧急程度</text>
+      <view class="radios">
+        <view class="radio {{urgencyLevel === '0' ? 'active' : ''}}" data-value="0" bindtap="onUrgencyTap">
+          <view class="dot"></view><text>一般</text>
+        </view>
+        <view class="radio {{urgencyLevel === '1' ? 'active' : ''}}" data-value="1" bindtap="onUrgencyTap">
+          <view class="dot"></view><text>紧急</text>
+        </view>
+        <view class="radio {{urgencyLevel === '2' ? 'active' : ''}}" data-value="2" bindtap="onUrgencyTap">
+          <view class="dot"></view><text>特急</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="item column">
+      <text class="label">故障说明</text>
+      <textarea class="textarea" maxlength="500" placeholder="请输入故障说明" placeholder-class="ph" value="{{faultDescription}}" bindinput="onDescInput" />
+      <text class="count">{{faultDescription.length || 0}}/500</text>
+    </view>
+
+    <view class="photo-block">
+      <view class="photos">
+        <view class="thumb-wrap" wx:for="{{images}}" wx:key="index">
+          <image class="thumb" src="{{item.tempPath || item.serverUrl}}" mode="aspectFill" data-index="{{index}}" bindtap="previewImage" />
+          <view class="thumb-del" data-index="{{index}}" catchtap="removeImage">×</view>
+        </view>
+        <view class="thumb-add" wx:if="{{images.length < 4}}" bindtap="chooseImage">+</view>
+      </view>
+    </view>
   </view>
-  <view class="section-title">故障图片</view>
-  <view class="thumb-row">
-    <block wx:for="{{images}}" wx:key="index">
-      <image class="thumb" src="{{item.tempPath || item.serverUrl}}" mode="aspectFill" bindtap="previewImage" data-index="{{index}}" />
-    </block>
-    <view class="thumb-add" wx:if="{{images.length < 4}}" bindtap="chooseImage">+</view>
+
+  <view class="save-bar">
+    <view class="{{saving ? 'save-btn disabled' : 'save-btn'}}" bindtap="submit">{{saving ? '提交中...' : '提交'}}</view>
   </view>
-  <view class="bottom-bar">
-    <view class="btn-block" bindtap="submit">{{saving ? '提交中...' : '提交报修'}}</view>
+
+  <view class="mask" wx:if="{{pickerVisible}}" bindtap="closePicker">
+    <view class="picker-panel" catchtap="noop">
+      <view class="picker-hd">
+        <text bindtap="closePicker">取消</text>
+        <text class="title">{{pickerTitle}}</text>
+        <text class="confirm" bindtap="confirmPicker">确定</text>
+      </view>
+      <picker-view class="picker-view" value="{{pickerIndex}}" bindchange="onPickerChange">
+        <picker-view-column>
+          <view
+            wx:for="{{pickerOptions}}"
+            wx:key="value"
+            class="picker-item {{pickerIndex[0] === index ? 'picker-item-active' : ''}}"
+          >{{item.label}}</view>
+        </picker-view-column>
+      </picker-view>
+    </view>
   </view>
 </view>

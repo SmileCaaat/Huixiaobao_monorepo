@@ -117,6 +117,7 @@ const listTasksByCompany = (data, options) =>
 const getCheckInTaskList = listTasksByCompany;
 
 const getRepairList = (data) => request.post("/api/fire/repair/list", data);
+const getMyRepairList = (data) => request.post("/api/fire/repair/myList", data);
 const getMyReportedRepairList = (data) =>
   request.post("/api/fire/repair/myReportedList", data);
 const getMyAssignedRepairList = (data) =>
@@ -130,6 +131,7 @@ const getDispatchUsers = (companyId) =>
 const dispatchRepair = (data) => request.post("/api/fire/repair/dispatch", data);
 const startRepair = (repairId) =>
   request.post(`/api/fire/repair/start/${repairId}`);
+const pauseRepair = (data) => request.post("/api/fire/repair/pause", data);
 const completeRepair = (data) => request.post("/api/fire/repair/complete", data);
 const getRepairStats = () => request.get("/api/fire/repair/statistics");
 const getRepairLogs = (id) => request.get(`/api/fire/repair/logs/${id}`);
@@ -356,6 +358,7 @@ const api = {
   listTasksByCompany,
   getCheckInTaskList,
   getRepairList,
+  getMyRepairList,
   getMyReportedRepairList,
   getMyAssignedRepairList,
   getRepairDetail,
@@ -365,6 +368,7 @@ const api = {
   getDispatchUsers,
   dispatchRepair,
   startRepair,
+  pauseRepair,
   completeRepair,
   getRepairStats,
   getRepairLogs,

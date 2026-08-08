@@ -4,13 +4,21 @@
     <view class="tab {{activeTab==='logs'?'active':''}}" data-tab="logs" bindtap="switchTab">工单日志</view>
   </view>
 
-  <block wx:if="{{activeTab==='info'}}">
+  <scroll-view class="content" scroll-y enhanced show-scrollbar="{{false}}" wx:if="{{activeTab==='info'}}">
+    <!-- 工单信息 -->
     <view class="card">
       <view class="card-hd">
-        <view class="status-wrap">
-          <text class="badge {{statusClass}}">{{statusText}}</text>
+        <view class="hd-left">
+          <text class="card-title">工单信息</text>
+          <view class="status-pill {{statusTone}}">
+            <text class="status-dot">⏱</text>
+            <text>{{statusText}}</text>
+          </view>
         </view>
-        <text class="edit-link" wx:if="{{canEdit}}" bindtap="goEdit">编辑</text>
+        <view class="link" wx:if="{{canEdit}}" bindtap="goEdit">
+          <text class="edit-icon">✎</text>
+          <text>编辑</text>
+        </view>
       </view>
       <view class="row"><text class="label">故障设备</text><text class="value">{{detail.equipmentName || '-'}}</text></view>
       <view class="row"><text class="label">故障描述</text><text class="value">{{detail.faultDescription || '-'}}</text></view>
@@ -19,57 +27,151 @@
       <view class="row"><text class="label">报修人员</text><text class="value">{{reporterText}}</text></view>
       <view class="row"><text class="label">发现时间</text><text class="value">{{foundTimeText}}</text></view>
       <view class="thumb-row" wx:if="{{faultImages.length}}">
-        <image wx:for="{{faultImages}}" wx:key="*this" class="thumb" src="{{item}}" mode="aspectFill" bindtap="previewFaultImage" data-index="{{index}}" />
+        <image
+          wx:for="{{faultImages}}"
+          wx:key="*this"
+          class="thumb"
+          src="{{item}}"
+          mode="aspectFill"
+          bindtap="previewFaultImage"
+          data-index="{{index}}"
+        />
       </view>
     </view>
 
-    <view class="card" wx:if="{{isHandler || detail.repairStatus==='2'}}">
+    <!-- 维修信息：处理中/已完成始终展示，对齐参考图 -->
+    <view class="card" wx:if="{{showMaintenance}}">
       <view class="card-hd">
         <text class="card-title">维修信息</text>
-        <text class="transfer-link" wx:if="{{canTransfer}}" bindtap="goTransfer">转派</text>
+        <view class="transfer-link" wx:if="{{canTransfer}}" catchtap="goTransfer">
+          <text class="transfer-icon">↗</text>
+          <text>转派</text>
+        </view>
       </view>
-      <view class="row"><text class="label">维修人员</text><text class="value">{{handlerText}}</text></view>
-      <view class="row"><text class="label">紧急程度</text><text class="value">{{urgencyText}}</text></view>
 
-      <block wx:if="{{canComplete}}">
+      <view class="row">
+        <text class="label">维修人员</text>
+        <text class="value">{{handlerText}}</text>
+      </view>
+
+      <!-- 可编辑（当前处理人 + 处理中） -->
+      <block wx:if="{{canMaintain}}">
+        <view class="row">
+          <text class="label">维修时间</text>
+          <picker mode="date" value="{{startTimePick}}" bindchange="onStartTimeChange">
+            <view class="picker-val">{{startTimePick || '请选择'}} <text class="arrow">›</text></view>
+          </picker>
+        </view>
+        <view class="row">
+          <text class="label">完成时间</text>
+          <picker mode="date" value="{{completeTimePick}}" bindchange="onCompleteTimeChange">
+            <view class="picker-val">{{completeTimePick || '请选择'}} <text class="arrow">›</text></view>
+          </picker>
+        </view>
         <view class="field-label">维修说明</view>
-        <textarea class="textarea" placeholder="请输入维修说明" maxlength="500" value="{{repairDescription}}" bindinput="onRepairDescInput" />
-        <view class="count">{{repairDescription.length || 0}}/500</view>
+        <view class="textarea-wrap">
+          <textarea
+            class="textarea"
+            placeholder="请输入维修说明"
+            maxlength="500"
+            value="{{repairDescription}}"
+            bindinput="onRepairDescInput"
+          />
+          <view class="count">{{descCount}}/500</view>
+        </view>
         <view class="thumb-row">
           <block wx:for="{{completeImages}}" wx:key="index">
-            <image class="thumb" src="{{item.tempPath || item.serverUrl}}" mode="aspectFill" />
+            <view class="thumb-wrap">
+              <image class="thumb" src="{{item.previewUrl || item.tempPath || item.serverUrl}}" mode="aspectFill" />
+              <view class="thumb-del" data-index="{{index}}" catchtap="removeCompleteImage">×</view>
+            </view>
           </block>
-          <view class="thumb-add" wx:if="{{completeImages.length < 4}}" bindtap="chooseCompleteImage">📷</view>
+          <view class="thumb-add" wx:if="{{completeImages.length < 4}}" bindtap="chooseCompleteImage">
+            <view class="cam-icon"></view>
+          </view>
         </view>
-        <view class="btn-save" bindtap="handleComplete">{{submitting ? '提交中...' : '保存维修信息'}}</view>
+        <view class="save-row">
+          <view class="btn-save" bindtap="handleSaveProgress">{{submitting ? '保存中...' : '保存维修信息'}}</view>
+        </view>
       </block>
 
-      <block wx:if="{{detail.repairStatus==='2'}}">
-        <view class="row"><text class="label">维修说明</text><text class="value">{{detail.repairDescription || '-'}}</text></view>
+      <!-- 只读 -->
+      <block wx:else>
+        <view class="row">
+          <text class="label">维修时间</text>
+          <text class="value">{{startTimeText}}</text>
+        </view>
+        <view class="row">
+          <text class="label">完成时间</text>
+          <text class="value">{{completeTimeText}}</text>
+        </view>
+        <view class="row column">
+          <text class="label">维修说明</text>
+          <text class="value block">{{detail.repairDescription || '-'}}</text>
+        </view>
+        <view class="thumb-row" wx:if="{{repairImages.length}}">
+          <image
+            wx:for="{{repairImages}}"
+            wx:key="*this"
+            class="thumb"
+            src="{{item}}"
+            mode="aspectFill"
+            bindtap="previewRepairImage"
+            data-index="{{index}}"
+          />
+        </view>
       </block>
     </view>
 
-    <view class="bottom-bar" wx:if="{{canStart || canComplete}}">
-      <view class="btn ghost" wx:if="{{canTransfer}}" bindtap="goTransfer">转派</view>
-      <view class="btn primary" wx:if="{{canStart}}" bindtap="handleStart">开始处理</view>
-      <view class="btn success" wx:if="{{canComplete}}" bindtap="handleComplete">完成维修</view>
-    </view>
-  </block>
+    <view class="safe-space"></view>
+  </scroll-view>
 
-  <block wx:if="{{activeTab==='logs'}}">
+  <scroll-view class="content" scroll-y wx:if="{{activeTab==='logs'}}">
     <view class="card">
       <view class="progress">
-        <view class="step {{progress.accept?'on':''}}"><text class="icon">📋</text><text>已接受</text></view>
-        <text class="arrow">›</text>
-        <view class="step {{progress.started?'on':''}}"><text class="icon">⏱</text><text>维修中</text></view>
-        <text class="arrow">›</text>
-        <view class="step {{progress.done?'on':''}}"><text class="icon">✓</text><text>已完成</text></view>
+        <view class="step {{progress.accept?'on':''}}">
+          <view class="step-icon">📋</view>
+          <text>已接受</text>
+        </view>
+        <text class="arrow-sep">›</text>
+        <view class="step {{progress.started?'on':''}}">
+          <view class="step-icon">⏱</view>
+          <text>维修中</text>
+        </view>
+        <text class="arrow-sep">›</text>
+        <view class="step {{progress.done?'on':''}}">
+          <view class="step-icon">✓</view>
+          <text>已完成</text>
+        </view>
       </view>
+
+      <view class="log-highlight" wx:if="{{submitLog || completeLog}}">
+        <view class="hl-item" wx:if="{{submitLog}}">
+          <text class="hl-tag">提交工单</text>
+          <text class="hl-main">{{submitLog.operatorName}} 提交了维修工单</text>
+          <text class="hl-time">{{submitLog.timeText}}</text>
+        </view>
+        <view class="hl-item" wx:if="{{completeLog}}">
+          <text class="hl-tag done">完成维修</text>
+          <text class="hl-main">{{completeLog.operatorName}} 完成了维修</text>
+          <text class="hl-time">{{completeLog.timeText}}</text>
+        </view>
+      </view>
+
       <view class="log-empty" wx:if="{{!logs.length}}">暂无日志</view>
       <view class="log-item" wx:for="{{logs}}" wx:key="logId">
-        <view class="log-text">{{item.actionContent}}</view>
-        <view class="log-time">{{item.createTime || ''}}</view>
+        <view class="log-text">{{item.displayText}}</view>
+        <view class="log-meta">
+          <text wx:if="{{item.operatorName}}">操作人：{{item.operatorName}}</text>
+          <text class="log-time">{{item.timeText}}</text>
+        </view>
       </view>
     </view>
-  </block>
+  </scroll-view>
+
+  <!-- 参考图：处理中底部固定「暂停维修」+「完成维修」 -->
+  <view class="bottom-bar" wx:if="{{activeTab==='info' && canMaintain}}">
+    <view class="btn danger" bindtap="handlePause">暂停维修</view>
+    <view class="btn success" bindtap="handleComplete">{{submitting ? '提交中...' : '完成维修'}}</view>
+  </view>
 </view>

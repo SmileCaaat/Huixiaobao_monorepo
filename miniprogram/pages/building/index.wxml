@@ -1,12 +1,40 @@
 <view class="page">
   <scroll-view class="list" scroll-y bindscrolltolower="loadMore">
     <view wx:if="{{list.length === 0 && !loading}}" class="empty">暂无建筑信息</view>
-    <view class="card" wx:for="{{list}}" wx:key="buildingId" bindtap="goDetail" data-id="{{item.buildingId}}">
+    <view class="card building-card" wx:for="{{list}}" wx:key="buildingId" bindtap="goDetail" data-id="{{item.buildingId}}">
       <view class="card-hd">
         <text class="title">{{item.buildingName || '-'}}</text>
       </view>
-      <view class="row"><text class="label">地址</text><text class="value">{{item.address || '-'}}</text></view>
-      <view class="row"><text class="label">类型</text><text class="value">{{item.buildingTypeText || item.buildingType || '-'}}</text></view>
+      <view class="grid">
+        <view class="grid-col">
+          <view class="grid-row">
+            <text class="g-label">建筑高度</text>
+            <text class="g-value">{{item.heightText}}</text>
+          </view>
+          <view class="grid-row">
+            <text class="g-label">地上层数</text>
+            <text class="g-value">{{item.aboveText}}</text>
+          </view>
+          <view class="grid-row">
+            <text class="g-label">占地面积</text>
+            <text class="g-value">{{item.landAreaText}}</text>
+          </view>
+        </view>
+        <view class="grid-col">
+          <view class="grid-row">
+            <text class="g-label">建筑楼层</text>
+            <text class="g-value">{{item.floorText}}</text>
+          </view>
+          <view class="grid-row">
+            <text class="g-label">地下层数</text>
+            <text class="g-value">{{item.underText}}</text>
+          </view>
+          <view class="grid-row">
+            <text class="g-label">建筑面积</text>
+            <text class="g-value">{{item.areaText}}</text>
+          </view>
+        </view>
+      </view>
     </view>
     <view class="footer-tip" wx:if="{{loading}}">加载中...</view>
     <view class="footer-tip" wx:if="{{noMore && list.length > 0}}">没有更多了</view>

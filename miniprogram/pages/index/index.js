@@ -18,8 +18,7 @@ Page({
       { name: "设备信息", icon: "/static/appIcon/equipment.png", color: "#1e88e5", url: "/pages/equipment/index" },
       { name: "报告查询", icon: "/static/appIcon/report.png", color: "#8e24aa", url: "/pages/report/index" },
       { name: "建筑信息", icon: "/static/appIcon/architecture.png", color: "#00897b", url: "/pages/building/index" },
-      { name: "故障上报", icon: "/static/appIcon/repair_add.png", color: "#f44336", url: "/pages/repair/form" },
-      { name: "报修工单", icon: "/static/appIcon/repair_list.png", color: "#ff9800", url: "/pages/repair/index" }
+      { name: "故障报修", icon: "/static/appIcon/repair_list.png", color: "#f44336", url: "/pages/repair/index" }
     ]
   },
 

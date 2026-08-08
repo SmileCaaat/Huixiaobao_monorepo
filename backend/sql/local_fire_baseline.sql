@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS `fire_building` (
   `evacuation_stairs` int DEFAULT NULL,
   `fire_elevators` int DEFAULT NULL,
   `refuge_floor` varchar(100) DEFAULT NULL,
+  `image` varchar(500) DEFAULT NULL,
   `fire_level` varchar(32) DEFAULT NULL,
   `contact_person` varchar(64) DEFAULT NULL,
   `contact_phone` varchar(32) DEFAULT NULL,

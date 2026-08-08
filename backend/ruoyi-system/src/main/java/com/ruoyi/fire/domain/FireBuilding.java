@@ -90,6 +90,9 @@ public class FireBuilding extends BaseEntity {
     @Excel(name = "避难层位置")
     private String refugeFloor;
 
+    /** 建筑图片 */
+    private String image;
+
     /** 消防等级 */
     @Excel(name = "消防等级", readConverterExp = "first=一级,second=二级,third=三级")
     private String fireLevel;
@@ -264,6 +267,14 @@ public class FireBuilding extends BaseEntity {
         this.refugeFloor = refugeFloor;
     }
 
+    public String getImage() {
+        return image;
+    }
+
+    public void setImage(String image) {
+        this.image = image;
+    }
+
     public String getFireLevel() {
         return fireLevel;
     }
@@ -323,6 +334,7 @@ public class FireBuilding extends BaseEntity {
                 .append("evacuationStairs", getEvacuationStairs())
                 .append("fireElevators", getFireElevators())
                 .append("refugeFloor", getRefugeFloor())
+                .append("image", getImage())
                 .append("fireLevel", getFireLevel())
                 .append("contactPerson", getContactPerson())
                 .append("contactPhone", getContactPhone())

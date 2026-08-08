@@ -3,6 +3,26 @@
 
 <head>
     <th:block th:include="include :: header('修改建筑信息')" />
+    <style>
+        .image-preview {
+            width: 80px;
+            height: 80px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+        .image-preview:hover { border-color: #1890ff; }
+        .image-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            border-radius: 6px;
+        }
+        .image-tip { color: #999; font-size: 12px; margin-top: 8px; }
+    </style>
 </head>
 
 <body class="white-bg">
@@ -131,6 +151,25 @@
                 </div>
             </div>
             <div class="form-group">
+                <label class="col-sm-3 control-label">建筑图片：</label>
+                <div class="col-sm-8">
+                    <input type="hidden" name="image" id="image" th:field="*{image}">
+                    <div class="file-upload-box">
+                        <div id="imagePreview" class="image-preview" onclick="selectImage()" title="点击上传/拍照">
+                            <th:block th:if="*{image != null and image != ''}">
+                                <img th:src="*{image}">
+                            </th:block>
+                            <th:block th:unless="*{image != null and image != ''}">
+                                <i class="fa fa-camera fa-2x"></i>
+                            </th:block>
+                        </div>
+                        <input type="file" id="imageUpload" accept="image/*" capture="environment" style="display:none"
+                            onchange="uploadImage(this)">
+                        <div class="image-tip">与小程序共用图片字段；电脑端选择图片，手机浏览器可拍照上传</div>
+                    </div>
+                </div>
+            </div>
+            <div class="form-group">
                 <label class="col-sm-3 control-label">消防等级：</label>
                 <div class="col-sm-8">
                     <select name="fireLevel" class="form-control m-b" th:with="type=${@dict.getType('fire_level')}">
@@ -178,6 +217,36 @@
         $("#form-building-edit").validate({
             focusCleanup: true
         });
+
+        function selectImage() {
+            $('#imageUpload').click();
+        }
+
+        function uploadImage(input) {
+            if (!(input.files && input.files[0])) {
+                return;
+            }
+            var formData = new FormData();
+            formData.append('file', input.files[0]);
+            $.ajax({
+                url: ctx + 'common/upload',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (res) {
+                    if (res.code == 0) {
+                        $('#image').val(res.fileName);
+                        $('#imagePreview').html('<img src="' + res.url + '" style="max-width:80px;max-height:80px;">');
+                    } else {
+                        $.modal.alertError(res.msg || '上传失败');
+                    }
+                },
+                error: function () {
+                    $.modal.alertError('上传失败');
+                }
+            });
+        }
 
         function submitHandler() {
             if ($.validate.form()) {

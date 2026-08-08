@@ -33,7 +33,18 @@ Page({
       const res = await api.login({ username, password });
       if (res.data && res.data.token) {
         auth.setToken(res.data.token);
-        if (res.data.user) auth.setUser(res.data.user);
+        // 登录接口把 userId/userName 放在 data 根级（无嵌套 user）
+        const user = res.data.user || {
+          userId: res.data.userId,
+          userName: res.data.userName,
+          loginName: res.data.loginName,
+          phonenumber: res.data.phonenumber,
+          avatar: res.data.avatar,
+          auditStatus: res.data.auditStatus,
+          allowMiniLogin: res.data.allowMiniLogin,
+          wxBound: res.data.wxBound
+        };
+        if (user.userId) auth.setUser(user);
         wx.showToast({ title: "登录成功", icon: "success" });
         setTimeout(() => {
           wx.reLaunch({ url: "/pages/index/index" });

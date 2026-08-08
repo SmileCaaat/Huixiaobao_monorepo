@@ -1,3 +1,66 @@
 @import "../../styles/biz.wxss";
-.page { min-height: 100vh; display: flex; flex-direction: column; }
-.list { flex: 1; height: 0; }
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+}
+
+.list {
+  flex: 1;
+  height: 0;
+  padding-bottom: 140rpx;
+  box-sizing: border-box;
+}
+
+.building-card {
+  margin: 20rpx 24rpx 0;
+  padding: 28rpx 28rpx 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.05);
+}
+
+.building-card .card-hd {
+  margin-bottom: 0;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.building-card .title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #222;
+  line-height: 1.35;
+}
+
+.grid {
+  display: flex;
+  gap: 24rpx;
+  padding-top: 16rpx;
+}
+
+.grid-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.grid-row {
+  display: flex;
+  align-items: baseline;
+  padding: 10rpx 0;
+  font-size: 26rpx;
+  line-height: 1.4;
+}
+
+.g-label {
+  color: #555;
+  flex-shrink: 0;
+  margin-right: 12rpx;
+}
+
+.g-value {
+  color: #888;
+  flex: 1;
+  min-width: 0;
+  word-break: break-all;
+}

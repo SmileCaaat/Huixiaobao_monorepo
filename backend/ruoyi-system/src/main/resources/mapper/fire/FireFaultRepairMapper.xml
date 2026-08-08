@@ -90,6 +90,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="repairStatus != null and repairStatus != ''">
                 AND f.repair_status = #{repairStatus}
             </if>
+            <!-- 小程序待处理 Tab：未完成（待处理+处理中） -->
+            <if test="params != null and params.pendingOnly != null and (params.pendingOnly == true or params.pendingOnly == 'true' or params.pendingOnly == 1 or params.pendingOnly == '1')">
+                AND f.repair_status IN ('0', '1')
+            </if>
+            <if test="params != null and params.keyword != null and params.keyword != ''">
+                AND (
+                    f.equipment_name LIKE CONCAT('%', #{params.keyword}, '%')
+                    OR f.fault_description LIKE CONCAT('%', #{params.keyword}, '%')
+                    OR f.company_name LIKE CONCAT('%', #{params.keyword}, '%')
+                    OR f.customer_address LIKE CONCAT('%', #{params.keyword}, '%')
+                )
+            </if>
             <if test="reporterName != null and reporterName != ''">
                 AND f.reporter_name LIKE CONCAT('%', #{reporterName}, '%')
             </if>

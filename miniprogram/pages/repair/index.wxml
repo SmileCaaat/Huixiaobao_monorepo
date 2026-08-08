@@ -1,25 +1,46 @@
 <view class="page">
-  <view class="stats" wx:if="{{stats}}">
-    <view class="stat-item"><text class="num">{{stats.assignedTotal || 0}}</text><text class="lbl">派发给我</text></view>
-    <view class="stat-item"><text class="num">{{stats.reportedTotal || 0}}</text><text class="lbl">我上报的</text></view>
-    <view class="stat-item"><text class="num">{{stats.pending || 0}}</text><text class="lbl">待处理</text></view>
-  </view>
   <view class="tabs">
-    <view class="tab {{activeTab === 'assigned' ? 'active' : ''}}" data-tab="assigned" bindtap="switchTab">派发给我</view>
-    <view class="tab {{activeTab === 'reported' ? 'active' : ''}}" data-tab="reported" bindtap="switchTab">我上报的</view>
+    <view class="tab {{activeTab === 'pending' ? 'active' : ''}}" data-tab="pending" bindtap="switchTab">待处理</view>
+    <view class="tab {{activeTab === 'done' ? 'active' : ''}}" data-tab="done" bindtap="switchTab">已完成</view>
   </view>
+
+  <view class="search-bar">
+    <input
+      class="search-input"
+      placeholder="请输入关键字"
+      value="{{keyword}}"
+      confirm-type="search"
+      bindinput="onKeywordInput"
+      bindconfirm="handleSearch"
+    />
+  </view>
+
   <scroll-view class="list" scroll-y bindscrolltolower="loadMore">
-    <view wx:if="{{list.length === 0 && !loading}}" class="empty">暂无报修工单</view>
+    <view wx:if="{{list.length === 0 && !loading}}" class="empty">暂无故障报修记录</view>
+
     <view class="card" wx:for="{{list}}" wx:key="repairId" bindtap="goDetail" data-id="{{item.repairId}}">
       <view class="card-hd">
-        <text class="badge {{item.statusClass}}">{{item.statusText}}</text>
-        <text class="sub">{{item.createTime || ''}}</text>
+        <text class="title">{{item.companyName || '故障报修'}}</text>
+        <text class="status {{item.statusTone}}">{{item.statusText}}</text>
       </view>
-      <view class="title line2">{{item.descSnippet || '-'}}</view>
-      <view class="sub">紧急程度：{{item.urgencyText}}</view>
+      <view class="card-body">
+        <view class="main-col">
+          <view class="row"><text class="label">设备名称</text><text class="value">{{item.equipmentName || '-'}}</text></view>
+          <view class="row"><text class="label">故障描述</text><text class="value">{{item.descSnippet || '-'}}</text></view>
+          <view class="row"><text class="label">发现时间</text><text class="value">{{item.foundTimeText}}</text></view>
+          <view class="row" wx:if="{{activeTab === 'done'}}">
+            <text class="label">完成时间</text>
+            <text class="value">{{item.completeTimeText}}</text>
+          </view>
+          <view class="row"><text class="label">客户地址</text><text class="value">{{item.customerAddress || '-'}}</text></view>
+        </view>
+        <view class="urgency {{item.urgencyClass}}">{{item.urgencyText}}</view>
+      </view>
     </view>
+
     <view class="footer-tip" wx:if="{{loading}}">加载中...</view>
     <view class="footer-tip" wx:if="{{noMore && list.length > 0}}">没有更多了</view>
   </scroll-view>
+
   <view class="fab" bindtap="goForm">+</view>
 </view>

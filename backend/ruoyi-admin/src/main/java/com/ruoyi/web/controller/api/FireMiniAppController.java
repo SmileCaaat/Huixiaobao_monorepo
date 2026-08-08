@@ -1493,6 +1493,22 @@ public class FireMiniAppController extends BaseController {
     }
 
     /**
+     * 暂停维修：保存当前进度（与 PC /fire/repair/pause 同一规则，不变更 repairStatus）。
+     */
+    @PostMapping("/repair/pause")
+    public AjaxResult pauseRepair(@RequestBody FireFaultRepair repair) {
+        try {
+            if (repair != null) {
+                repair.setUpdateBy(ShiroUtils.getLoginName());
+            }
+            int rows = faultRepairService.saveRepairProgress(repair);
+            return rows > 0 ? AjaxResult.success("已暂停，维修信息已保存") : AjaxResult.error("暂停失败");
+        } catch (ServiceException e) {
+            return AjaxResult.error(e.getMessage());
+        }
+    }
+
+    /**
      * 工单日志
      */
     @GetMapping("/repair/logs/{repairId}")
@@ -1525,8 +1541,10 @@ public class FireMiniAppController extends BaseController {
             if (users != null) {
                 for (SysUser u : users) {
                     Map<String, Object> item = new HashMap<>();
+                    // 本系统 userName=员工姓名，loginName=登录账号
                     item.put("userId", u.getUserId());
                     item.put("userName", u.getUserName());
+                    item.put("loginName", u.getLoginName());
                     item.put("phonenumber", u.getPhonenumber());
                     list.add(item);
                 }

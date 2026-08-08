@@ -1,22 +1,41 @@
 const { api } = require("../../api/index.js");
 
-const STATUS_MAP = {
-  "0": { text: "\u5f85\u5904\u7406", cls: "badge-muted" },
-  "1": { text: "\u5904\u7406\u4e2d", cls: "badge-warn" },
-  "2": { text: "\u5df2\u5b8c\u6210", cls: "badge-ok" }
-};
+function formatDate(v) {
+  if (!v) return "-";
+  const s = String(v);
+  return s.length >= 10 ? s.slice(0, 10) : s;
+}
 
-const URGENCY_MAP = {
-  "0": "\u4e00\u822c",
-  "1": "\u7d27\u6025",
-  "2": "\u7279\u6025"
-};
+function mapRow(item) {
+  const status = String(item.repairStatus);
+  let statusText = "待处理";
+  let statusTone = "muted";
+  if (status === "1") {
+    statusText = "维修中";
+    statusTone = "warn";
+  } else if (status === "2") {
+    statusText = "已完成";
+    statusTone = "ok";
+  }
+  const urgency = String(item.urgencyLevel == null ? "0" : item.urgencyLevel);
+  const urgencyMap = { "0": "一般", "1": "紧急", "2": "特急" };
+  const desc = item.faultDescription || "";
+  return Object.assign({}, item, {
+    statusText: statusText,
+    statusTone: statusTone,
+    urgencyText: urgencyMap[urgency] || "一般",
+    urgencyClass: "u" + (urgencyMap[urgency] ? urgency : "0"),
+    foundTimeText: formatDate(item.foundTime || item.createTime),
+    completeTimeText: formatDate(item.completeTime),
+    descSnippet: desc.length > 40 ? desc.slice(0, 40) + "..." : desc
+  });
+}
 
 Page({
   data: {
-    activeTab: "assigned",
+    activeTab: "pending",
+    keyword: "",
     list: [],
-    stats: null,
     loading: false,
     noMore: false,
     pageNum: 1,
@@ -24,12 +43,11 @@ Page({
   },
 
   onShow() {
-    this.loadStats();
     this.refresh();
   },
 
   onPullDownRefresh() {
-    Promise.all([this.loadStats(), this.refresh()]).finally(() => wx.stopPullDownRefresh());
+    this.refresh().finally(() => wx.stopPullDownRefresh());
   },
 
   switchTab(e) {
@@ -39,13 +57,12 @@ Page({
     this.refresh();
   },
 
-  async loadStats() {
-    try {
-      const res = await api.getRepairStats();
-      this.setData({ stats: res.data || null });
-    } catch (e) {
-      // optional header counts
-    }
+  onKeywordInput(e) {
+    this.setData({ keyword: e.detail.value || "" });
+  },
+
+  handleSearch() {
+    this.refresh();
   },
 
   async refresh() {
@@ -57,28 +74,28 @@ Page({
     if (this.data.loading || this.data.noMore) return;
     this.setData({ loading: true });
     try {
-      const params = { pageNum: this.data.pageNum, pageSize: this.data.pageSize };
-      const fetcher =
-        this.data.activeTab === "assigned"
-          ? api.getMyAssignedRepairList
-          : api.getMyReportedRepairList;
-      const res = await fetcher(params);
-      const rows = (res.rows || res.data || []).map((item) => {
-        const st = STATUS_MAP[String(item.repairStatus)] || STATUS_MAP["0"];
-        const desc = item.faultDescription || "";
-        return Object.assign({}, item, {
-          statusText: st.text,
-          statusClass: st.cls,
-          urgencyText: URGENCY_MAP[String(item.urgencyLevel)] || "-",
-          descSnippet: desc.length > 40 ? desc.slice(0, 40) + "..." : desc
-        });
-      });
+      const keyword = (this.data.keyword || "").trim();
+      const params = {
+        pageNum: this.data.pageNum,
+        pageSize: this.data.pageSize,
+        params: {}
+      };
+      if (this.data.activeTab === "pending") {
+        params.params.pendingOnly = true;
+      } else {
+        params.repairStatus = "2";
+      }
+      if (keyword) {
+        params.params.keyword = keyword;
+      }
+      const res = await api.getMyRepairList(params);
+      const rows = (res.rows || res.data || []).map(mapRow);
       this.setData({
         list: this.data.pageNum === 1 ? rows : this.data.list.concat(rows),
         noMore: rows.length < this.data.pageSize
       });
     } catch (e) {
-      wx.showToast({ title: "\u52a0\u8f7d\u5931\u8d25", icon: "none" });
+      wx.showToast({ title: "加载失败", icon: "none" });
     } finally {
       this.setData({ loading: false });
     }

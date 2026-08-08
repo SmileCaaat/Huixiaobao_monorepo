@@ -109,6 +109,7 @@
             <div class="col-sm-12 search-collapse fire-search-layout">
                 <form id="formId">
                     <input type="hidden" name="params[workbenchCategory]" id="workbenchCategory" th:value="${defaultWorkbenchCategory}"/>
+                    <input type="hidden" name="params[listCategory]" id="listCategory" th:value="${defaultListCategory}"/>
                     <div class="select-list">
                         <ul>
                             <li>
@@ -126,13 +127,6 @@
                                     <option th:each="level : ${urgencyLevels}" th:value="${level.code}" th:text="${level.info}"></option>
                                 </select>
                             </li>
-                            <li th:unless="${workbenchMode}">
-                                <label>维修状态：</label>
-                                <select name="repairStatus">
-                                    <option value="">全部</option>
-                                    <option th:each="status : ${repairStatuses}" th:value="${status.code}" th:text="${status.info}"></option>
-                                </select>
-                            </li>
                             <li class="select-time">
                                 <label>发现时间：</label>
                                 <input type="text" class="time-input" id="startTime" placeholder="开始时间" name="params[beginFoundTime]"/>
@@ -148,12 +142,16 @@
                 </form>
             </div>
 
-            <!-- 独立工单分类卡片：位于搜索卡片与列表卡片之间（仅员工工作台模式） -->
-            <div class="col-sm-12 repair-category-card" th:if="${workbenchMode}">
+            <!-- 工单分类：待处理 / 已完成（与小程序一致；员工工作台额外保留「我上报的」） -->
+            <div class="col-sm-12 repair-category-card">
                 <div class="repair-workbench-tabs">
                     <span class="repair-workbench-label">工单分类：</span>
-                    <div class="repair-workbench-buttons">
-                        <a href="javascript:void(0)" class="btn btn-sm btn-primary active" data-category="assignedPending" onclick="switchWorkbench('assignedPending', this)">待我处理</a>
+                    <div class="repair-workbench-buttons" th:unless="${workbenchMode}">
+                        <a href="javascript:void(0)" class="btn btn-sm btn-primary active" data-category="pending" onclick="switchListCategory('pending', this)">待处理</a>
+                        <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="completed" onclick="switchListCategory('completed', this)">已完成</a>
+                    </div>
+                    <div class="repair-workbench-buttons" th:if="${workbenchMode}">
+                        <a href="javascript:void(0)" class="btn btn-sm btn-primary active" data-category="assignedPending" onclick="switchWorkbench('assignedPending', this)">待处理</a>
                         <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="completed" onclick="switchWorkbench('completed', this)">已完成</a>
                         <a href="javascript:void(0)" class="btn btn-sm btn-default" data-category="reported" onclick="switchWorkbench('reported', this)">我上报的</a>
                     </div>
@@ -266,22 +264,30 @@
                     align: 'center',
                     formatter: function(value, row) {
                         var actions = [];
-                        // 查看/维修统一进入处理页（工单信息 + 维修信息/转派/拍照/完成）
+                        var completed = isCompletedRepair(row);
+
+                        // 查看：所有状态都可看
                         actions.push('<a class="btn btn-success btn-xs" href="javascript:void(0)" onclick="handleRepair(' + row.repairId + ')"><i class="fa fa-eye"></i>查看</a> ');
 
+                        // 已完成：只读，不展示派发 / 维修处理 / 编辑 / 删除 / 撤回
+                        if (completed) {
+                            return actions.join('');
+                        }
+
                         if (!workbenchMode) {
+                            // 待派发（待处理）可编辑删除
                             if (row.repairStatus == '0') {
                                 actions.push('<a class="btn btn-success btn-xs ' + editFlag + '" href="javascript:void(0)" onclick="$.operate.edit(\'' + row.repairId + '\')"><i class="fa fa-edit"></i>编辑</a> ');
                                 actions.push('<a class="btn btn-danger btn-xs ' + removeFlag + '" href="javascript:void(0)" onclick="$.operate.remove(\'' + row.repairId + '\')"><i class="fa fa-remove"></i>删除</a> ');
                             }
-                            if (row.repairStatus != '2') {
-                                actions.push('<a class="btn btn-primary btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="dispatchRepair(' + row.repairId + ')"><i class="fa fa-share"></i>派发</a> ');
-                            }
+                            // 未完成才可派发
+                            actions.push('<a class="btn btn-primary btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="dispatchRepair(' + row.repairId + ')"><i class="fa fa-share"></i>派发</a> ');
                             if (canRecallRepair(row)) {
                                 actions.push('<a class="btn btn-warning btn-xs ' + dispatchFlag + '" href="javascript:void(0)" onclick="recallRepair(' + row.repairId + ')"><i class="fa fa-undo"></i>撤回</a> ');
                             }
                         }
 
+                        // 维修处理：仅未完成且当前用户可处理时
                         if (canHandleRepair(row)) {
                             actions.push('<a class="btn btn-primary btn-xs" href="javascript:void(0)" onclick="handleRepair(' + row.repairId + ')"><i class="fa fa-wrench"></i>维修处理</a> ');
                         }
@@ -302,22 +308,28 @@
             $.table.init(options);
         });
 
+        function switchListCategory(category, el) {
+            $('#listCategory').val(category || 'pending');
+            $('.repair-workbench-tabs .btn').removeClass('btn-primary active').addClass('btn-default');
+            $(el).removeClass('btn-default').addClass('btn-primary active');
+            $.table.search();
+        }
+
         function switchWorkbench(category, el) {
             $('#workbenchCategory').val(category);
+            $('#listCategory').val(category === 'completed' ? 'completed' : 'pending');
             $('.repair-workbench-tabs .btn').removeClass('btn-primary active').addClass('btn-default');
             $(el).removeClass('btn-default').addClass('btn-primary active');
             $.table.search();
         }
 
         function resetSearch() {
-            if (workbenchMode) {
-                var current = $('#workbenchCategory').val() || 'assignedPending';
-                $.form.reset();
-                $('#workbenchCategory').val(current);
-                $.table.search();
-            } else {
-                $.form.reset();
-            }
+            var listCat = $('#listCategory').val() || (workbenchMode ? 'assignedPending' : 'pending');
+            var workCat = $('#workbenchCategory').val() || (workbenchMode ? 'assignedPending' : '');
+            $.form.reset();
+            $('#listCategory').val(workbenchMode ? (workCat === 'completed' ? 'completed' : 'pending') : listCat);
+            $('#workbenchCategory').val(workCat);
+            $.table.search();
         }
 
         function sameUser(a, b) {
@@ -327,11 +339,18 @@
             return String(a) === String(b);
         }
 
+        function isCompletedRepair(row) {
+            return !!(row && String(row.repairStatus) === '2');
+        }
+
         function canHandleRepair(row) {
+            if (!row || isCompletedRepair(row)) {
+                return false;
+            }
             if (sameUser(row.repairUserId, currentUserId) && row.repairStatus == '1') {
                 return true;
             }
-            // 历史待处理：上报人可进入维修接单
+            // 待处理且未派发：上报人可进入维修接单
             return sameUser(row.reporterId, currentUserId)
                 && row.repairStatus == '0'
                 && (row.repairUserId == null || row.repairUserId === '');
@@ -351,7 +370,7 @@
 
         /** 是否可撤回：已派发 + 有处理人 + 未开始 + 未完成 */
         function canRecallRepair(row) {
-            if (!row) {
+            if (!row || isCompletedRepair(row)) {
                 return false;
             }
             if (row.repairStatus != '1') {

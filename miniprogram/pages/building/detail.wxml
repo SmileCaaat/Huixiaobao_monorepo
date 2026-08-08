@@ -1,11 +1,66 @@
 <view class="page" wx:if="{{detail}}">
-  <view class="card">
-    <view class="row"><text class="label">建筑名称</text><text class="value">{{detail.buildingName || '-'}}</text></view>
-    <view class="row"><text class="label">地址</text><text class="value">{{detail.address || '-'}}</text></view>
-    <view class="row"><text class="label">建筑类型</text><text class="value">{{detail.buildingTypeText || detail.buildingType || '-'}}</text></view>
-    <view class="row"><text class="label">楼层数</text><text class="value">{{detail.floorCount != null ? detail.floorCount : '-'}}</text></view>
-    <view class="row"><text class="label">建筑面积</text><text class="value">{{detail.area != null ? detail.area : '-'}}</text></view>
+  <view class="card detail-card">
+    <view class="row">
+      <text class="label">建筑名称</text>
+      <text class="value">{{detail.buildingName || '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">自动消防设施</text>
+      <text class="value">{{autoFireText}}</text>
+    </view>
+    <view class="row">
+      <text class="label">建筑地址</text>
+      <text class="value">{{detail.address || '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">建筑类别</text>
+      <text class="value">{{detail.buildingTypeText || detail.buildingType || '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">占地面积(m²)</text>
+      <text class="value">{{detail.landArea != null && detail.landArea !== '' ? detail.landArea : '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">建筑面积(m²)</text>
+      <text class="value">{{detail.area != null && detail.area !== '' ? detail.area : '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">建筑高度(m)</text>
+      <text class="value">{{detail.buildingHeight != null && detail.buildingHeight !== '' ? detail.buildingHeight : '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">建筑层数</text>
+      <text class="value">{{detail.floorCount != null && detail.floorCount !== '' ? detail.floorCount : '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">地上层数</text>
+      <text class="value">{{detail.aboveGroundFloors != null && detail.aboveGroundFloors !== '' ? detail.aboveGroundFloors : '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">地下层数</text>
+      <text class="value">{{detail.undergroundFloors != null && detail.undergroundFloors !== '' ? detail.undergroundFloors : '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">安全出口(个)</text>
+      <text class="value">{{detail.emergencyExits != null && detail.emergencyExits !== '' ? detail.emergencyExits : '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">疏散楼梯数(个)</text>
+      <text class="value">{{detail.evacuationStairs != null && detail.evacuationStairs !== '' ? detail.evacuationStairs : '-'}}</text>
+    </view>
+    <view class="row">
+      <text class="label">消防电梯数(个)</text>
+      <text class="value">{{detail.fireElevators != null && detail.fireElevators !== '' ? detail.fireElevators : '-'}}</text>
+    </view>
+    <view class="row {{imageUrl ? '' : 'last'}}">
+      <text class="label">避难层位置</text>
+      <text class="value">{{detail.refugeFloor || '-'}}</text>
+    </view>
+    <view class="photo-row" wx:if="{{imageUrl}}">
+      <image class="photo" src="{{imageUrl}}" mode="aspectFill" bindtap="previewImage" />
+    </view>
   </view>
+
   <view class="bottom-bar">
     <view class="btn-block" bindtap="goEdit">编辑</view>
   </view>

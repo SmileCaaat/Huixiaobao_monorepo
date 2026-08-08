@@ -1,5 +1,6 @@
 package com.ruoyi.web.controller.fire;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.shiro.SecurityUtils;
@@ -27,12 +28,13 @@ import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.common.utils.poi.ExcelUtil;
 import com.ruoyi.fire.domain.FireFaultRepair;
 import com.ruoyi.fire.domain.FireMaintenanceTask;
+import com.ruoyi.fire.domain.dto.FireInspectionTemplateCategoryVO;
+import com.ruoyi.fire.domain.dto.FireInspectionTemplateEquipmentVO;
 import com.ruoyi.fire.service.IFireCompanyService;
-import com.ruoyi.fire.service.IFireEquipmentService;
 import com.ruoyi.fire.service.IFireDataPermissionService;
 import com.ruoyi.fire.service.IFireFaultRepairService;
-import com.ruoyi.fire.service.IFireSystemTypeService;
 import com.ruoyi.fire.service.IFireMaintenanceTaskService;
+import com.ruoyi.fire.service.IFireMaintenanceTemplateCategoryService;
 
 /**
  * 故障报修管理。
@@ -52,13 +54,10 @@ public class FireFaultRepairController extends BaseController {
     private IFireCompanyService companyService;
 
     @Autowired
-    private IFireSystemTypeService systemTypeService;
-
-    @Autowired
-    private IFireEquipmentService equipmentService;
-
-    @Autowired
     private IFireMaintenanceTaskService maintenanceTaskService;
+
+    @Autowired
+    private IFireMaintenanceTemplateCategoryService templateCategoryService;
 
     @RequiresPermissions("fire:repair:view")
     @GetMapping()
@@ -69,6 +68,8 @@ public class FireFaultRepairController extends BaseController {
         mmap.put("repairStatuses", RepairStatus.values());
         mmap.put("currentUserId", user != null ? user.getUserId() : null);
         mmap.put("workbenchMode", workbenchMode);
+        // 管理视图：待处理/已完成；员工工作台：待处理(=待我处理)/已完成/我上报的
+        mmap.put("defaultListCategory", workbenchMode ? "assignedPending" : "pending");
         mmap.put("defaultWorkbenchCategory", workbenchMode ? "assignedPending" : "");
         return prefix + "/repair";
     }
@@ -79,7 +80,9 @@ public class FireFaultRepairController extends BaseController {
     public TableDataInfo list(FireFaultRepair fireFaultRepair) {
         SysUser user = ShiroUtils.getSysUser();
         String category = extractWorkbenchCategory(fireFaultRepair);
+        String listCategory = extractListCategory(fireFaultRepair);
         fireDataPermissionService.prepareRepairListQuery(fireFaultRepair, user, category);
+        applyAdminListCategory(fireFaultRepair, user, listCategory);
         startPage();
         List<FireFaultRepair> list = fireFaultRepairService.selectFireFaultRepairList(fireFaultRepair);
         return getDataTable(list);
@@ -92,7 +95,9 @@ public class FireFaultRepairController extends BaseController {
     public AjaxResult export(FireFaultRepair fireFaultRepair) {
         SysUser user = ShiroUtils.getSysUser();
         String category = extractWorkbenchCategory(fireFaultRepair);
+        String listCategory = extractListCategory(fireFaultRepair);
         fireDataPermissionService.prepareRepairListQuery(fireFaultRepair, user, category);
+        applyAdminListCategory(fireFaultRepair, user, listCategory);
         List<FireFaultRepair> list = fireFaultRepairService.selectFireFaultRepairList(fireFaultRepair);
         ExcelUtil<FireFaultRepair> util = new ExcelUtil<>(FireFaultRepair.class);
         return util.exportExcel(list, "故障报修");
@@ -102,13 +107,15 @@ public class FireFaultRepairController extends BaseController {
     public String add(@RequestParam(value = "linked", required = false, defaultValue = "false") boolean linked,
             @RequestParam(value = "taskId", required = false) Long taskId,
             @RequestParam(value = "companyId", required = false) Long companyId,
+            @RequestParam(value = "categoryKey", required = false) String categoryKey,
             @RequestParam(value = "systemTypeName", required = false) String systemTypeName,
+            @RequestParam(value = "equipmentKey", required = false) String equipmentKey,
             @RequestParam(value = "equipmentName", required = false) String equipmentName,
             @RequestParam(value = "customerAddress", required = false) String customerAddress,
             @RequestParam(value = "faultDescription", required = false) String faultDescription,
             ModelMap mmap) {
         List<com.ruoyi.fire.domain.FireCompany> companies = companyService.selectCompanyAll();
-        List<com.ruoyi.fire.domain.FireSystemType> systemTypes = systemTypeService.selectFireSystemTypeAll();
+        List<FireInspectionTemplateCategoryVO> systemTypes = templateCategoryService.listInspectionLevel1Categories();
         com.ruoyi.fire.domain.FireCompany linkedCompany = linked && companyId != null
                 ? companyService.selectFireCompanyById(companyId) : null;
         if (linked && taskId != null) {
@@ -119,36 +126,51 @@ public class FireFaultRepairController extends BaseController {
             }
             fireDataPermissionService.assertCanAccessTask(ShiroUtils.getSysUser(), linkedTask);
         }
-        Long resolvedSystemTypeId = null;
-        if (linked && StringUtils.isNotEmpty(systemTypeName)) {
-            String normalizedRequested = normalizeSystemName(systemTypeName);
-            for (com.ruoyi.fire.domain.FireSystemType type : systemTypes) {
-                if (type != null && normalizedRequested.equals(normalizeSystemName(type.getTypeName()))) {
-                    resolvedSystemTypeId = type.getTypeId();
-                    systemTypeName = type.getTypeName();
-                    break;
-                }
-            }
+        FireInspectionTemplateCategoryVO resolvedCategory = resolveTemplateCategory(categoryKey, systemTypeName);
+        if (resolvedCategory != null) {
+            categoryKey = resolvedCategory.getCategoryKey();
+            systemTypeName = resolvedCategory.getCategoryName();
+        }
+        List<FireInspectionTemplateEquipmentVO> equipmentOptions = StringUtils.isNotEmpty(categoryKey)
+                ? templateCategoryService.listEquipmentsByCategoryKey(categoryKey)
+                : new java.util.ArrayList<>();
+        if (equipmentOptions == null) {
+            equipmentOptions = new java.util.ArrayList<>();
+        }
+        FireInspectionTemplateEquipmentVO resolvedEquipment = resolveTemplateEquipment(
+                categoryKey, equipmentKey, equipmentName, equipmentOptions);
+        if (resolvedEquipment != null) {
+            equipmentKey = resolvedEquipment.getEquipmentKey();
+            equipmentName = resolvedEquipment.getEquipmentName();
         }
         if (linkedCompany != null) {
             companyId = linkedCompany.getCompanyId();
             customerAddress = linkedCompany.getAddress();
         }
         mmap.put("companies", companies);
-        mmap.put("systemTypes", systemTypes);
-        mmap.put("equipments", equipmentService.selectEquipmentAll());
+        mmap.put("systemTypes", systemTypes != null ? systemTypes : new java.util.ArrayList<>());
+        mmap.put("equipmentOptions", equipmentOptions);
         mmap.put("urgencyLevels", UrgencyLevel.values());
-        mmap.put("equipmentNames", com.ruoyi.fire.enums.FireEquipmentCategory.allLabels());
         mmap.put("linkedRepair", linked);
         mmap.put("prefillTaskId", linked ? taskId : null);
         mmap.put("prefillCompanyId", companyId);
         mmap.put("prefillCompanyName", linkedCompany != null ? linkedCompany.getCompanyName() : "");
-        mmap.put("prefillSystemTypeId", resolvedSystemTypeId);
+        mmap.put("prefillCategoryKey", StringUtils.defaultString(categoryKey));
         mmap.put("prefillSystemTypeName", StringUtils.defaultString(systemTypeName));
+        mmap.put("prefillEquipmentKey", StringUtils.defaultString(equipmentKey));
         mmap.put("prefillEquipmentName", StringUtils.defaultString(equipmentName));
         mmap.put("prefillCustomerAddress", StringUtils.defaultString(customerAddress));
         mmap.put("prefillFaultDescription", StringUtils.defaultString(faultDescription));
         return prefix + "/add";
+    }
+
+    /**
+     * 指定系统下的设备类目（与消防维护模板 / 巡查测试一致）。
+     */
+    @GetMapping("/equipmentTypes")
+    @ResponseBody
+    public AjaxResult equipmentTypes(String categoryKey) {
+        return AjaxResult.success(templateCategoryService.listEquipmentsByCategoryKey(categoryKey));
     }
 
     private String normalizeSystemName(String value) {
@@ -157,6 +179,53 @@ public class FireFaultRepairController extends BaseController {
         }
         return value.trim().replace('（', '(').replace('）', ')')
                 .replace("/", "").replace("防排烟", "防烟排烟");
+    }
+
+    private FireInspectionTemplateCategoryVO resolveTemplateCategory(String categoryKey, String systemTypeName) {
+        if (StringUtils.isNotEmpty(categoryKey)) {
+            FireInspectionTemplateCategoryVO byKey = templateCategoryService.findLevel1ByCategoryKey(categoryKey);
+            if (byKey != null) {
+                return byKey;
+            }
+        }
+        if (StringUtils.isEmpty(systemTypeName)) {
+            return null;
+        }
+        String normalizedRequested = normalizeSystemName(systemTypeName);
+        for (FireInspectionTemplateCategoryVO type : templateCategoryService.listInspectionLevel1Categories()) {
+            if (type != null && normalizedRequested.equals(normalizeSystemName(type.getCategoryName()))) {
+                return type;
+            }
+        }
+        return null;
+    }
+
+    private FireInspectionTemplateEquipmentVO resolveTemplateEquipment(String categoryKey, String equipmentKey,
+            String equipmentName, List<FireInspectionTemplateEquipmentVO> options) {
+        if (StringUtils.isEmpty(categoryKey) || options == null || options.isEmpty()) {
+            return null;
+        }
+        if (StringUtils.isNotEmpty(equipmentKey)) {
+            FireInspectionTemplateEquipmentVO byKey = templateCategoryService.findEquipment(categoryKey, equipmentKey);
+            if (byKey != null) {
+                return byKey;
+            }
+            for (FireInspectionTemplateEquipmentVO item : options) {
+                if (item != null && equipmentKey.equals(item.getEquipmentKey())) {
+                    return item;
+                }
+            }
+        }
+        if (StringUtils.isEmpty(equipmentName)) {
+            return null;
+        }
+        String normalizedRequested = normalizeSystemName(equipmentName);
+        for (FireInspectionTemplateEquipmentVO item : options) {
+            if (item != null && normalizedRequested.equals(normalizeSystemName(item.getEquipmentName()))) {
+                return item;
+            }
+        }
+        return null;
     }
 
     /**
@@ -198,12 +267,26 @@ public class FireFaultRepairController extends BaseController {
 
     @GetMapping("/edit/{repairId}")
     public String edit(@PathVariable("repairId") Long repairId, ModelMap mmap) {
-        mmap.put("repair", getRepair(repairId));
+        FireFaultRepair repair = getRepair(repairId);
+        FireInspectionTemplateCategoryVO resolvedCategory =
+                resolveTemplateCategory(null, repair.getSystemTypeName());
+        String categoryKey = resolvedCategory != null ? resolvedCategory.getCategoryKey() : "";
+        List<FireInspectionTemplateEquipmentVO> equipmentOptions = StringUtils.isNotEmpty(categoryKey)
+                ? templateCategoryService.listEquipmentsByCategoryKey(categoryKey)
+                : new java.util.ArrayList<>();
+        if (equipmentOptions == null) {
+            equipmentOptions = new java.util.ArrayList<>();
+        }
+        FireInspectionTemplateEquipmentVO resolvedEquipment = resolveTemplateEquipment(
+                categoryKey, null, repair.getEquipmentName(), equipmentOptions);
+        mmap.put("repair", repair);
         mmap.put("companies", companyService.selectCompanyAll());
-        mmap.put("systemTypes", systemTypeService.selectFireSystemTypeAll());
-        mmap.put("equipments", equipmentService.selectEquipmentAll());
+        mmap.put("systemTypes", templateCategoryService.listInspectionLevel1Categories());
+        mmap.put("equipmentOptions", equipmentOptions);
+        mmap.put("prefillCategoryKey", categoryKey);
+        mmap.put("prefillEquipmentKey",
+                resolvedEquipment != null ? resolvedEquipment.getEquipmentKey() : "");
         mmap.put("urgencyLevels", UrgencyLevel.values());
-        mmap.put("equipmentNames", com.ruoyi.fire.enums.FireEquipmentCategory.allLabels());
         return prefix + "/edit";
     }
 
@@ -454,18 +537,46 @@ public class FireFaultRepairController extends BaseController {
     }
 
     private String extractWorkbenchCategory(FireFaultRepair query) {
-        if (query == null) {
+        return extractParam(query, "workbenchCategory");
+    }
+
+    private String extractListCategory(FireFaultRepair query) {
+        return extractParam(query, "listCategory");
+    }
+
+    private String extractParam(FireFaultRepair query, String key) {
+        if (query == null || StringUtils.isEmpty(key)) {
             return null;
         }
         Map<String, Object> params = query.getParams();
         if (params == null || params.isEmpty()) {
             return null;
         }
-        Object raw = params.get("workbenchCategory");
+        Object raw = params.get(key);
         if (raw == null) {
             return null;
         }
         String value = String.valueOf(raw).trim();
         return StringUtils.isEmpty(value) ? null : value;
+    }
+
+    /**
+     * 管理端列表分类：待处理=未完成(0/1)，已完成=2。员工工作台仍走 workbenchCategory。
+     */
+    private void applyAdminListCategory(FireFaultRepair query, SysUser user, String listCategory) {
+        if (query == null || user == null || fireDataPermissionService.isRepairEmployeeWorkbench(user)) {
+            return;
+        }
+        if (query.getParams() == null) {
+            query.setParams(new HashMap<>());
+        }
+        query.getParams().remove("pendingOnly");
+        if ("completed".equals(listCategory)) {
+            query.setRepairStatus(RepairStatus.COMPLETED.getCode());
+            return;
+        }
+        // 默认待处理：待处理 + 处理中
+        query.setRepairStatus(null);
+        query.getParams().put("pendingOnly", true);
     }
 }

@@ -72,7 +72,7 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
         int rows = fireFaultRepairMapper.insertFireFaultRepair(fireFaultRepair);
         if (rows > 0) {
             appendLog(fireFaultRepair.getRepairId(), "create",
-                    displayName(fireFaultRepair.getReporterName()) + "提交了维修订单",
+                    displayName(fireFaultRepair.getReporterName()) + "提交了维修工单",
                     fireFaultRepair.getReporterId(), fireFaultRepair.getReporterName());
             if (fireFaultRepair.getRepairUserId() != null) {
                 appendLog(fireFaultRepair.getRepairId(), "dispatch",
@@ -268,7 +268,7 @@ public class FireFaultRepairServiceImpl implements IFireFaultRepairService {
             throw new ServiceException("工单状态已变化，请刷新后重试");
         }
         appendLog(repair.getRepairId(), "complete",
-                displayName(current.getUserName()) + "完成维修订单",
+                displayName(current.getUserName()) + "完成了维修",
                 current.getUserId(), current.getUserName());
         return rows;
     }

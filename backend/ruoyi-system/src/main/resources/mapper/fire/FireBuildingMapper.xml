@@ -23,6 +23,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="evacuationStairs"   column="evacuation_stairs"   />
         <result property="fireElevators"      column="fire_elevators"      />
         <result property="refugeFloor"        column="refuge_floor"        />
+        <result property="image"              column="image"               />
         <result property="fireLevel"          column="fire_level"          />
         <result property="contactPerson"      column="contact_person"      />
         <result property="contactPhone"       column="contact_phone"       />
@@ -39,7 +40,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         select building_id, company_id, company_name, building_code, building_name, building_type, auto_fire_system,
                address, land_area, area, floor_count, building_height, 
                above_ground_floors, underground_floors, emergency_exits, evacuation_stairs,
-               fire_elevators, refuge_floor, fire_level, contact_person, contact_phone, 
+               fire_elevators, refuge_floor, image, fire_level, contact_person, contact_phone, 
                status, del_flag, create_by, create_time, update_by, update_time, remark 
         from fire_building
     </sql>
@@ -135,6 +136,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="evacuationStairs != null">evacuation_stairs,</if>
             <if test="fireElevators != null">fire_elevators,</if>
             <if test="refugeFloor != null and refugeFloor != ''">refuge_floor,</if>
+            <if test="image != null and image != ''">image,</if>
             <if test="fireLevel != null and fireLevel != ''">fire_level,</if>
             <if test="contactPerson != null and contactPerson != ''">contact_person,</if>
             <if test="contactPhone != null and contactPhone != ''">contact_phone,</if>
@@ -161,6 +163,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="evacuationStairs != null">#{evacuationStairs},</if>
             <if test="fireElevators != null">#{fireElevators},</if>
             <if test="refugeFloor != null and refugeFloor != ''">#{refugeFloor},</if>
+            <if test="image != null and image != ''">#{image},</if>
             <if test="fireLevel != null and fireLevel != ''">#{fireLevel},</if>
             <if test="contactPerson != null and contactPerson != ''">#{contactPerson},</if>
             <if test="contactPhone != null and contactPhone != ''">#{contactPhone},</if>
@@ -189,6 +192,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="evacuationStairs != null">evacuation_stairs = #{evacuationStairs},</if>
             <if test="fireElevators != null">fire_elevators = #{fireElevators},</if>
             <if test="refugeFloor != null">refuge_floor = #{refugeFloor},</if>
+            <if test="image != null">image = #{image},</if>
             <if test="fireLevel != null">fire_level = #{fireLevel},</if>
             <if test="contactPerson != null">contact_person = #{contactPerson},</if>
             <if test="contactPhone != null">contact_phone = #{contactPhone},</if>

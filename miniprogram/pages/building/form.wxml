@@ -1,27 +1,104 @@
 <view class="page">
-  <view class="field">
-    <text class="label">建筑名称</text>
-    <input class="input" value="{{form.buildingName}}" data-field="buildingName" bindinput="onInput" placeholder="请输入" />
+  <view class="card form-card">
+    <view class="item">
+      <text class="label">建筑名称</text>
+      <input class="input" value="{{form.buildingName}}" data-field="buildingName" bindinput="onInput" placeholder="必填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">自动消防设施</text>
+      <view class="radios">
+        <view class="radio {{form.autoFireSystem === '1' ? 'active' : ''}}" data-value="1" bindtap="onAutoFireTap">
+          <view class="dot"></view>
+          <text>有</text>
+        </view>
+        <view class="radio {{form.autoFireSystem === '0' ? 'active' : ''}}" data-value="0" bindtap="onAutoFireTap">
+          <view class="dot"></view>
+          <text>无</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="item">
+      <text class="label">建筑地址</text>
+      <input class="input" value="{{form.address}}" data-field="address" bindinput="onInput" placeholder="请输入" placeholder-class="ph" />
+    </view>
+
+    <view class="item" bindtap="noop">
+      <text class="label">建筑类别</text>
+      <picker mode="selector" range="{{typeLabels}}" value="{{typeIndex >= 0 ? typeIndex : 0}}" bindchange="onTypeChange">
+        <view class="picker-row">
+          <text class="{{typeIndex >= 0 ? 'picker-val' : 'picker-ph'}}">{{typeIndex >= 0 ? typeLabels[typeIndex] : '请选择'}}</text>
+          <text class="arrow">›</text>
+        </view>
+      </picker>
+    </view>
+
+    <view class="item">
+      <text class="label">占地面积(m²)</text>
+      <input class="input" type="digit" value="{{form.landArea}}" data-field="landArea" bindinput="onInput" placeholder="选填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">建筑面积(m²)</text>
+      <input class="input" type="digit" value="{{form.area}}" data-field="area" bindinput="onInput" placeholder="选填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">建筑高度(m)</text>
+      <input class="input" type="digit" value="{{form.buildingHeight}}" data-field="buildingHeight" bindinput="onInput" placeholder="必填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">建筑层数</text>
+      <input class="input" type="number" value="{{form.floorCount}}" data-field="floorCount" bindinput="onInput" placeholder="必填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">地上层数</text>
+      <input class="input" type="number" value="{{form.aboveGroundFloors}}" data-field="aboveGroundFloors" bindinput="onInput" placeholder="必填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">地下层数</text>
+      <input class="input" type="number" value="{{form.undergroundFloors}}" data-field="undergroundFloors" bindinput="onInput" placeholder="必填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">安全出口(个)</text>
+      <input class="input" type="number" value="{{form.emergencyExits}}" data-field="emergencyExits" bindinput="onInput" placeholder="选填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">疏散楼梯数(个)</text>
+      <input class="input" type="number" value="{{form.evacuationStairs}}" data-field="evacuationStairs" bindinput="onInput" placeholder="选填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">消防电梯数(个)</text>
+      <input class="input" type="number" value="{{form.fireElevators}}" data-field="fireElevators" bindinput="onInput" placeholder="选填" placeholder-class="ph" />
+    </view>
+
+    <view class="item">
+      <text class="label">避难层位置</text>
+      <input class="input" value="{{form.refugeFloor}}" data-field="refugeFloor" bindinput="onInput" placeholder="选填" placeholder-class="ph" />
+    </view>
+
+    <view class="photo-block">
+      <view class="photos">
+        <view class="thumb-wrap" wx:for="{{images}}" wx:key="index">
+          <image class="thumb" src="{{item.tempPath || item.previewUrl || item.serverUrl}}" mode="aspectFill" data-index="{{index}}" bindtap="previewImage" />
+          <view class="thumb-del" data-index="{{index}}" catchtap="removeImage">×</view>
+          <view class="thumb-mask" wx:if="{{item.uploading}}">上传中</view>
+        </view>
+        <view class="thumb-add" wx:if="{{images.length < 1}}" bindtap="chooseImage">
+          <view class="cam-icon"></view>
+        </view>
+      </view>
+    </view>
   </view>
-  <view class="field">
-    <text class="label">地址</text>
-    <input class="input" value="{{form.address}}" data-field="address" bindinput="onInput" placeholder="请输入" />
-  </view>
-  <view class="field">
-    <text class="label">建筑类型</text>
-    <picker mode="selector" range="{{typeOptions}}" value="{{typeIndex >= 0 ? typeIndex : 0}}" bindchange="onTypeChange">
-      <view class="picker-val">{{form.buildingType || '请选择'}}</view>
-    </picker>
-  </view>
-  <view class="field">
-    <text class="label">楼层数</text>
-    <input class="input" type="number" value="{{form.floorCount}}" data-field="floorCount" bindinput="onInput" placeholder="请输入" />
-  </view>
-  <view class="field">
-    <text class="label">建筑面积</text>
-    <input class="input" type="digit" value="{{form.area}}" data-field="area" bindinput="onInput" placeholder="请输入" />
-  </view>
-  <view class="bottom-bar">
-    <view class="btn-block" bindtap="handleSubmit">保存</view>
+
+  <view class="save-bar">
+    <view class="{{saving ? 'save-btn disabled' : 'save-btn'}}" bindtap="handleSubmit">保存</view>
   </view>
 </view>

@@ -1,5 +1,21 @@
 const { api } = require("../../api/index.js");
 
+function displayNum(value, suffix) {
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value) + (suffix || "");
+}
+
+function mapBuildingRow(row) {
+  return Object.assign({}, row, {
+    heightText: displayNum(row.buildingHeight, "m"),
+    floorText: displayNum(row.floorCount, "\u5c42"),
+    aboveText: displayNum(row.aboveGroundFloors, "\u5c42"),
+    underText: displayNum(row.undergroundFloors, "\u5c42"),
+    landAreaText: displayNum(row.landArea, "m\u00b2"),
+    areaText: displayNum(row.area, "m\u00b2")
+  });
+}
+
 Page({
   data: {
     list: [],
@@ -45,7 +61,7 @@ Page({
         pageNum: this.data.pageNum,
         pageSize: this.data.pageSize
       });
-      const rows = res.rows || res.data || [];
+      const rows = (res.rows || res.data || []).map(mapBuildingRow);
       this.setData({
         list: this.data.pageNum === 1 ? rows : this.data.list.concat(rows),
         noMore: rows.length < this.data.pageSize
